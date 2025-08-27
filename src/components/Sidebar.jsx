@@ -15,9 +15,16 @@ import {
 import "./Sidebar.css";
 
 const Sidebar = () => {
-  const { auth, logout } = useContext(AuthContext);
-  const role = auth.role || "ADMIN"; // Default to ADMIN for now
+  const { user, logout } = useContext(AuthContext);
   const location = useLocation();
+
+  // Map role_id to role name, consistent with ProtectedRoute
+  const roleMap = {
+    1: "ADMIN",
+    2: "ORDER_MANAGER",
+    3: "CATALOG_MANAGER",
+  };
+  const role = user?.role_id ? roleMap[user.role_id] || "ADMIN" : "ADMIN";
 
   const menus = {
     ADMIN: [
