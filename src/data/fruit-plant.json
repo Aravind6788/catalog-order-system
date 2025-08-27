@@ -1,0 +1,202 @@
+[
+  {
+    "S.No": 1,
+    "Description": "Sapota",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Sapota"
+  },
+  {
+    "S.No": 2,
+    "Description": "Guava Thailand pink",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Guava+Thailand+Pink"
+  },
+  {
+    "S.No": 3,
+    "Description": "Guava Alahabad",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Guava+Alahabad"
+  },
+  {
+    "S.No": 4,
+    "Description": "Pomegranate",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Pomegranate"
+  },
+  {
+    "S.No": 5,
+    "Description": "Amla",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Amla"
+  },
+  {
+    "S.No": 6,
+    "Description": "Gooseberry",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Gooseberry"
+  },
+  {
+    "S.No": 7,
+    "Description": "Jamun - Jamboo",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Jamun+Jamboo"
+  },
+  {
+    "S.No": 8,
+    "Description": "Jamun - white",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Jamun+White"
+  },
+  {
+    "S.No": 9,
+    "Description": "Custard Apple",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Custard+Apple"
+  },
+  {
+    "S.No": 10,
+    "Description": "Mul Seetha",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Mul+Seetha"
+  },
+  {
+    "S.No": 11,
+    "Description": "Lemon - Thai",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1800,
+    "Image URL": "https://via.placeholder.com/60?text=Lemon+Thai"
+  },
+  {
+    "S.No": 12,
+    "Description": "Lemon - Market",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Lemon+Market"
+  },
+  {
+    "S.No": 13,
+    "Description": "Sweet Narthai",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Sweet+Narthai"
+  },
+  {
+    "S.No": 14,
+    "Description": "Malta - lemon",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Malta+Lemon"
+  },
+  {
+    "S.No": 15,
+    "Description": "Lemon - Sweet",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Lemon+Sweet"
+  },
+  {
+    "S.No": 16,
+    "Description": "Lemon - Table",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Lemon+Table"
+  },
+  {
+    "S.No": 17,
+    "Description": "Mango",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Mango"
+  },
+  {
+    "S.No": 18,
+    "Description": "Thailand Mango",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Thailand+Mango"
+  },
+  {
+    "S.No": 19,
+    "Description": "Water Apple -Green",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Water+Apple+Green"
+  },
+  {
+    "S.No": 20,
+    "Description": "Water Apple -Red",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Water+Apple+Red"
+  },
+  {
+    "S.No": 21,
+    "Description": "Star Fruit",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Star+Fruit"
+  },
+  {
+    "S.No": 22,
+    "Description": "Bubbly Mass",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Bubbly+Mass"
+  },
+  {
+    "S.No": 23,
+    "Description": "Mulberry",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Mulberry"
+  },
+  {
+    "S.No": 24,
+    "Description": "Dragon Fruit",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Dragon+Fruit"
+  },
+  {
+    "S.No": 25,
+    "Description": "Fig",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 0,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Fig"
+  }
+]

@@ -1,0 +1,210 @@
+[
+  {
+    "S.No": 1,
+    "Description": "ZZ plant",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=ZZ+plant"
+  },
+  {
+    "S.No": 2,
+    "Description": "Ruber Plant",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Ruber+Plant"
+  },
+  {
+    "S.No": 3,
+    "Description": "ZZ plant",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=ZZ+plant"
+  },
+  {
+    "S.No": 4,
+    "Description": "Potnos plant",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Potnos+plant"
+  },
+  {
+    "S.No": 5,
+    "Description": "Berkin",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Berkin"
+  },
+  {
+    "S.No": 6,
+    "Description": "Spider plant",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Spider+plant"
+  },
+  {
+    "S.No": 7,
+    "Description": "Syngonium",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Syngonium"
+  },
+  {
+    "S.No": 8,
+    "Description": "Lucky Bamboo (2 layer)",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Lucky+Bamboo+%282+layer%29"
+  },
+  {
+    "S.No": 9,
+    "Description": "Lucky Bamboo (4 Layer)",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Lucky+Bamboo+%284+Layer%29"
+  },
+  {
+    "S.No": 10,
+    "Description": "Aglonema Lipstick",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Aglonema+Lipstick"
+  },
+  {
+    "S.No": 11,
+    "Description": "Aglonema",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Aglonema"
+  },
+  {
+    "S.No": 12,
+    "Description": "Areca palm",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Areca+palm"
+  },
+  {
+    "S.No": 13,
+    "Description": "Dracena victoriya",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 300,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Dracena+victoriya"
+  },
+  {
+    "S.No": 14,
+    "Description": "Ficus Fiddle leaf Fig",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Ficus+Fiddle+leaf+Fig"
+  },
+  {
+    "S.No": 15,
+    "Description": "Aglonema Butterfly",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Aglonema+Butterfly"
+  },
+  {
+    "S.No": 16,
+    "Description": "Peace lily",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Peace+lily"
+  },
+  {
+    "S.No": 17,
+    "Description": "Monstera",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Monstera"
+  },
+  {
+    "S.No": 18,
+    "Description": "Snake Plant",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Snake+Plant"
+  },
+  {
+    "S.No": 19,
+    "Description": "Calathea",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Calathea"
+  },
+  {
+    "S.No": 20,
+    "Description": "Maranta",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Maranta"
+  },
+  {
+    "S.No": 21,
+    "Description": "Dieffenbachia",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Dieffenbachia"
+  },
+  {
+    "S.No": 22,
+    "Description": "Popromia",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Popromia"
+  },
+  {
+    "S.No": 23,
+    "Description": "Bird's Nest Fern",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Bird%27s+Nest+Fern"
+  },
+  {
+    "S.No": 24,
+    "Description": "Popronaia",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Popronaia"
+  },
+  {
+    "S.No": 25,
+    "Description": "Caladium",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Caladium"
+  },
+  {
+    "S.No": 26,
+    "Description": "Philodendron",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 0,
+    "Retail Price": 0,
+    "Image URL": "https://via.placeholder.com/60?text=Philodendron"
+  }
+]
