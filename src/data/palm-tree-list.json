@@ -1,0 +1,162 @@
+[
+  {
+    "S.No": 1,
+    "Description": "Foxtail Palm",
+    "Cover Size": "13*13",
+    "Whole Sale Rate": 175,
+    "Retail Price": 250,
+    "Image URL": "src/img/p-1.jpg"
+  },
+  {
+    "S.No": 2,
+    "Description": "Foxtail Palm",
+    "Cover Size": "15*16",
+    "Whole Sale Rate": 500,
+    "Retail Price": 700,
+    "Image URL": "https://via.placeholder.com/60?text=Foxtail+Palm"
+  },
+  {
+    "S.No": 3,
+    "Description": "Foxtail Palm",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 1100,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Foxtail+Palm"
+  },
+  {
+    "S.No": 4,
+    "Description": "Foxtail Palm",
+    "Cover Size": "25*25",
+    "Whole Sale Rate": 3200,
+    "Retail Price": 4500,
+    "Image URL": "https://via.placeholder.com/60?text=Foxtail+Palm"
+  },
+  {
+    "S.No": 5,
+    "Description": "Foxtail Palm",
+    "Cover Size": "30*30",
+    "Whole Sale Rate": 5500,
+    "Retail Price": 7500,
+    "Image URL": "https://via.placeholder.com/60?text=Foxtail+Palm"
+  },
+  {
+    "S.No": 6,
+    "Description": "Mirchimeri Green Palm",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 1100,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Mirchimeri+Green+Palm"
+  },
+  {
+    "S.No": 7,
+    "Description": "Mirchimeri Green Palm",
+    "Cover Size": "25*25",
+    "Whole Sale Rate": 3200,
+    "Retail Price": 4500,
+    "Image URL": "https://via.placeholder.com/60?text=Mirchimeri+Green+Palm"
+  },
+  {
+    "S.No": 8,
+    "Description": "Mirchimeri Green Palm",
+    "Cover Size": "30*30",
+    "Whole Sale Rate": 5500,
+    "Retail Price": 7500,
+    "Image URL": "https://via.placeholder.com/60?text=Mirchimeri+Green+Palm"
+  },
+  {
+    "S.No": 9,
+    "Description": "Mirchimeri Gold Palm",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 2500,
+    "Retail Price": 3500,
+    "Image URL": "https://via.placeholder.com/60?text=Mirchimeri+Gold+Palm"
+  },
+  {
+    "S.No": 10,
+    "Description": "Mirchimeri Gold Palm",
+    "Cover Size": "25*25",
+    "Whole Sale Rate": 10000,
+    "Retail Price": 12000,
+    "Image URL": "https://via.placeholder.com/60?text=Mirchimeri+Gold+Palm"
+  },
+  {
+    "S.No": 11,
+    "Description": "Mirchimeri Gold Palm",
+    "Cover Size": "30*30",
+    "Whole Sale Rate": 17000,
+    "Retail Price": 19000,
+    "Image URL": "https://via.placeholder.com/60?text=Mirchimeri+Gold+Palm"
+  },
+  {
+    "S.No": 12,
+    "Description": "Royal Palm",
+    "Cover Size": "13*13",
+    "Whole Sale Rate": 160,
+    "Retail Price": 240,
+    "Image URL": "https://via.placeholder.com/60?text=Royal+Palm"
+  },
+  {
+    "S.No": 13,
+    "Description": "Royal Palm",
+    "Cover Size": "15*16",
+    "Whole Sale Rate": 260,
+    "Retail Price": 390,
+    "Image URL": "https://via.placeholder.com/60?text=Royal+Palm"
+  },
+  {
+    "S.No": 14,
+    "Description": "Royal Palm",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 900,
+    "Retail Price": 1400,
+    "Image URL": "https://via.placeholder.com/60?text=Royal+Palm"
+  },
+  {
+    "S.No": 15,
+    "Description": "Dates Palm",
+    "Cover Size": "4-6 ft trunk",
+    "Whole Sale Rate": 4500,
+    "Retail Price": 6000,
+    "Image URL": "https://via.placeholder.com/60?text=Dates+Palm"
+  },
+  {
+    "S.No": 16,
+    "Description": "Traveller's Palm",
+    "Cover Size": "8*10",
+    "Whole Sale Rate": 120,
+    "Retail Price": 200,
+    "Image URL": "https://via.placeholder.com/60?text=Traveller%27s+Palm"
+  },
+  {
+    "S.No": 17,
+    "Description": "Traveller's Palm",
+    "Cover Size": "13*13",
+    "Whole Sale Rate": 240,
+    "Retail Price": 330,
+    "Image URL": "https://via.placeholder.com/60?text=Traveller%27s+Palm"
+  },
+  {
+    "S.No": 18,
+    "Description": "Traveller's Palm",
+    "Cover Size": "15*16",
+    "Whole Sale Rate": 400,
+    "Retail Price": 500,
+    "Image URL": "https://via.placeholder.com/60?text=Traveller%27s+Palm"
+  },
+  {
+    "S.No": 19,
+    "Description": "Traveller's Palm",
+    "Cover Size": "21*21",
+    "Whole Sale Rate": 1100,
+    "Retail Price": 1500,
+    "Image URL": "https://via.placeholder.com/60?text=Traveller%27s+Palm"
+  },
+  {
+    "S.No": 20,
+    "Description": "Areca Palm",
+    "Cover Size": "8*10",
+    "Whole Sale Rate": 120,
+    "Retail Price": 150,
+    "Image URL": "https://via.placeholder.com/60?text=Areca+Palm"
+  }
+]

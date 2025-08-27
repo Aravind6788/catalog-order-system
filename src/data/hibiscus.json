@@ -1,0 +1,162 @@
+[
+  {
+    "S.No": 1,
+    "Description": "Red Hibiscus",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 50,
+    "Retail Price": 75,
+    "Image URL": "https://via.placeholder.com/60?text=Red+Hibiscus"
+  },
+  {
+    "S.No": 2,
+    "Description": "White Hibiscus",
+    "Cover Size": "12*12",
+    "Whole Sale Rate": 60,
+    "Retail Price": 90,
+    "Image URL": "https://via.placeholder.com/60?text=White+Hibiscus"
+  },
+  {
+    "S.No": 3,
+    "Description": "Pink Hibiscus",
+    "Cover Size": "14*14",
+    "Whole Sale Rate": 70,
+    "Retail Price": 100,
+    "Image URL": "https://via.placeholder.com/60?text=Pink+Hibiscus"
+  },
+  {
+    "S.No": 4,
+    "Description": "Yellow Hibiscus",
+    "Cover Size": "16*16",
+    "Whole Sale Rate": 80,
+    "Retail Price": 120,
+    "Image URL": "https://via.placeholder.com/60?text=Yellow+Hibiscus"
+  },
+  {
+    "S.No": 5,
+    "Description": "Double Red Hibiscus",
+    "Cover Size": "18*18",
+    "Whole Sale Rate": 90,
+    "Retail Price": 140,
+    "Image URL": "https://via.placeholder.com/60?text=Double+Red+Hibiscus"
+  },
+  {
+    "S.No": 6,
+    "Description": "Double White Hibiscus",
+    "Cover Size": "20*20",
+    "Whole Sale Rate": 100,
+    "Retail Price": 150,
+    "Image URL": "https://via.placeholder.com/60?text=Double+White+Hibiscus"
+  },
+  {
+    "S.No": 7,
+    "Description": "Double Pink Hibiscus",
+    "Cover Size": "22*22",
+    "Whole Sale Rate": 110,
+    "Retail Price": 160,
+    "Image URL": "https://via.placeholder.com/60?text=Double+Pink+Hibiscus"
+  },
+  {
+    "S.No": 8,
+    "Description": "Double Yellow Hibiscus",
+    "Cover Size": "24*24",
+    "Whole Sale Rate": 120,
+    "Retail Price": 170,
+    "Image URL": "https://via.placeholder.com/60?text=Double+Yellow+Hibiscus"
+  },
+  {
+    "S.No": 9,
+    "Description": "Tropical Hibiscus Red",
+    "Cover Size": "10*10",
+    "Whole Sale Rate": 55,
+    "Retail Price": 80,
+    "Image URL": "https://via.placeholder.com/60?text=Tropical+Hibiscus+Red"
+  },
+  {
+    "S.No": 10,
+    "Description": "Tropical Hibiscus White",
+    "Cover Size": "12*12",
+    "Whole Sale Rate": 65,
+    "Retail Price": 95,
+    "Image URL": "https://via.placeholder.com/60?text=Tropical+Hibiscus+White"
+  },
+  {
+    "S.No": 11,
+    "Description": "Tropical Hibiscus Pink",
+    "Cover Size": "14*14",
+    "Whole Sale Rate": 75,
+    "Retail Price": 105,
+    "Image URL": "https://via.placeholder.com/60?text=Tropical+Hibiscus+Pink"
+  },
+  {
+    "S.No": 12,
+    "Description": "Tropical Hibiscus Yellow",
+    "Cover Size": "16*16",
+    "Whole Sale Rate": 85,
+    "Retail Price": 125,
+    "Image URL": "https://via.placeholder.com/60?text=Tropical+Hibiscus+Yellow"
+  },
+  {
+    "S.No": 13,
+    "Description": "Hibiscus Rosa-Sinensis Red",
+    "Cover Size": "18*18",
+    "Whole Sale Rate": 95,
+    "Retail Price": 135,
+    "Image URL": "https://via.placeholder.com/60?text=Hibiscus+Rosa-Sinensis+Red"
+  },
+  {
+    "S.No": 14,
+    "Description": "Hibiscus Rosa-Sinensis White",
+    "Cover Size": "20*20",
+    "Whole Sale Rate": 105,
+    "Retail Price": 145,
+    "Image URL": "https://via.placeholder.com/60?text=Hibiscus+Rosa-Sinensis+White"
+  },
+  {
+    "S.No": 15,
+    "Description": "Hibiscus Rosa-Sinensis Pink",
+    "Cover Size": "22*22",
+    "Whole Sale Rate": 115,
+    "Retail Price": 155,
+    "Image URL": "https://via.placeholder.com/60?text=Hibiscus+Rosa-Sinensis+Pink"
+  },
+  {
+    "S.No": 16,
+    "Description": "Hibiscus Rosa-Sinensis Yellow",
+    "Cover Size": "24*24",
+    "Whole Sale Rate": 125,
+    "Retail Price": 165,
+    "Image URL": "https://via.placeholder.com/60?text=Hibiscus+Rosa-Sinensis+Yellow"
+  },
+  {
+    "S.No": 17,
+    "Description": "Giant Red Hibiscus",
+    "Cover Size": "26*26",
+    "Whole Sale Rate": 130,
+    "Retail Price": 180,
+    "Image URL": "https://via.placeholder.com/60?text=Giant+Red+Hibiscus"
+  },
+  {
+    "S.No": 18,
+    "Description": "Giant White Hibiscus",
+    "Cover Size": "28*28",
+    "Whole Sale Rate": 140,
+    "Retail Price": 190,
+    "Image URL": "https://via.placeholder.com/60?text=Giant+White+Hibiscus"
+  },
+  {
+    "S.No": 19,
+    "Description": "Giant Pink Hibiscus",
+    "Cover Size": "30*30",
+    "Whole Sale Rate": 150,
+    "Retail Price": 200,
+    "Image URL": "https://via.placeholder.com/60?text=Giant+Pink+Hibiscus"
+  },
+  {
+    "S.No": 20,
+    "Description": "Giant Yellow Hibiscus",
+    "Cover Size": "32*32",
+    "Whole Sale Rate": 160,
+    "Retail Price": 210,
+    "Image URL": "https://via.placeholder.com/60?text=Giant+Yellow+Hibiscus"
+  }
+]
