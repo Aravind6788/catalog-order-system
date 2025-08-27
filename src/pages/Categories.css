@@ -1,0 +1,20 @@
+/* src/pages/Categories.css */
+.category-card {
+  background-color: #2d3748;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.category-card h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.category-card p {
+  color: #a0aec0;
+}
+
+.category-actions button {
+  margin-right: 10px;
+}

@@ -1,0 +1,92 @@
+.dashboard-content {
+  margin-left: 250px;
+  padding: 20px;
+  color: #f9fafb;
+}
+
+/* Dashboard cards */
+.dashboard-card {
+  background-color: #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.dashboard-card h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 10px 0 5px;
+}
+
+.dashboard-card p {
+  color: #9ca3af;
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.bg-blue { background-color: #2563eb; }
+.bg-green { background-color: #16a34a; }
+.bg-purple { background-color: #9333ea; }
+.bg-orange { background-color: #f97316; }
+
+.trend {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Recent Orders & Top Products */
+.recent-orders, .top-products {
+  background-color: #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.recent-orders ul, .top-products ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recent-orders li, .top-products li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #374151;
+}
+
+.recent-orders li:last-child, .top-products li:last-child {
+  border-bottom: none;
+}
+
+/* Status colors */
+.status-pending { color: #facc15; }
+.status-quoted { color: #38bdf8; }
+.status-completed { color: #4ade80; }
+
+/* Link */
+.view-all {
+  display: inline-block;
+  margin-top: 12px;
+  color: #22c55e;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.view-all:hover {
+  text-decoration: underline;
+}
