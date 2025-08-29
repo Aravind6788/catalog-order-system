@@ -1,16 +1,20 @@
-/* src/pages/CreateCategory.css */
 .create-category-form {
-  background-color: #2d3748;
-  border-radius: 10px;
+  background: #2d3748;
   padding: 20px;
+  border-radius: 10px;
+  max-width: 600px;
 }
 
-.create-category-form label {
-  font-weight: 600;
+.form-control {
+  background: #1a202c !important;
+  border: none !important;
+  color: white !important;
 }
 
-.create-category-form input {
-  background-color: #4a5568;
-  border: none;
-  color: #e2e8f0;
+.form-control:focus {
+  box-shadow: 0 0 0 2px #16a34a;
+}
+
+.text-danger {
+  color: #f87171 !important;
 }

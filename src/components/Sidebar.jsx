@@ -29,8 +29,9 @@ const Sidebar = () => {
   const menus = {
     ADMIN: [
       { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { path: "/products", label: "Products", icon: Package },
       { path: "/categories", label: "Categories", icon: Folder },
+      { path: "/attributes", label: "Attributes", icon: Folder },
+      { path: "/products", label: "Products", icon: Package },
       { path: "/orders", label: "Orders", icon: ShoppingCart },
       { path: "/users", label: "Users", icon: Users },
       { path: "/audit-logs", label: "Audit Logs", icon: FileText },

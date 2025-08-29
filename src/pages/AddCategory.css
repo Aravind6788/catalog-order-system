@@ -1,0 +1,39 @@
+.category-form {
+  background: #2d3748;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 500px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.input-field {
+  background: #1a202c;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  color: white;
+}
+
+.input-field:focus {
+  outline: 2px solid #16a34a;
+}
+
+.error-text {
+  color: #f87171;
+  font-size: 0.9rem;
+}
+
+.success-text {
+  color: #4ade80;
+  font-size: 0.9rem;
+}

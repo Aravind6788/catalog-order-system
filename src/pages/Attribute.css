@@ -1,0 +1,21 @@
+/* Custom CSS for modal backdrop */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+}
+
+/* Ensure modal is centered and visible */
+.modal.show {
+  display: block;
+  background-color: transparent;
+}
+
+/* Adjust modal dialog for better appearance */
+.modal-dialog {
+  max-width: 400px;
+}   
