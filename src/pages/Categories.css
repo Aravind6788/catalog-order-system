@@ -1,20 +1,166 @@
-/* src/pages/Categories.css */
-.category-card {
-  background-color: #2d3748;
-  border-radius: 10px;
-  padding: 15px;
+.categories-page {
+  padding: 20px;
+  color: #fff;
+  background-color: #111;
+  min-height: 100vh;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.categories-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
 }
 
-.category-card h2 {
+.search-bar {
+  background: #1a202c;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  color: #fff;
+  width: 40%;
+}
+
+.btn-secondary {
+  background: #2d3748;
+  border: none;
+  color: #cbd5e0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #4a5568;
+}
+
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.category-item {
+  background: #2d3748;
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.category-icon {
+  font-size: 1.5rem;
+}
+
+.category-item h2 {
+  margin: 0;
   font-size: 1.2rem;
   font-weight: 600;
 }
 
-.category-card p {
+.category-item p {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  color: #a0aec0;
+}
+
+.dim-text {
   color: #a0aec0;
 }
 
 .category-actions button {
-  margin-right: 10px;
+  margin-left: 10px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-edit {
+  background: #16a34a;
+  color: white;
+}
+
+.btn-edit:hover {
+  background: #15803d;
+}
+
+.btn-delete {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-delete:hover {
+  background: #b91c1c;
+}
+
+.btn-add {
+  margin-top: 20px;
+  background: #16a34a;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: white;
+}
+
+.btn-add:hover {
+  background: #15803d;
+}
+/* Modal backdrop */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* semi-transparent dark */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999; /* make sure it's on top */
+}
+
+/* Modal box */
+.modal {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 400px; /* fixed width for modal */
+  max-width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1000;
+}
+
+/* Modal input and actions */
+.modal input[type="text"] {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
