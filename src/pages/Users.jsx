@@ -119,9 +119,9 @@ const Users = () => {
       case 1:
         return "Admin";
       case 2:
-        return "User";
+        return "Catalog Manager";
       case 3:
-        return "Manager";
+        return "Order Manager";
       default:
         return "Unknown";
     }
@@ -365,8 +365,8 @@ const Users = () => {
                       onChange={handleInputChange}
                     >
                       <option value={1}>Admin</option>
-                      <option value={2}>User</option>
-                      <option value={3}>Manager</option>
+                      <option value={2}>Catalog Manager</option>
+                      <option value={3}>Order Manager</option>
                     </select>
                   </div>
                 </div>

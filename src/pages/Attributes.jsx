@@ -1058,6 +1058,7 @@ const Attributes = () => {
 
         .modal-small {
           max-width: 400px;
+          z-index:999;
         }
 
         .modal-header {
