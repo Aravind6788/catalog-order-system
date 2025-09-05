@@ -2,7 +2,8 @@
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
-import "../components/BaseStyles.css";
+// import "../components/BaseStyles.css";
+import "./Login.css"; // <-- new CSS file for login styles
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -28,36 +29,37 @@ const Login = () => {
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center min-vh-100">
-      <div className="base-card" style={{ width: "340px" }}>
-        <h3 className="text-center mb-4">Login</h3>
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
+    <div className="login-page">
+      <div className="login-card">
+        <h2 className="login-title">Welcome Back</h2>
+        {/* <p className="login-subtitle">Sign in to continue</p> */}
+
+        {error && <div className="login-error">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label className="form-label">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="form-control base-input"
+              placeholder="Enter your email"
+              className="form-input"
               required
             />
           </div>
-          <div className="mb-3">
+          <div className="form-group">
+            <label className="form-label">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="form-control base-input"
+              placeholder="Enter your password"
+              className="form-input"
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-100 base-btn">
+          <button type="submit" className="btn-primary w-100">
             Login
           </button>
         </form>

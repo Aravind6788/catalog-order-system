@@ -11,6 +11,7 @@ import {
   FileText,
   LogOut,
   Leaf,
+  MessageSquarePlus,
 } from "lucide-react";
 import "./Sidebar.css";
 
@@ -21,8 +22,8 @@ const Sidebar = () => {
   // Map role_id to role name, consistent with ProtectedRoute
   const roleMap = {
     1: "ADMIN",
-    2: "ORDER_MANAGER",
-    3: "CATALOG_MANAGER",
+    2: "CATALOG_MANAGER",
+    3: "ORDER_MANAGER",
   };
   const role = user?.role_id ? roleMap[user.role_id] || "ADMIN" : "ADMIN";
 
@@ -30,7 +31,7 @@ const Sidebar = () => {
     ADMIN: [
       { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { path: "/categories", label: "Categories", icon: Folder },
-      { path: "/attributes", label: "Attributes", icon: Folder },
+      { path: "/attributes", label: "Attributes", icon: MessageSquarePlus },
       { path: "/products", label: "Products", icon: Package },
       { path: "/orders", label: "Orders", icon: ShoppingCart },
       { path: "/users", label: "Users", icon: Users },
@@ -38,16 +39,14 @@ const Sidebar = () => {
     ],
     ORDER_MANAGER: [
       { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { path: "/orders", label: "Orders", icon: ShoppingCart },
-      { path: "/customers", label: "Customers", icon: Users },
       { path: "/products", label: "Products", icon: Package },
-      { path: "/inventory", label: "Inventory", icon: FileText },
+      { path: "/orders", label: "Orders", icon: ShoppingCart },
     ],
     CATALOG_MANAGER: [
       { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { path: "/categories", label: "Categories", icon: Folder },
       { path: "/products", label: "Products", icon: Package },
-      { path: "/inventory", label: "Inventory", icon: FileText },
+      { path: "/attributes", label: "Attributes", icon: Folder },
     ],
   };
 
