@@ -26,6 +26,7 @@ import Attributes from "./pages/Attributes";
 // Client-facing Pages
 import ClientProducts from "./pages/client/ClientProducts";
 import OrderManagement from "./pages/OrderManagement";
+import AuditLog from "./pages/AuditLog";
 
 function App() {
   return (
@@ -67,7 +68,7 @@ function App() {
             <Route path="/attributes" element={<Attributes />} />
 
             {/* Future Routes - Uncomment when ready */}
-            {/* <Route path="/products/:id/add-variant" element={<AddVariant />} /> */}
+            <Route path="/audit-logs" element={<AuditLog />} />
             <Route path="/orders" element={<OrderManagement />} />
             {/* <Route path="/inventory" element={<Inventory />} /> */}
             {/* <Route path="/reports" element={<Reports />} /> */}
