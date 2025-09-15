@@ -47,6 +47,12 @@ const OrderManagement = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
 
+  // Filter states for customer table
+  const [dateFilter, setDateFilter] = useState({ start: "", end: "" });
+  const [customerNameFilter, setCustomerNameFilter] = useState("");
+  // Add processing state to prevent multiple clicks
+  const [processing, setProcessing] = useState(false);
+
   // Success/Error Modal Component
   const NotificationModal = ({
     isOpen,
@@ -113,29 +119,7 @@ const OrderManagement = () => {
     }
   };
 
-  // Handle CSV download - fetch complete order data first
-  const handleDownloadCSV = async (order) => {
-    try {
-      console.log("Fetching complete order data for CSV:", order.id);
-      const res = await axios.get(`${API_BASE}/orders/${order.id}`);
-      const fullOrder = res.data.order;
-      console.log("Full order data:", fullOrder);
-
-      if (!fullOrder.items || fullOrder.items.length === 0) {
-        setModalMessage("No items found in order");
-        setShowErrorModal(true);
-        return;
-      }
-
-      generateAndDownloadCSV(fullOrder);
-    } catch (error) {
-      console.error("Error fetching order for CSV:", error);
-      setModalMessage("Failed to fetch order details for CSV download");
-      setShowErrorModal(true);
-    }
-  };
-
-  // Handle Excel download - fetch complete order data first
+  // Handle Excel download - fetch complete order data first (keeping only Excel, removing CSV)
   const handleDownloadExcel = async (order) => {
     try {
       console.log("Fetching complete order data for Excel:", order.id);
@@ -155,264 +139,429 @@ const OrderManagement = () => {
       setModalMessage("Failed to fetch order details for Excel download");
       setShowErrorModal(true);
     }
-  };
+  };// Frontend PDF generation with Nature Theme
+const generateAndDownloadPDF = (order) => {
+  console.log("Starting PDF generation with validated data...");
 
-  // Frontend PDF generation (professional invoice style)
-  const generateAndDownloadPDF = (order) => {
-    console.log("Starting PDF generation with validated data...");
+  try {
+    // Double check data validation
+    if (
+      !order ||
+      !order.items ||
+      !Array.isArray(order.items) ||
+      order.items.length === 0
+    ) {
+      throw new Error("Order validation failed: No items found");
+    }
 
+    const doc = new jsPDF();
+
+    // Nature Color Palette
+    const colors = {
+      forestGreen: [34, 139, 34],      // Primary green
+      leafGreen: [107, 142, 35],       // Secondary green
+      earthBrown: [139, 69, 19],       // Accent brown
+      cream: [253, 245, 230],          // Background cream
+      darkGreen: [0, 100, 0],          // Dark text green
+      lightGreen: [144, 238, 144],     // Light accent
+      sage: [158, 171, 141],           // Muted green
+      bark: [101, 67, 33],             // Dark brown
+    };
+
+    // Add subtle background texture
+    doc.setFillColor(...colors.cream);
+    doc.rect(0, 0, 210, 297, 'F'); // A4 page background
+
+    // Header with nature-inspired design
+    doc.setFillColor(...colors.forestGreen);
+    doc.roundedRect(10, 10, 190, 35, 3, 3, 'F');
+
+    // Add decorative leaf border elements
+    doc.setFillColor(...colors.leafGreen);
+    // Left leaf accent
+    doc.circle(15, 27.5, 3, 'F');
+    doc.ellipse(18, 27.5, 4, 2, 'F');
+    // Right leaf accent
+    doc.circle(195, 27.5, 3, 'F');
+    doc.ellipse(192, 27.5, 4, 2, 'F');
+
+    // Company Header with enhanced styling
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text("GreenLand", 30, 25);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Naturally Sustainable Solutions", 30, 32);
+    doc.text("123 Forest Avenue, Green Valley, GV 12345", 30, 37);
+    doc.text("(555) 123-LEAF |hello@greenland.eco", 30, 42);
+
+    // Invoice Title with nature accent
+    doc.setFillColor(...colors.earthBrown);
+    doc.roundedRect(130, 55, 65, 20, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("INVOICE", 145, 62);
+    doc.setFontSize(12);
+    doc.text(`#${order.order_number}`, 145, 70);
+
+    // Invoice Details with styled box
+    doc.setFillColor(...colors.sage);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(130, 78, 65, 25, 2, 2, 'F');
+    doc.setDrawColor(...colors.sage);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(130, 78, 65, 25, 2, 2, 'S');
+
+    doc.setTextColor(...colors.darkGreen);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Date:", 135, 85);
+    doc.text("Status:", 135, 92);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date(order.created_at).toLocaleDateString(), 155, 85);
+    doc.text(order.status.toUpperCase(), 155, 92);
+
+    // Bill To Section with leaf decoration
+    doc.setFillColor(...colors.lightGreen);
+    // doc.roundedRect(15, 110, 90, 35, 3, 3, 'F');
+    
+    // Leaf decoration
+    doc.setFillColor(...colors.forestGreen);
+    doc.circle(20, 115, 1.5, 'F');
+    doc.ellipse(22, 115, 2, 1, 'F');
+
+    doc.setTextColor(...colors.darkGreen);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Bill To", 25, 118);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(order.customer_name || "Valued Customer", 20, 127);
+    doc.setFontSize(9);
+    doc.text(`${order.customer_email || "N/A"}`, 20, 134);
+    doc.text(`${order.customer_phone || "N/A"}`, 20, 140);
+
+    // Items Table with nature styling
+    const tableData = order.items.map((item, index) => [
+      ` ${item.product_name || "Unknown Product"}`,
+      item.variant_name || "Standard",
+      item.variant_code || "N/A",
+      item.quantity || 0,
+      `${parseFloat(item.price || 0).toFixed(2)}`,
+      `${(parseFloat(item.price || 0) * parseInt(item.quantity || 0)).toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: 155,
+      head: [["Product", "Variant", "Code", "Qty", "Price", "Total"]],
+      body: tableData,
+      theme: "plain",
+      headStyles: {
+        fillColor: colors.forestGreen,
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 11,
+        cellPadding: { top: 8, right: 5, bottom: 8, left: 5 },
+      },
+      bodyStyles: {
+        textColor: colors.darkGreen,
+        fontSize: 10,
+        cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
+      },
+      alternateRowStyles: {
+        fillColor: colors.cream,
+      },
+      styles: {
+        fontSize: 10,
+        cellPadding: 6,
+        overflow: "linebreak",
+        halign: "left",
+        lineColor: colors.sage,
+        lineWidth: 0.3,
+      },
+      columnStyles: {
+        0: { cellWidth: 60 }, // Product name
+        1: { cellWidth: 30 }, // Variant
+        2: { cellWidth: 25, halign: "center" }, // Code
+        3: { cellWidth: 20, halign: "center" }, // Quantity
+        4: { cellWidth: 25, halign: "right" }, // Price
+        5: { cellWidth: 30, halign: "right", fontStyle: "bold" }, // Total
+      },
+      margin: { left: 15, right: 15 },
+    });
+
+    // Total Section with enhanced styling
+    let currentY = doc.lastAutoTable.finalY + 15;
+    
+    // Total box with nature styling
+    doc.setFillColor(...colors.earthBrown);
+    doc.roundedRect(120, currentY - 5, 75, 18, 3, 3, 'F');
+    
+    // Decorative elements
+    doc.setFillColor(...colors.leafGreen);
+    doc.circle(125, currentY + 4, 2, 'F');
+    doc.ellipse(128, currentY + 4, 3, 1.5, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(" TOTAL:", 135, currentY + 2);
+    doc.setFontSize(18);
+    doc.text(`$${parseFloat(order.total_amount || 0).toFixed(2)}`, 135, currentY + 9);
+
+    // Payment Status
+    currentY += 25;
+    doc.setFillColor(...colors.lightGreen);
+    doc.roundedRect(15, currentY, 180, 12, 2, 2, 'F');
+    doc.setTextColor(...colors.darkGreen);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(" Payment Required: 100% Advance Payment", 20, currentY + 7);
+
+    // Terms & Conditions with nature styling
+    currentY += 25;
+    
+    // Check if we need a new page
+    if (currentY > 220) {
+      doc.addPage();
+      doc.setFillColor(...colors.cream);
+      doc.rect(0, 0, 210, 297, 'F');
+      currentY = 20;
+    }
+
+    // Terms header with leaf decoration
+    doc.setFillColor(...colors.forestGreen);
+    doc.roundedRect(15, currentY, 180, 15, 2, 2, 'F');
+    
+    doc.setFillColor(...colors.leafGreen);
+    doc.circle(22, currentY + 7.5, 2, 'F');
+    doc.ellipse(25, currentY + 7.5, 3, 1.5, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(" Terms & Conditions", 30, currentY + 9);
+    
+    currentY += 20;
+    doc.setTextColor(...colors.darkGreen);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    
+    const terms = [
+      "Payment: 100% advance payment required for sustainable processing",
+      "Shipping: Eco-friendly packaging, charges apply based on location",
+      "Delivery: Estimated timelines, weather delays possible",
+      "Risk Transfer: Responsibility transfers upon eco-friendly dispatch",
+      "Returns: Defective items only, supporting our green initiative"
+    ];
+
+    terms.forEach((term, index) => {
+      // Alternate background for readability
+      if (index % 2 === 0) {
+        doc.setFillColor(...colors.cream);
+        const termLines = doc.splitTextToSize(term, 165);
+        doc.rect(15, currentY - 2, 180, (termLines.length * 4) + 2, 'F');
+      }
+      
+      const termLines = doc.splitTextToSize(term, 165);
+      doc.text(termLines, 20, currentY + 2);
+      currentY += (termLines.length * 4) + 6;
+      
+      // Check if we need a new page
+      if (currentY > 270) {
+        doc.addPage();
+        doc.setFillColor(...colors.cream);
+        doc.rect(0, 0, 210, 297, 'F');
+        currentY = 20;
+      }
+    });
+
+    // Footer with nature theme
+    currentY = Math.max(currentY, 270);
+    doc.setFillColor(...colors.sage);
+    doc.rect(0, currentY, 210, 27, 'F');
+    
+    // Decorative footer elements
+    doc.setFillColor(...colors.forestGreen);
+    for (let i = 0; i < 8; i++) {
+      const x = 25 + (i * 20);
+      doc.circle(x, currentY + 8, 1, 'F');
+      doc.ellipse(x + 2, currentY + 8, 2, 1, 'F');
+    }
+
+    doc.setTextColor(...colors.darkGreen);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(" Thank you for choosing sustainable solutions! ", 105, currentY + 12, { align: "center" });
+    
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text("Together we grow a greener future - GreenLand Eco Solutions", 105, currentY + 20, { align: "center" });
+
+    // Save with nature-themed filename
+    const filename = `GreenLand-Invoice-${order.order_number}-${
+      order.customer_name?.replace(/\s+/g, "_") || "EcoCustomer"
+    }.pdf`;
+    doc.save(filename);
+
+    setModalMessage(`PDF generated successfully: ${filename}`);
+    setShowSuccessModal(true);
+    
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    setModalMessage(`Failed to generate PDF: ${error.message}`);
+    setShowErrorModal(true);
+  }
+};
+  // Export only the selected/filtered customer data
+  const handleExportFilteredCustomers = async () => {
     try {
-      // Double check data validation
-      if (
-        !order ||
-        !order.items ||
-        !Array.isArray(order.items) ||
-        order.items.length === 0
-      ) {
-        throw new Error("Order validation failed: No items found");
+      setProcessing(true);
+      const filteredCustomers = getFilteredCustomers();
+
+      if (filteredCustomers.length === 0) {
+        setModalMessage("No customers match the current filters");
+        setShowErrorModal(true);
+        setProcessing(false);
+        return;
       }
 
-      const doc = new jsPDF();
+      // Fetch detailed data for filtered customers
+      const customersWithOrders = [];
 
-      // Company Header
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.text("GreenLand", 20, 20);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text("Your Company Address", 20, 28);
-      doc.text("City, State, ZIP", 20, 34);
-      doc.text("Phone: (123) 456-7890 | Email: info@greenland.com", 20, 40);
+      for (const customer of filteredCustomers) {
+        try {
+          const res = await axios.get(
+            `${API_BASE}/orders/customer?email=${customer.email}&phone=${customer.phone}`
+          );
+          let customerOrders = res.data.orders || [];
 
-      // Invoice Title
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Invoice #${order.order_number}`, 140, 20);
+          // Apply date filter to orders if specified
+          if (dateFilter.start || dateFilter.end) {
+            customerOrders = customerOrders.filter((order) => {
+              const orderDate = new Date(order.created_at);
+              const startDate = dateFilter.start
+                ? new Date(dateFilter.start)
+                : null;
+              const endDate = dateFilter.end ? new Date(dateFilter.end) : null;
 
-      // Invoice Details
-      doc.setFontSize(10);
-      doc.text(
-        `Date: ${new Date(order.created_at).toLocaleDateString()}`,
-        140,
-        30
-      );
-      doc.text(`Status: ${order.status.toUpperCase()}`, 140, 36);
+              if (startDate && orderDate < startDate) return false;
+              if (endDate && orderDate > endDate) return false;
+              return true;
+            });
+          }
 
-      // Bill To
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Bill To:", 20, 60);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(order.customer_name || "N/A", 20, 68);
-      doc.text(order.customer_email || "N/A", 20, 74);
-      doc.text(order.customer_phone || "N/A", 20, 80);
+          // Fetch complete order details for each order
+          const ordersWithDetails = [];
+          for (const order of customerOrders) {
+            try {
+              const orderRes = await axios.get(
+                `${API_BASE}/orders/${order.id}`
+              );
+              ordersWithDetails.push(orderRes.data.order);
+            } catch (error) {
+              console.warn(`Could not fetch details for order ${order.id}`);
+              ordersWithDetails.push(order);
+            }
+          }
 
-      // Items Table
-      const tableData = order.items.map((item) => [
-        item.product_name || "Unknown Product",
-        item.variant_name || "N/A",
-        item.variant_code || "N/A",
-        item.quantity || 0,
-        `$${parseFloat(item.price || 0).toFixed(2)}`,
-        `$${(
-          parseFloat(item.price || 0) * parseInt(item.quantity || 0)
-        ).toFixed(2)}`,
-      ]);
-
-      autoTable(doc, {
-        startY: 90,
-        head: [["Product", "Variant", "Code", "Quantity", "Price", "Total"]],
-        body: tableData,
-        theme: "grid",
-        headStyles: {
-          fillColor: [41, 128, 185],
-          textColor: 255,
-          fontStyle: "bold",
-        },
-        bodyStyles: { textColor: [52, 73, 94] },
-        alternateRowStyles: { fillColor: [242, 242, 242] },
-        margin: { left: 20, right: 20 },
-        styles: { fontSize: 9, cellPadding: 4 },
-      });
-
-      // Total
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(
-        `Total: $${parseFloat(order.total_amount || 0).toFixed(2)}`,
-        150,
-        finalY
-      );
-
-      // Notes
-      if (order.note) {
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "italic");
-        doc.text("Notes:", 20, finalY + 20);
-        doc.text(order.note, 20, finalY + 26);
+          customersWithOrders.push({ ...customer, orders: ordersWithDetails });
+        } catch (error) {
+          console.warn(`Failed to fetch orders for ${customer.name}:`, error);
+          customersWithOrders.push({ ...customer, orders: [] });
+        }
       }
 
-      // Footer
-      doc.setFontSize(8);
-      doc.text("Thank you for your business!", 105, 280, { align: "center" });
-
-      // Save
-      const filename = `${order.customer_name || "customer"}-${
-        order.order_number
-      }-${order.customer_phone || "nophone"}.pdf`;
-      doc.save(filename);
-
-      setModalMessage(`PDF downloaded successfully: ${filename}`);
-      setShowSuccessModal(true);
+      generateCustomerDetailExcel(customersWithOrders);
+      setProcessing(false);
     } catch (error) {
-      console.error("PDF generation error:", error);
-      setModalMessage(`Failed to generate PDF: ${error.message}`);
+      console.error("Export error:", error);
+      setModalMessage(`Failed to export data: ${error.message}`);
       setShowErrorModal(true);
+      setProcessing(false);
     }
   };
-
-  // Frontend CSV generation
-  const generateAndDownloadCSV = (order) => {
-    console.log("Starting CSV generation with validated data...");
-
+  // Generate Excel with separate sheets for multiple customers
+  const generateCustomerDetailExcel = (customersWithOrders) => {
     try {
-      // Double check data validation
-      if (
-        !order ||
-        !order.items ||
-        !Array.isArray(order.items) ||
-        order.items.length === 0
-      ) {
-        throw new Error("Order validation failed: No items found");
-      }
-
-      let csvContent = "data:text/csv;charset=utf-8,";
-
-      // Order Info
-      csvContent += "Order Information\n";
-      csvContent += `Order Number,${order.order_number}\n`;
-      csvContent += `Date,${new Date(order.created_at).toLocaleDateString()}\n`;
-      csvContent += `Status,${order.status}\n`;
-      csvContent += `Customer Name,${order.customer_name || "N/A"}\n`;
-      csvContent += `Customer Email,${order.customer_email || "N/A"}\n`;
-      csvContent += `Customer Phone,${order.customer_phone || "N/A"}\n`;
-      csvContent += "\n";
-
-      // Items
-      csvContent += "Product,Variant,Code,Quantity,Price,Total\n";
-      order.items.forEach((item) => {
-        const total =
-          parseFloat(item.price || 0) * parseInt(item.quantity || 0);
-        csvContent += `${item.product_name || "Unknown"},${
-          item.variant_name || "N/A"
-        },${item.variant_code || "N/A"},${item.quantity || 0},$${parseFloat(
-          item.price || 0
-        ).toFixed(2)},$${total.toFixed(2)}\n`;
-      });
-
-      // Total
-      csvContent += "\n";
-      csvContent += `Total,,$${parseFloat(order.total_amount || 0).toFixed(
-        2
-      )}\n`;
-
-      // Notes
-      if (order.note) {
-        csvContent += "\nNotes\n";
-        csvContent += `${order.note}\n`;
-      }
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      const filename = `${order.customer_name || "customer"}-${
-        order.order_number
-      }-${order.customer_phone || "nophone"}.csv`;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setModalMessage(`CSV downloaded successfully: ${filename}`);
-      setShowSuccessModal(true);
-    } catch (error) {
-      console.error("CSV generation error:", error);
-      setModalMessage(`Failed to generate CSV: ${error.message}`);
-      setShowErrorModal(true);
-    }
-  };
-
-  // Frontend Excel generation using SheetJS
-  const generateAndDownloadExcel = (order) => {
-    console.log("Starting Excel generation with validated data...");
-
-    try {
-      // Double check data validation
-      if (
-        !order ||
-        !order.items ||
-        !Array.isArray(order.items) ||
-        order.items.length === 0
-      ) {
-        throw new Error("Order validation failed: No items found");
-      }
-
       const wb = XLSX.utils.book_new();
 
-      // Order Info Sheet
-      const orderInfo = [
-        ["Order Information"],
-        ["Order Number", order.order_number],
-        ["Date", new Date(order.created_at).toLocaleDateString()],
-        ["Status", order.status],
-        ["Customer Name", order.customer_name || "N/A"],
-        ["Customer Email", order.customer_email || "N/A"],
-        ["Customer Phone", order.customer_phone || "N/A"],
-        [],
-        ["Notes", order.note || "N/A"],
-      ];
-      const ws1 = XLSX.utils.aoa_to_sheet(orderInfo);
-      XLSX.utils.book_append_sheet(wb, ws1, "Order Info");
+      if (customersWithOrders.length === 1) {
+        // Single customer - one sheet
+        const customer = customersWithOrders[0];
+        const sheetData = createCustomerSheetData(customer);
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        ws["!cols"] = [
+          { width: 25 },
+          { width: 20 },
+          { width: 15 },
+          { width: 12 },
+          { width: 12 },
+          { width: 12 },
+        ];
 
-      // Items Sheet
-      const itemsData = [
-        ["Product", "Variant", "Code", "Quantity", "Price", "Total"],
-      ];
-      order.items.forEach((item) => {
-        const total =
-          parseFloat(item.price || 0) * parseInt(item.quantity || 0);
-        itemsData.push([
-          item.product_name || "Unknown",
-          item.variant_name || "N/A",
-          item.variant_code || "N/A",
-          item.quantity || 0,
-          parseFloat(item.price || 0),
-          total,
-        ]);
-      });
-      itemsData.push([]);
-      itemsData.push([
-        "Total",
-        "",
-        "",
-        "",
-        "",
-        parseFloat(order.total_amount || 0),
-      ]);
-      const ws2 = XLSX.utils.aoa_to_sheet(itemsData);
+        // Apply styling
+        applySheetStyling(ws, sheetData);
 
-      // Style the total row (basic styling)
-      const totalRow = itemsData.length - 1;
-      ws2["F" + totalRow] = {
-        v: parseFloat(order.total_amount || 0),
-        t: "n",
-        z: "$#,##0.00",
-        s: { font: { bold: true } },
-      };
+        const sheetName = (customer.name || "Customer").substring(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      } else {
+        // Multiple customers - separate sheets for each
+        customersWithOrders.forEach((customer, index) => {
+          const sheetData = createCustomerSheetData(customer);
+          const ws = XLSX.utils.aoa_to_sheet(sheetData);
+          ws["!cols"] = [
+            { width: 25 },
+            { width: 20 },
+            { width: 15 },
+            { width: 12 },
+            { width: 12 },
+            { width: 12 },
+          ];
 
-      XLSX.utils.book_append_sheet(wb, ws2, "Items");
+          // Apply styling
+          applySheetStyling(ws, sheetData);
+
+          // Create unique sheet name (Excel limit is 31 characters)
+          let sheetName = customer.name || `Customer${index + 1}`;
+          if (sheetName.length > 28) {
+            sheetName = sheetName.substring(0, 28);
+          }
+          if (index > 0) {
+            sheetName += `_${index + 1}`;
+          }
+
+          XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        });
+
+        // Add summary sheet for multiple customers
+        const summaryData = createSummarySheetData(customersWithOrders);
+        const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+        summaryWs["!cols"] = [
+          { width: 25 },
+          { width: 15 },
+          { width: 30 },
+          { width: 12 },
+          { width: 15 },
+          { width: 15 },
+        ];
+
+        // Insert summary sheet at the beginning
+        XLSX.utils.book_append_sheet(wb, summaryWs, "Summary", 0);
+      }
+
+      // Create filename
+      const customerName =
+        customersWithOrders.length === 1
+          ? (customersWithOrders[0].name || "Customer").replace(/\s+/g, "-")
+          : `${customersWithOrders.length}-Customers`;
+      const dateStr = new Date().toISOString().split("T")[0];
+      const filename = `${customerName}-Details-${dateStr}.xlsx`;
 
       const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       const blob = new Blob([excelBuffer], {
@@ -421,9 +570,6 @@ const OrderManagement = () => {
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const filename = `${order.customer_name || "customer"}-${
-        order.order_number
-      }-${order.customer_phone || "nophone"}.xlsx`;
       link.href = url;
       link.setAttribute("download", filename);
       document.body.appendChild(link);
@@ -431,7 +577,7 @@ const OrderManagement = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      setModalMessage(`Excel downloaded successfully: ${filename}`);
+      setModalMessage(`Customer details downloaded: ${filename}`);
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Excel generation error:", error);
@@ -440,16 +586,642 @@ const OrderManagement = () => {
     }
   };
 
+  // Helper function to create sheet data for a single customer
+  const createCustomerSheetData = (customer) => {
+    const sheetData = [];
+
+    // Customer Header
+    sheetData.push(["CUSTOMER INFORMATION"]);
+    sheetData.push([]);
+    sheetData.push(["Name:", customer.name || "N/A"]);
+    sheetData.push(["Email:", customer.email || "N/A"]);
+    sheetData.push(["Phone:", customer.phone || "N/A"]);
+    sheetData.push(["Total Orders:", customer.orders.length]);
+    sheetData.push([
+      "Total Spent:",
+      `₹${customer.orders
+        .reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0)
+        .toFixed(2)}`,
+    ]);
+    sheetData.push([]);
+    sheetData.push([]);
+
+    // Orders for this customer
+    customer.orders.forEach((order, orderIndex) => {
+      sheetData.push([`ORDER ${orderIndex + 1} INFORMATION`]);
+      sheetData.push([]);
+      sheetData.push(["Order Number:", order.order_number]);
+      sheetData.push(["Status:", order.status]);
+      sheetData.push([
+        "Created:",
+        new Date(order.created_at).toLocaleDateString(),
+      ]);
+      sheetData.push(["Items:", order.item_count || 0]);
+      sheetData.push([
+        "Total:",
+        `₹${parseFloat(order.total_amount || 0).toFixed(2)}`,
+      ]);
+      sheetData.push([]);
+
+      // Order Items
+      if (order.items && order.items.length > 0) {
+        sheetData.push(["ORDER ITEMS"]);
+        sheetData.push([
+          "Product",
+          "Variant",
+          "Code",
+          "Quantity",
+          "Price",
+          "Total",
+        ]);
+
+        order.items.forEach((item) => {
+          sheetData.push([
+            item.product_name || "Unknown Product",
+            item.variant_name || "N/A",
+            item.variant_code || "N/A",
+            item.quantity || 0,
+            `₹${parseFloat(item.price || 0).toFixed(2)}`,
+            `₹${(
+              parseFloat(item.price || 0) * parseInt(item.quantity || 0)
+            ).toFixed(2)}`,
+          ]);
+        });
+        sheetData.push([]);
+      }
+
+      // Notes
+      if (order.note) {
+        sheetData.push(["Notes:"]);
+        sheetData.push([order.note]);
+        sheetData.push([]);
+      }
+
+      // Separator between orders
+      if (orderIndex < customer.orders.length - 1) {
+        sheetData.push(["═══════════════════════════════════════════════════"]);
+        sheetData.push([]);
+      }
+    });
+
+    return sheetData;
+  };
+
+  // Helper function to create summary sheet for multiple customers
+  const createSummarySheetData = (customersWithOrders) => {
+    const summaryData = [
+      ["CUSTOMER EXPORT SUMMARY"],
+      ["Generated on:", new Date().toLocaleDateString()],
+      ["Total Customers:", customersWithOrders.length],
+      [],
+      ["CUSTOMER OVERVIEW"],
+      [
+        "Customer Name",
+        "Phone",
+        "Email",
+        "Total Orders",
+        "Total Spent (₹)",
+        "Last Order Date",
+      ],
+    ];
+
+    let grandTotalOrders = 0;
+    let grandTotalRevenue = 0;
+
+    customersWithOrders.forEach((customer) => {
+      const customerTotal = customer.orders.reduce(
+        (sum, order) => sum + parseFloat(order.total_amount || 0),
+        0
+      );
+      grandTotalOrders += customer.orders.length;
+      grandTotalRevenue += customerTotal;
+
+      const lastOrderDate =
+        customer.orders.length > 0
+          ? new Date(
+              Math.max(...customer.orders.map((o) => new Date(o.created_at)))
+            ).toLocaleDateString()
+          : "No orders";
+
+      summaryData.push([
+        customer.name || "N/A",
+        customer.phone || "N/A",
+        customer.email || "N/A",
+        customer.orders.length,
+        customerTotal.toFixed(2),
+        lastOrderDate,
+      ]);
+    });
+
+    summaryData.push([]);
+    summaryData.push([
+      "GRAND TOTALS",
+      "",
+      "",
+      grandTotalOrders,
+      grandTotalRevenue.toFixed(2),
+      "",
+    ]);
+
+    return summaryData;
+  };
+
+  // Helper function to apply styling to sheets
+  const applySheetStyling = (ws, sheetData) => {
+    const headerStyle = {
+      font: { bold: true, size: 14 },
+      fill: { fgColor: { rgb: "E3F2FD" } },
+    };
+
+    const subHeaderStyle = {
+      font: { bold: true, size: 12 },
+      fill: { fgColor: { rgb: "F5F5F5" } },
+    };
+
+    sheetData.forEach((row, rowIndex) => {
+      if (row[0] === "CUSTOMER INFORMATION") {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+        if (ws[cellRef]) ws[cellRef].s = headerStyle;
+      }
+      if (
+        row[0] &&
+        row[0].includes("ORDER") &&
+        row[0].includes("INFORMATION")
+      ) {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+        if (ws[cellRef]) ws[cellRef].s = subHeaderStyle;
+      }
+      if (row[0] === "ORDER ITEMS") {
+        const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+        if (ws[cellRef]) ws[cellRef].s = subHeaderStyle;
+
+        // Style the items header row
+        for (let col = 0; col < 6; col++) {
+          const itemHeaderRef = XLSX.utils.encode_cell({ r: rowIndex, c: col });
+          if (ws[itemHeaderRef]) {
+            ws[itemHeaderRef].s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: "E8F5E8" } },
+            };
+          }
+        }
+      }
+    });
+  };
+  // Generate comprehensive Excel for filtered customers
+  const generateFilteredCustomerExcel = async (customersWithOrders) => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // For each customer, create detailed sheets
+      for (let i = 0; i < customersWithOrders.length; i++) {
+        const customer = customersWithOrders[i];
+        const sheetData = [];
+
+        // Customer Header Information
+        sheetData.push(["CUSTOMER INFORMATION"]);
+        sheetData.push([]);
+        sheetData.push(["Name:", customer.name || "N/A"]);
+        sheetData.push(["Email:", customer.email || "N/A"]);
+        sheetData.push(["Phone:", customer.phone || "N/A"]);
+        sheetData.push(["Total Orders:", customer.orders.length]);
+        sheetData.push([
+          "Total Spent:",
+          `₹${customer.orders
+            .reduce(
+              (sum, order) => sum + parseFloat(order.total_amount || 0),
+              0
+            )
+            .toFixed(2)}`,
+        ]);
+        sheetData.push([]);
+
+        // Orders Details
+        if (customer.orders.length > 0) {
+          sheetData.push(["ORDER DETAILS"]);
+          sheetData.push([]);
+
+          for (const order of customer.orders) {
+            // Fetch complete order details including items
+            let fullOrder = order;
+            try {
+              const res = await axios.get(`${API_BASE}/orders/${order.id}`);
+              fullOrder = res.data.order;
+            } catch (error) {
+              console.warn(
+                `Could not fetch full details for order ${order.id}`
+              );
+            }
+
+            // Order Information Section
+            sheetData.push(["Order Information"]);
+            sheetData.push(["Order Number:", fullOrder.order_number]);
+            sheetData.push(["Status:", fullOrder.status]);
+            sheetData.push([
+              "Created:",
+              new Date(fullOrder.created_at).toLocaleDateString(),
+            ]);
+            sheetData.push(["Items Count:", fullOrder.item_count || 0]);
+            sheetData.push([
+              "Total Amount:",
+              `₹${parseFloat(fullOrder.total_amount || 0).toFixed(2)}`,
+            ]);
+            sheetData.push([]);
+
+            // Order Items Section
+            if (fullOrder.items && fullOrder.items.length > 0) {
+              sheetData.push(["Order Items"]);
+              sheetData.push([
+                "Product",
+                "Variant",
+                "Code",
+                "Quantity",
+                "Price",
+                "Total",
+              ]);
+
+              fullOrder.items.forEach((item) => {
+                sheetData.push([
+                  item.product_name || "Unknown Product",
+                  item.variant_name || "N/A",
+                  item.variant_code || "N/A",
+                  item.quantity || 0,
+                  `₹${parseFloat(item.price || 0).toFixed(2)}`,
+                  `₹${(
+                    parseFloat(item.price || 0) * parseInt(item.quantity || 0)
+                  ).toFixed(2)}`,
+                ]);
+              });
+              sheetData.push([]);
+            }
+
+            // Notes Section
+            if (fullOrder.note) {
+              sheetData.push(["Notes"]);
+              sheetData.push([fullOrder.note]);
+              sheetData.push([]);
+            }
+
+            sheetData.push(["─".repeat(50)]); // Separator between orders
+            sheetData.push([]);
+          }
+        } else {
+          sheetData.push(["No orders found for this customer"]);
+        }
+
+        // Create worksheet
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+        // Set column widths
+        ws["!cols"] = [
+          { width: 25 }, // First column (labels/products)
+          { width: 20 }, // Second column (values/variants)
+          { width: 15 }, // Third column (codes)
+          { width: 12 }, // Fourth column (quantity)
+          { width: 12 }, // Fifth column (price)
+          { width: 12 }, // Sixth column (total)
+        ];
+
+        // Style headers
+        const headerStyle = {
+          font: { bold: true, size: 14 },
+          fill: { fgColor: { rgb: "E3F2FD" } },
+        };
+
+        // Apply styling to key headers
+        sheetData.forEach((row, rowIndex) => {
+          if (
+            row[0] === "CUSTOMER INFORMATION" ||
+            row[0] === "ORDER DETAILS" ||
+            row[0] === "Order Information" ||
+            row[0] === "Order Items" ||
+            row[0] === "Notes"
+          ) {
+            const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+            if (ws[cellRef]) {
+              ws[cellRef].s = headerStyle;
+            }
+          }
+        });
+
+        // Create sheet name (limit to 31 characters for Excel)
+        const sheetName =
+          (customer.name || `Customer${i + 1}`).substring(0, 28) +
+          (i > 0 ? ` ${i + 1}` : "");
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      }
+
+      // Summary Sheet
+      const summaryData = [
+        ["FILTERED CUSTOMER EXPORT SUMMARY"],
+        ["Generated on:", new Date().toLocaleDateString()],
+        ["Filters Applied:"],
+        [
+          "Date Range:",
+          dateFilter.start || dateFilter.end
+            ? `${dateFilter.start || "Any"} to ${dateFilter.end || "Any"}`
+            : "None",
+        ],
+        ["Selected Customer:", customerNameFilter || "All customers"],
+        ["Search Term:", searchTerm || "None"],
+        ["Total Customers Exported:", customersWithOrders.length],
+        [],
+        ["CUSTOMER SUMMARY"],
+        [
+          "Customer Name",
+          "Phone",
+          "Email",
+          "Total Orders",
+          "Total Spent (₹)",
+          "Last Order Date",
+        ],
+      ];
+
+      let grandTotalOrders = 0;
+      let grandTotalRevenue = 0;
+
+      customersWithOrders.forEach((customer) => {
+        const customerTotal = customer.orders.reduce(
+          (sum, order) => sum + parseFloat(order.total_amount || 0),
+          0
+        );
+        grandTotalOrders += customer.orders.length;
+        grandTotalRevenue += customerTotal;
+
+        const lastOrderDate =
+          customer.orders.length > 0
+            ? new Date(
+                Math.max(...customer.orders.map((o) => new Date(o.created_at)))
+              ).toLocaleDateString()
+            : "No orders";
+
+        summaryData.push([
+          customer.name || "N/A",
+          customer.phone || "N/A",
+          customer.email || "N/A",
+          customer.orders.length,
+          customerTotal.toFixed(2),
+          lastOrderDate,
+        ]);
+      });
+
+      summaryData.push([]);
+      summaryData.push([
+        "GRAND TOTALS",
+        "",
+        "",
+        grandTotalOrders,
+        grandTotalRevenue.toFixed(2),
+        "",
+      ]);
+
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+      summaryWs["!cols"] = [
+        { width: 25 },
+        { width: 15 },
+        { width: 30 },
+        { width: 12 },
+        { width: 15 },
+        { width: 15 },
+      ];
+
+      // Insert summary sheet at the beginning
+      XLSX.utils.book_append_sheet(wb, summaryWs, "Summary", 0);
+
+      // Generate filename with filter info
+      const filterSuffix = [
+        dateFilter.start && `from-${dateFilter.start}`,
+        dateFilter.end && `to-${dateFilter.end}`,
+        customerNameFilter &&
+          customerNameFilter.replace(/\s+/g, "-").substring(0, 20),
+      ]
+        .filter(Boolean)
+        .join("_");
+
+      const filename = `Customer-Details${
+        filterSuffix ? "-" + filterSuffix : ""
+      }-${new Date().toISOString().split("T")[0]}.xlsx`;
+
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setModalMessage(`Detailed customer report downloaded: ${filename}`);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("Excel generation error:", error);
+      setModalMessage(`Failed to generate Excel: ${error.message}`);
+      setShowErrorModal(true);
+    }
+  };
+const generateAndDownloadExcel = (order) => {
+  console.log("Starting Excel generation with validated data...");
+
+  try {
+    if (
+      !order ||
+      !order.items ||
+      !Array.isArray(order.items) ||
+      order.items.length === 0
+    ) {
+      throw new Error("Order validation failed: No items found");
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // Build sheet data
+    const sheetData = [
+      ["GreenLand Eco Solutions"], // Company name
+      ["123 Forest Avenue, Green Valley, GV 12345"],
+      ["Phone: (555) 123-LEAF | Email: hello@greenland.eco"],
+      [""],
+      ["INVOICE", "", "", "", "", `#${order.order_number}`],
+      [""],
+      ["Order Information", "", "", "", "", ""],
+      [
+        "Order Number:",
+        order.order_number,
+        "",
+        "Date:",
+        new Date(order.created_at).toLocaleDateString(),
+      ],
+      ["Status:", order.status, "", "Due:", "Upon Receipt"],
+      [""],
+      ["Bill To"],
+      ["Customer:", order.customer_name || "N/A"],
+      ["Email:", order.customer_email || "N/A"],
+      ["Phone:", order.customer_phone || "N/A"],
+      [""],
+      ["Product Name", "Variant", "Code", "Quantity", "Price (₹)", "Total (₹)"],
+    ];
+
+    // Add items
+    order.items.forEach((item) => {
+      const total = parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+      sheetData.push([
+        item.product_name || "Unknown",
+        item.variant_name || "N/A",
+        item.variant_code || "N/A",
+        item.quantity || 0,
+        parseFloat(item.price || 0),
+        total,
+      ]);
+    });
+
+    // Grand Total
+    sheetData.push([]);
+    sheetData.push([
+      "",
+      "",
+      "",
+      "",
+      "Grand Total:",
+      parseFloat(order.total_amount || 0),
+    ]);
+
+    // Terms & Conditions
+    sheetData.push([]);
+    sheetData.push(["Terms & Conditions"]);
+    sheetData.push(["1. Payment: 100% advance payment required."]);
+    sheetData.push([
+      "2. Shipping: Additional charges apply, post payment confirmation.",
+    ]);
+    sheetData.push([
+      "3. Delivery: Timelines are estimates only; delays may occur.",
+    ]);
+    sheetData.push([
+      "4. Risk: Responsibility transfers once goods are dispatched.",
+    ]);
+    sheetData.push([
+      "5. Returns: Accepted only for defective/incorrect items.",
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // Set column widths
+    ws["!cols"] = [
+      { width: 40 },
+      { width: 20 },
+      { width: 15 },
+      { width: 10 },
+      { width: 15 },
+      { width: 15 },
+    ];
+
+    // Merge company header
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // GreenLand
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // Address
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }, // Phone/Email
+    ];
+
+    // Style company name
+    ws["A1"].s = {
+      font: { bold: true, size: 18, color: { rgb: "006400" } },
+      alignment: { horizontal: "center" },
+    };
+
+    // Style INVOICE row
+    ws["A5"].s = {
+      font: { bold: true, size: 16 },
+      fill: { fgColor: { rgb: "E8F5E9" } },
+    };
+    ws["F5"].s = {
+      font: { bold: true, size: 14 },
+      alignment: { horizontal: "right" },
+    };
+
+    // Style table headers
+    const itemsHeaderRow =
+      sheetData.findIndex((row) => row[0] === "Product Name") + 1;
+    ["A", "B", "C", "D", "E", "F"].forEach((col) => {
+      const ref = col + itemsHeaderRow;
+      if (ws[ref]) {
+        ws[ref].s = {
+          font: { bold: true },
+          alignment: { horizontal: "center" },
+          fill: { fgColor: { rgb: "C8E6C9" } },
+          border: {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" },
+          },
+        };
+      }
+    });
+
+    // Style Grand Total
+    const totalRowIndex =
+      sheetData.findIndex((row) => row[4] === "Grand Total:") + 1;
+    if (totalRowIndex > 0) {
+      ws["E" + totalRowIndex].s = {
+        font: { bold: true },
+        alignment: { horizontal: "right" },
+        fill: { fgColor: { rgb: "FFF3E0" } },
+      };
+      ws["F" + totalRowIndex].s = {
+        font: { bold: true },
+        alignment: { horizontal: "right" },
+        fill: { fgColor: { rgb: "FFF3E0" } },
+        numFmt: "₹#,##0.00",
+      };
+    }
+
+    // Style Terms & Conditions header
+    const termsRowIndex =
+      sheetData.findIndex((row) => row[0] === "Terms & Conditions") + 1;
+    if (termsRowIndex > 0) {
+      ws["A" + termsRowIndex].s = {
+        font: { bold: true, size: 12 },
+        fill: { fgColor: { rgb: "F5F5F5" } },
+      };
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, "Invoice");
+
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = `Invoice-${order.order_number}-${
+      order.customer_name?.replace(/\s+/g, "_") || "Customer"
+    }.xlsx`;
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    setModalMessage(`Excel downloaded successfully: ${filename}`);
+    setShowSuccessModal(true);
+  } catch (error) {
+    console.error("Excel generation error:", error);
+    setModalMessage(`Failed to generate Excel: ${error.message}`);
+    setShowErrorModal(true);
+  }
+};
+
   // Order Detail Modal Component
   const OrderDetailModal = ({ isOpen, onClose, order }) => {
     if (!isOpen || !order) return null;
 
     const downloadPDF = () => {
       generateAndDownloadPDF(order);
-    };
-
-    const downloadCSV = () => {
-      generateAndDownloadCSV(order);
     };
 
     const downloadExcel = () => {
@@ -553,7 +1325,7 @@ const OrderManagement = () => {
                     <p
                       style={{ margin: 0, color: "#374151", fontWeight: "600" }}
                     >
-                      ${parseFloat(order.total_amount || 0).toFixed(2)}
+                      ₹{parseFloat(order.total_amount || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -625,9 +1397,9 @@ const OrderManagement = () => {
                           </p>
                         </div>
                         <span>{item.quantity}</span>
-                        <span>${parseFloat(item.price).toFixed(2)}</span>
+                        <span>₹{parseFloat(item.price).toFixed(2)}</span>
                         <span style={{ fontWeight: "600" }}>
-                          $
+                          ₹
                           {(
                             parseFloat(item.price) * parseInt(item.quantity)
                           ).toFixed(2)}
@@ -673,17 +1445,13 @@ const OrderManagement = () => {
             </div>
           </div>
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={downloadCSV}>
+            <button className="btn-secondary" onClick={downloadExcel}>
               <FileSpreadsheet size={16} />
-              Download CSV
+              Download Excel
             </button>
             <button className="btn-secondary" onClick={downloadPDF}>
               <Download size={16} />
               Download PDF
-            </button>
-            <button className="btn-secondary" onClick={downloadExcel}>
-              <FileSpreadsheet size={16} />
-              Download Excel
             </button>
             <button className="btn-primary" onClick={onClose}>
               Close
@@ -825,7 +1593,7 @@ const OrderManagement = () => {
                         </span>
                         <span>{order.item_count}</span>
                         <span style={{ fontWeight: "600" }}>
-                          ${parseFloat(order.total_amount || 0).toFixed(2)}
+                          ₹ {parseFloat(order.total_amount || 0).toFixed(2)}
                         </span>
                       </div>
                     ))}
@@ -930,34 +1698,51 @@ const OrderManagement = () => {
       setShowErrorModal(true);
     }
   };
+  // Filter customers - show only selected customer or all
+  const getFilteredCustomers = () => {
+    if (activeTab !== "customers") return [];
 
-  // Filter data based on search term
+    let filteredCustomers = customers.filter((customer) => {
+      // Search term filter
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch =
+        !searchTerm ||
+        (customer.name && customer.name.toLowerCase().includes(searchLower)) ||
+        (customer.email &&
+          customer.email.toLowerCase().includes(searchLower)) ||
+        (customer.phone && customer.phone.toLowerCase().includes(searchLower));
+
+      // Customer selection filter
+      const customerMatch =
+        !customerNameFilter || customer.id == customerNameFilter;
+
+      return nameMatch && customerMatch;
+    });
+
+    return filteredCustomers;
+  };
+  // Update the original getFilteredData function to handle other tabs
   const getFilteredData = () => {
+    if (activeTab === "customers") {
+      return getFilteredCustomers();
+    }
+
     let data = [];
     if (activeTab === "orders") data = orders;
-    else if (activeTab === "customers") data = customers;
     else if (activeTab === "history") data = orderHistory;
 
     return data.filter((item) => {
       const searchLower = searchTerm.toLowerCase();
-      if (activeTab === "customers") {
-        return (
-          (item.name && item.name.toLowerCase().includes(searchLower)) ||
-          (item.email && item.email.toLowerCase().includes(searchLower)) ||
-          (item.phone && item.phone.toLowerCase().includes(searchLower))
-        );
-      } else {
-        return (
-          (item.order_number &&
-            item.order_number.toLowerCase().includes(searchLower)) ||
-          (item.customer_name &&
-            item.customer_name.toLowerCase().includes(searchLower)) ||
-          (item.customer_email &&
-            item.customer_email.toLowerCase().includes(searchLower)) ||
-          (item.customer_phone &&
-            item.customer_phone.toLowerCase().includes(searchLower))
-        );
-      }
+      return (
+        (item.order_number &&
+          item.order_number.toLowerCase().includes(searchLower)) ||
+        (item.customer_name &&
+          item.customer_name.toLowerCase().includes(searchLower)) ||
+        (item.customer_email &&
+          item.customer_email.toLowerCase().includes(searchLower)) ||
+        (item.customer_phone &&
+          item.customer_phone.toLowerCase().includes(searchLower))
+      );
     });
   };
 
@@ -1616,7 +2401,7 @@ const OrderManagement = () => {
                             </td>
                             <td>{order.item_count}</td>
                             <td style={{ fontWeight: "600" }}>
-                              ${parseFloat(order.total_amount || 0).toFixed(2)}
+                              ₹{parseFloat(order.total_amount || 0).toFixed(2)}
                             </td>
                             <td>
                               <button
@@ -1636,7 +2421,7 @@ const OrderManagement = () => {
                                     <Check size={12} />
                                   </button>
                                 )}
-                              <button
+                              {/* <button
                                 className="action-btn download-btn"
                                 onClick={() => handleDownloadPDF(order)}
                                 title="Download PDF"
@@ -1649,98 +2434,188 @@ const OrderManagement = () => {
                                 title="Download CSV"
                               >
                                 <FileSpreadsheet size={12} />
-                              </button>
+                              </button> */}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
-
                   {/* Customers Table */}
                   {activeTab === "customers" && (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Contact</th>
-                          <th>Current Orders</th>
-                          <th>Last Order</th>
-                          <th>Total Spent</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredData.map((customer) => (
-                          <tr key={customer.id}>
-                            <td style={{ fontWeight: "600" }}>
-                              {customer.name || "N/A"}
-                            </td>
-                            <td>
-                              <div>
-                                {customer.email && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "4px",
-                                      marginBottom: "2px",
-                                    }}
-                                  >
-                                    <Mail
-                                      size={12}
-                                      style={{ color: "#64748b" }}
-                                    />
-                                    <span style={{ fontSize: "12px" }}>
-                                      {customer.email}
-                                    </span>
-                                  </div>
-                                )}
-                                {customer.phone && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "4px",
-                                    }}
-                                  >
-                                    <Phone
-                                      size={12}
-                                      style={{ color: "#64748b" }}
-                                    />
-                                    <span style={{ fontSize: "12px" }}>
-                                      {customer.phone}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td>{orders.length || 0}</td>
-                            <td>
-                              {customer.last_order_date
-                                ? new Date(
-                                    customer.last_order_date
-                                  ).toLocaleDateString()
-                                : "N/A"}
-                            </td>
-                            <td style={{ fontWeight: "600" }}>
-                              $
-                              {parseFloat(customer.total_spent || 0).toFixed(2)}
-                            </td>
-                            <td>
-                              <button
-                                className="action-btn view-btn"
-                                onClick={() => handleViewCustomer(customer)}
-                                title="View Customer Details"
-                              >
-                                <Eye size={12} />
-                                View
-                              </button>
-                            </td>
+                    <>
+                      {/* Filter Controls */}
+                      <div
+                        style={{
+                          padding: "16px",
+                          borderBottom: "1px solid #e2e8f0",
+                          background: "#f8fafc",
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr auto",
+                          gap: "16px",
+                          alignItems: "end",
+                        }}
+                      >
+                        <div>
+                          <label
+                            className="form-label"
+                            style={{ display: "none" }}
+                          >
+                            Filter by Date Range
+                          </label>
+                          <div
+                            style={{
+                              
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: "8px",
+                              display: "none",
+                            }}
+                          >
+                            <input
+                              type="date"
+                              value={dateFilter.start}
+                              onChange={(e) =>
+                                setDateFilter({
+                                  ...dateFilter,
+                                  start: e.target.value,
+                                })
+                              }
+                              className="search-input"
+                              style={{ padding: "8px" }}
+                              placeholder="Start date"
+                            />
+                            <input
+                              type="date"
+                              value={dateFilter.end}
+                              onChange={(e) =>
+                                setDateFilter({
+                                  ...dateFilter,
+                                  end: e.target.value,
+                                })
+                              }
+                              className="search-input"
+                              style={{ padding: "8px" }}
+                              placeholder="End date"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="form-label">Select Customer</label>
+                          <select
+                            value={customerNameFilter}
+                            onChange={(e) =>
+                              setCustomerNameFilter(e.target.value)
+                            }
+                            className="search-input"
+                            style={{ padding: "8px" }}
+                          >
+                            <option value="">All Customers</option>
+                            {customers.map((customer) => (
+                              <option key={customer.id} value={customer.id}>
+                                {customer.name || "No Name"} -{" "}
+                                {customer.phone || customer.email}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          className="btn-primary"
+                          onClick={() => handleExportFilteredCustomers()}
+                          style={{ height: "44px" }}
+                          disabled={processing}
+                        >
+                          <FileSpreadsheet size={16} />
+                          {processing ? "Exporting..." : "Export Selected"}
+                        </button>
+                      </div>
+
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>Current Orders</th>
+                            <th>Last Order</th>
+                            <th>Total Spent</th>
+                            <th>Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {getFilteredCustomers().map((customer) => (
+                            <tr key={customer.id}>
+                              <td style={{ fontWeight: "600" }}>
+                                {customer.name || "N/A"}
+                              </td>
+                              <td>
+                                <div>
+                                  {customer.email && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        marginBottom: "2px",
+                                      }}
+                                    >
+                                      <Mail
+                                        size={12}
+                                        style={{ color: "#64748b" }}
+                                      />
+                                      <span style={{ fontSize: "12px" }}>
+                                        {customer.email}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {customer.phone && (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                      }}
+                                    >
+                                      <Phone
+                                        size={12}
+                                        style={{ color: "#64748b" }}
+                                      />
+                                      <span style={{ fontSize: "12px" }}>
+                                        {customer.phone}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>{customer.filteredOrders?.length || 0}</td>
+                              <td>
+                                {customer.last_order_date
+                                  ? new Date(
+                                      customer.last_order_date
+                                    ).toLocaleDateString()
+                                  : "N/A"}
+                              </td>
+                              <td style={{ fontWeight: "600" }}>
+                                ₹
+                                {parseFloat(customer.total_spent || 0).toFixed(
+                                  2
+                                )}
+                              </td>
+                              <td>
+                                <button
+                                  className="action-btn view-btn"
+                                  onClick={() => handleViewCustomer(customer)}
+                                  title="View Customer Details"
+                                >
+                                  <Eye size={12} />
+                                  View
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
                   )}
                 </div>
               )}

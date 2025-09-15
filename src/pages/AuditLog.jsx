@@ -757,18 +757,18 @@ const AuditLog = () => {
           <div className="page-header">
             <h1 className="page-title">Audit Log Management</h1>
             <div style={{ display: "flex", gap: "12px" }}>
-              <button className="btn-secondary" onClick={exportToExcel}>
+              {/* <button className="btn-secondary" onClick={exportToExcel}>
                 <Download size={16} />
                 Export Excel
-              </button>
-              <button className="btn-danger" onClick={clearOldLogs}>
+              </button> */}
+              {/* <button className="btn-danger" onClick={clearOldLogs}>
                 <Trash2 size={16} />
                 Clear Old Logs
               </button>
               <button className="btn-primary" onClick={() => { fetchAuditLogs(); fetchStatistics(); }}>
                 <RefreshCw size={16} />
                 Refresh
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -822,7 +822,7 @@ const AuditLog = () => {
               />
             </div>
             
-            <select
+            {/* <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="filter-select"
@@ -834,7 +834,7 @@ const AuditLog = () => {
               <option value="create">Create</option>
               <option value="update">Update</option>
               <option value="delete">Delete</option>
-            </select>
+            </select> */}
 
             <div className="date-inputs">
               <input

@@ -8,6 +8,8 @@ import {
   AlertCircle,
   CheckCircle,
   X,
+  Settings,
+  Circle,
 } from "lucide-react";
 
 const Attributes = () => {
@@ -297,24 +299,24 @@ const Attributes = () => {
       searchTerm && !attributeMatches ? matchingValues : attribute.values;
 
     return (
-      <div key={attribute.id} className="category-row">
-        <div className="category-content level-0">
-          <div className="category-main">
-            <div className="category-toggle">
-              <span className="category-icon">📝</span>
+      <div key={attribute.id} className="attribute-row">
+        <div className="attribute-content">
+          <div className="attribute-main">
+            <div className="attribute-icon">
+              <Settings size={20} />
             </div>
-            <div className="category-details">
-              <h3 className="category-name">
+            <div className="attribute-details">
+              <h3 className="attribute-name">
                 {highlightText(attribute.name, searchTerm)}
               </h3>
-              <div className="category-meta">
-                <span className="subcategory-count">
+              <div className="attribute-meta">
+                <span className="value-count">
                   {attribute.values.length} value
                   {attribute.values.length !== 1 ? "s" : ""}
                 </span>
               </div>
             </div>
-            <div className="category-actions">
+            <div className="attribute-actions">
               <button
                 className="action-btn edit-btn"
                 onClick={() => {
@@ -348,38 +350,40 @@ const Attributes = () => {
 
           {/* Values */}
           {valuesToShow.length > 0 && (
-            <div className="values-grid">
-              {valuesToShow.map((val) => (
-                <div key={val.id} className="value-card">
-                  <div className="value-content">
-                    <span className="value-icon">🔹</span>
-                    <span className="value-text">
-                      {highlightText(val.value, searchTerm)}
-                    </span>
+            <div className="values-container">
+              <div className="values-grid">
+                {valuesToShow.map((val) => (
+                  <div key={val.id} className="value-card">
+                    <div className="value-content">
+                      <Circle size={12} className="value-icon" />
+                      <span className="value-text">
+                        {highlightText(val.value, searchTerm)}
+                      </span>
+                    </div>
+                    <div className="value-actions">
+                      <button
+                        className="action-btn edit-btn"
+                        onClick={() => {
+                          setCurrentAttributeId(attribute.id);
+                          setCurrentValueId(val.id);
+                          setEditValue(val.value);
+                          setShowEditValueModal(true);
+                        }}
+                        title="Edit value"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        className="action-btn delete-btn"
+                        onClick={() => handleDeleteValue(val.id, attribute.id)}
+                        title="Delete value"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="value-actions">
-                    <button
-                      className="action-btn edit-btn"
-                      onClick={() => {
-                        setCurrentAttributeId(attribute.id);
-                        setCurrentValueId(val.id);
-                        setEditValue(val.value);
-                        setShowEditValueModal(true);
-                      }}
-                      title="Edit value"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button
-                      className="action-btn delete-btn"
-                      onClick={() => handleDeleteValue(val.id, attribute.id)}
-                      title="Delete value"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -409,13 +413,13 @@ const Attributes = () => {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p className="text-gray-600">Loading attributes...</p>
+        <p className="loading-text">Loading attributes...</p>
       </div>
     );
   }
 
   return (
-    <div className="categories-page">
+    <div className="attributes-page">
       <div className="page-header">
         <h1 className="page-title">Attributes Management</h1>
         <button
@@ -427,7 +431,7 @@ const Attributes = () => {
         </button>
       </div>
 
-      <div className="categories-controls">
+      <div className="page-controls">
         <div className="search-container">
           <Search className="search-icon" size={18} />
           <input
@@ -440,19 +444,19 @@ const Attributes = () => {
         </div>
       </div>
 
-      <div className="categories-container">
-        <div className="categories-table">
+      <div className="content-container">
+        <div className="attributes-list">
           {filteredAttributes.length > 0 ? (
             filteredAttributes.map((attr) => renderAttribute(attr))
           ) : (
             <div className="empty-state">
-              <div className="text-6xl mb-4">📝</div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              <Settings size={48} className="empty-icon" />
+              <h3 className="empty-title">
                 {searchTerm
                   ? "No matching attributes found"
                   : "No attributes yet"}
               </h3>
-              <p className="text-muted">
+              <p className="empty-description">
                 {searchTerm
                   ? "Try adjusting your search terms or clear the search to see all attributes."
                   : "Create your first attribute to get started with product specifications."}
@@ -466,21 +470,21 @@ const Attributes = () => {
       {showAlertModal && (
         <div className="modal-overlay" onClick={() => setShowAlertModal(false)}>
           <div
-            className="modal-content modal-small"
+            className="modal-content modal-alert"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <div className="flex items-center gap-3">
+              <div className="alert-header">
                 {alertConfig.type === "error" && (
-                  <AlertCircle className="text-red-500" size={24} />
+                  <AlertCircle className="alert-icon alert-error" size={24} />
                 )}
                 {alertConfig.type === "success" && (
-                  <CheckCircle className="text-green-500" size={24} />
+                  <CheckCircle className="alert-icon alert-success" size={24} />
                 )}
                 {alertConfig.type === "warning" && (
-                  <AlertCircle className="text-yellow-500" size={24} />
+                  <AlertCircle className="alert-icon alert-warning" size={24} />
                 )}
-                <h2>{alertConfig.title}</h2>
+                <h2 className="modal-title">{alertConfig.title}</h2>
               </div>
               <button
                 className="modal-close"
@@ -490,7 +494,7 @@ const Attributes = () => {
               </button>
             </div>
             <div className="modal-body">
-              <p className="text-gray-700 mb-0">{alertConfig.message}</p>
+              <p className="alert-message">{alertConfig.message}</p>
             </div>
             <div className="modal-actions">
               {alertConfig.onConfirm ? (
@@ -531,7 +535,7 @@ const Attributes = () => {
         >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Add New Attribute</h2>
+              <h2 className="modal-title">Add New Attribute</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowAttributeModal(false)}
@@ -575,7 +579,7 @@ const Attributes = () => {
         <div className="modal-overlay" onClick={() => setShowValueModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Add New Value</h2>
+              <h2 className="modal-title">Add New Value</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowValueModal(false)}
@@ -622,7 +626,7 @@ const Attributes = () => {
         >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Edit Attribute</h2>
+              <h2 className="modal-title">Edit Attribute</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowEditAttributeModal(false)}
@@ -668,7 +672,7 @@ const Attributes = () => {
         >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Edit Value</h2>
+              <h2 className="modal-title">Edit Value</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowEditValueModal(false)}
@@ -708,7 +712,8 @@ const Attributes = () => {
       )}
 
       <style jsx>{`
-        .categories-page {
+        /* Base styles */
+        .attributes-page {
           padding: 24px;
           background: #f8fafc;
           min-height: 100vh;
@@ -716,6 +721,7 @@ const Attributes = () => {
             sans-serif;
         }
 
+        /* Header */
         .page-header {
           display: flex;
           justify-content: space-between;
@@ -730,17 +736,13 @@ const Attributes = () => {
           margin: 0;
         }
 
-        .categories-controls {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        /* Controls */
+        .page-controls {
           margin-bottom: 24px;
-          gap: 16px;
         }
 
         .search-container {
           position: relative;
-          flex: 1;
           max-width: 400px;
         }
 
@@ -761,7 +763,7 @@ const Attributes = () => {
           background: white;
           font-size: 14px;
           box-sizing: border-box;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
         }
 
         .search-input:focus {
@@ -777,166 +779,142 @@ const Attributes = () => {
           font-weight: 500;
         }
 
-        .categories-container {
+        /* Content container */
+        .content-container {
           background: white;
           border-radius: 12px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
         }
 
-        .categories-table {
+        .attributes-list {
           min-height: 400px;
         }
 
-        .category-row {
+        /* Attribute rows */
+        .attribute-row {
           border-bottom: 1px solid #f1f5f9;
-          transition: background 0.2s;
+          transition: background-color 0.2s ease;
         }
 
-        .category-row:last-child {
+        .attribute-row:last-child {
           border-bottom: none;
         }
 
-        .category-row:hover {
+        .attribute-row:hover {
           background: rgba(59, 130, 246, 0.02);
         }
 
-        .category-content {
+        .attribute-content {
           padding: 20px 24px;
         }
 
-        .category-main {
+        .attribute-main {
           display: flex;
           align-items: flex-start;
-          gap: 12px;
+          gap: 16px;
         }
 
-        .category-toggle {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          min-width: 44px;
-        }
-
-        .category-icon {
+        .attribute-icon {
+          flex-shrink: 0;
           color: #3b82f6;
-          display: flex;
-          align-items: center;
-          font-size: 18px;
-        }
-
-        .category-details {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .category-name {
-          font-size: 18px;
-          font-weight: 600;
-          color: #1e293b;
-          margin: 0 0 8px 0;
-        }
-
-        .category-meta {
-          display: flex;
-          gap: 12px;
-          font-size: 14px;
-          color: #64748b;
-          align-items: center;
-        }
-
-        .subcategory-count {
-          color: #64748b;
-          font-weight: 500;
-        }
-
-        .category-actions {
-          display: flex;
-          gap: 8px;
-          align-items: center;
-        }
-
-        .action-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
           padding: 8px;
+          background: #eff6ff;
           border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.2s;
         }
 
-        .edit-btn {
-          color: #3b82f6;
+        .attribute-details {
+          flex: 1;
+          min-width: 0;
         }
 
-        .edit-btn:hover {
-          background: #dbeafe;
-          transform: scale(1.05);
+        .attribute-name {
+          font-size: 18px;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0 0 8px 0;
+          line-height: 1.4;
         }
 
-        .delete-btn {
-          color: #ef4444;
+        .attribute-meta {
+          display: flex;
+          align-items: center;
+          font-size: 14px;
+          color: #64748b;
         }
 
-        .delete-btn:hover {
-          background: #fee2e2;
-          transform: scale(1.05);
+        .value-count {
+          font-weight: 500;
+        }
+
+        .attribute-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-shrink: 0;
+        }
+
+        /* Values */
+        .values-container {
+          margin-top: 20px;
+          padding-left: 56px;
         }
 
         .values-grid {
-          margin-top: 20px;
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           gap: 12px;
-          padding-left: 56px;
         }
 
         .value-card {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 12px;
+          padding: 16px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          transition: all 0.2s;
+          gap: 12px;
+          transition: all 0.2s ease;
         }
 
         .value-card:hover {
           background: #f1f5f9;
           border-color: #cbd5e1;
           transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         .value-content {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
           flex: 1;
           min-width: 0;
         }
 
         .value-icon {
           color: #64748b;
-          font-size: 14px;
+          flex-shrink: 0;
         }
 
         .value-text {
           font-weight: 500;
           color: #374151;
           word-break: break-word;
+          line-height: 1.4;
         }
 
         .value-actions {
           display: flex;
           gap: 4px;
-          margin-left: 8px;
+          flex-shrink: 0;
         }
 
+        /* Buttons */
         .btn-primary {
           background: #3b82f6;
           color: white;
@@ -949,14 +927,14 @@ const Attributes = () => {
           gap: 8px;
           font-weight: 500;
           font-size: 14px;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
           text-decoration: none;
         }
 
         .btn-primary:hover:not(:disabled) {
           background: #2563eb;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
 
         .btn-primary:disabled {
@@ -980,7 +958,7 @@ const Attributes = () => {
           cursor: pointer;
           font-size: 14px;
           font-weight: 500;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
         }
 
         .btn-secondary:hover {
@@ -998,22 +976,46 @@ const Attributes = () => {
           cursor: pointer;
           font-weight: 500;
           font-size: 14px;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
         }
 
         .btn-danger:hover:not(:disabled) {
           background: #dc2626;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
         }
 
-        .btn-danger:disabled {
-          background: #9ca3af;
-          cursor: not-allowed;
-          transform: none;
-          box-shadow: none;
+        .action-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 8px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
         }
 
+        .edit-btn {
+          color: #3b82f6;
+        }
+
+        .edit-btn:hover {
+          background: #dbeafe;
+          transform: scale(1.05);
+        }
+
+        .delete-btn {
+          color: #ef4444;
+        }
+
+        .delete-btn:hover {
+          background: #fee2e2;
+          transform: scale(1.05);
+        }
+
+        /* Empty state */
         .empty-state {
           display: flex;
           flex-direction: column;
@@ -1023,13 +1025,51 @@ const Attributes = () => {
           text-align: center;
         }
 
-        .text-muted {
-          color: #94a3b8;
-          font-size: 16px;
-          margin-top: 8px;
+        .empty-icon {
+          color: #cbd5e1;
+          margin-bottom: 16px;
         }
 
-        /* Modal Styles */
+        .empty-title {
+          font-size: 20px;
+          font-weight: 600;
+          color: #374151;
+          margin: 0 0 8px 0;
+        }
+
+        .empty-description {
+          color: #94a3b8;
+          font-size: 16px;
+          margin: 0;
+          max-width: 400px;
+        }
+
+        /* Loading state */
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 80px 24px;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #e2e8f0;
+          border-top: 4px solid #3b82f6;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 20px;
+        }
+
+        .loading-text {
+          color: #64748b;
+          font-size: 16px;
+          margin: 0;
+        }
+
+        /* Modal styles */
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -1047,7 +1087,7 @@ const Attributes = () => {
 
         .modal-content {
           background: white;
-          border-radius: 16px;
+          border-radius: 12px;
           width: 90%;
           max-width: 500px;
           max-height: 90vh;
@@ -1056,9 +1096,8 @@ const Attributes = () => {
           animation: slideIn 0.3s ease-out;
         }
 
-        .modal-small {
+        .modal-alert {
           max-width: 400px;
-          z-index:999;
         }
 
         .modal-header {
@@ -1069,17 +1108,38 @@ const Attributes = () => {
           border-bottom: 1px solid #f1f5f9;
         }
 
-        .modal-header h2 {
+        .alert-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .modal-title {
           margin: 0;
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 600;
           color: #1e293b;
+        }
+
+        .alert-icon {
+          flex-shrink: 0;
+        }
+
+        .alert-error {
+          color: #ef4444;
+        }
+
+        .alert-success {
+          color: #10b981;
+        }
+
+        .alert-warning {
+          color: #f59e0b;
         }
 
         .modal-close {
           background: none;
           border: none;
-          font-size: 24px;
           cursor: pointer;
           color: #64748b;
           padding: 8px;
@@ -1089,7 +1149,7 @@ const Attributes = () => {
           align-items: center;
           justify-content: center;
           border-radius: 8px;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
         }
 
         .modal-close:hover {
@@ -1101,6 +1161,12 @@ const Attributes = () => {
         .modal-form,
         .modal-body {
           padding: 24px 28px;
+        }
+
+        .alert-message {
+          color: #374151;
+          margin: 0;
+          line-height: 1.5;
         }
 
         .form-group {
@@ -1121,7 +1187,7 @@ const Attributes = () => {
           border: 1px solid #d1d5db;
           border-radius: 8px;
           font-size: 14px;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
           box-sizing: border-box;
           background: white;
         }
@@ -1142,24 +1208,7 @@ const Attributes = () => {
           background: #fafbfc;
         }
 
-        .loading-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 80px;
-        }
-
-        .loading-spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid #e2e8f0;
-          border-top: 4px solid #3b82f6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin-bottom: 20px;
-        }
-
+        /* Animations */
         @keyframes spin {
           0% {
             transform: rotate(0deg);
@@ -1189,9 +1238,19 @@ const Attributes = () => {
           }
         }
 
-        /* Responsive Design */
+        /* Focus styles */
+        .action-btn:focus,
+        .btn-primary:focus,
+        .btn-secondary:focus,
+        .btn-danger:focus,
+        .modal-close:focus {
+          outline: 2px solid #3b82f6;
+          outline-offset: 2px;
+        }
+
+        /* Responsive design */
         @media (max-width: 768px) {
-          .categories-page {
+          .attributes-page {
             padding: 16px;
           }
 
@@ -1202,30 +1261,32 @@ const Attributes = () => {
             text-align: center;
           }
 
-          .categories-controls {
-            flex-direction: column;
-            gap: 12px;
+          .page-controls {
+            margin-bottom: 16px;
           }
 
           .search-container {
             max-width: none;
           }
 
-          .category-main {
+          .attribute-main {
             flex-direction: column;
             align-items: stretch;
             gap: 16px;
           }
 
-          .category-actions {
+          .attribute-actions {
             justify-content: center;
             flex-wrap: wrap;
           }
 
-          .values-grid {
-            grid-template-columns: 1fr;
+          .values-container {
             padding-left: 0;
             margin-top: 16px;
+          }
+
+          .values-grid {
+            grid-template-columns: 1fr;
           }
 
           .value-card {
@@ -1236,7 +1297,6 @@ const Attributes = () => {
 
           .value-actions {
             justify-content: center;
-            margin-left: 0;
           }
 
           .modal-content {
@@ -1251,129 +1311,38 @@ const Attributes = () => {
             padding-left: 20px;
             padding-right: 20px;
           }
+
+          .empty-state {
+            padding: 60px 16px;
+          }
+
+          .loading-container {
+            padding: 60px 16px;
+          }
         }
 
-        /* Enhanced focus styles for accessibility */
-        .action-btn:focus,
-        .btn-primary:focus,
-        .btn-secondary:focus,
-        .btn-danger:focus,
-        .modal-close:focus {
-          outline: 2px solid #3b82f6;
-          outline-offset: 2px;
-        }
+        @media (max-width: 480px) {
+          .page-title {
+            font-size: 24px;
+          }
 
-        /* Utility classes */
-        .flex {
-          display: flex;
-        }
+          .attribute-name {
+            font-size: 16px;
+          }
 
-        .items-center {
-          align-items: center;
-        }
+          .values-grid {
+            gap: 8px;
+          }
 
-        .gap-3 {
-          gap: 12px;
-        }
+          .value-card {
+            padding: 12px;
+          }
 
-        .text-red-500 {
-          color: #ef4444;
-        }
-
-        .text-green-500 {
-          color: #10b981;
-        }
-
-        .text-yellow-500 {
-          color: #f59e0b;
-        }
-
-        .text-gray-700 {
-          color: #374151;
-        }
-
-        .text-xl {
-          font-size: 1.25rem;
-        }
-
-        .font-semibold {
-          font-weight: 600;
-        }
-
-        .text-6xl {
-          font-size: 3.75rem;
-        }
-
-        .mb-2 {
-          margin-bottom: 8px;
-        }
-
-        .mb-4 {
-          margin-bottom: 16px;
-        }
-
-        .mb-0 {
-          margin-bottom: 0;
-        }
-
-        .text-gray-600 {
-          color: #4b5563;
-        }
-
-        /* Enhanced value card animations */
-        .value-card {
-          position: relative;
-          overflow: hidden;
-        }
-
-        .value-card::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.8),
-            transparent
-          );
-          transition: left 0.5s;
-        }
-
-        .value-card:hover::before {
-          left: 100%;
-        }
-
-        /* Improved button hover effects */
-        .btn-primary,
-        .btn-secondary,
-        .btn-danger {
-          position: relative;
-          overflow: hidden;
-        }
-
-        .btn-primary::before,
-        .btn-secondary::before,
-        .btn-danger::before {
-          content: "";
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 0;
-          height: 0;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 50%;
-          transform: translate(-50%, -50%);
-          transition: width 0.3s, height 0.3s;
-        }
-
-        .btn-primary:active::before,
-        .btn-secondary:active::before,
-        .btn-danger:active::before {
-          width: 300px;
-          height: 300px;
+          .modal-content {
+            width: 100%;
+            margin: 10px;
+            border-radius: 8px;
+          }
         }
       `}</style>
     </div>

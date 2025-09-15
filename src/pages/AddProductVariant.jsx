@@ -58,6 +58,7 @@ const AddProductVariant = () => {
   const [attributeValues, setAttributeValues] = useState({});
   const [selectedAttributes, setSelectedAttributes] = useState([]);
   const [showAttributeSelector, setShowAttributeSelector] = useState(false);
+  const [originalAttributes, setOriginalAttributes] = useState([]); // Track original attributes for comparison
 
   // Searchable dropdown component
   const SearchableSelect = ({
@@ -247,13 +248,21 @@ const AddProductVariant = () => {
         // Fetch existing variant images and attributes
         const token = localStorage && localStorage.getItem("token");
         if (token) {
+          // Fetch variant details including images
           const response = await fetch(`${API_BASE}/variants/${editData.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await response.json();
 
-          if (data.variant) {
-            // Handle variant images if they exist in the response
+          if (data.variant && data.variant.images) {
+            const imageUrls = data.variant.images.filter((url) => url); // Filter out empty strings
+            setUploadedImages(
+              imageUrls.map((url, index) => ({
+                id: `temp_${index}`, // Temporary ID since we don't have actual image IDs from this endpoint
+                url: url,
+                is_primary: index === 0 ? 1 : 0, // Assume first image is primary
+              }))
+            );
           }
 
           // Load existing variant attributes
@@ -266,20 +275,110 @@ const AddProductVariant = () => {
           const attrData = await attrResponse.json();
 
           if (attrData.attributes) {
-            setSelectedAttributes(
-              attrData.attributes.map((attr) => ({
-                attributeId: attr.attribute_id,
-                attributeName: attr.attribute_name,
-                valueId: attr.value_id,
-                valueName: attr.value_name,
-              }))
-            );
+            const loadedAttributes = attrData.attributes.map((attr) => ({
+              attributeId: attr.attribute_id,
+              attributeName: attr.attribute_name,
+              valueId: attr.value_id,
+              valueName: attr.value_name,
+            }));
+
+            setSelectedAttributes(loadedAttributes);
+            setOriginalAttributes(JSON.parse(JSON.stringify(loadedAttributes))); // Deep copy for comparison
+
+            // Pre-load attribute values for loaded attributes
+            const uniqueAttributeIds = [
+              ...new Set(loadedAttributes.map((attr) => attr.attributeId)),
+            ];
+            for (const attributeId of uniqueAttributeIds) {
+              await fetchAttributeValues(attributeId);
+            }
           }
         }
       }
     } catch (error) {
       console.error("Error loading edit data:", error);
       showMessage("Failed to load data for editing", "error");
+    }
+  };
+
+  // Helper function to compare attribute arrays
+  const attributesChanged = () => {
+    if (selectedAttributes.length !== originalAttributes.length) {
+      return true;
+    }
+
+    return selectedAttributes.some((attr) => {
+      const original = originalAttributes.find(
+        (orig) => orig.attributeId === attr.attributeId
+      );
+      return !original || original.valueId !== attr.valueId;
+    });
+  };
+
+  // Update variant attributes
+  const updateVariantAttributes = async (variantId) => {
+    if (!attributesChanged()) {
+      console.log("No attribute changes detected, skipping attribute update");
+      return;
+    }
+
+    try {
+      const token = localStorage && localStorage.getItem("token");
+
+      // Remove all existing attributes first
+      const existingAttrResponse = await fetch(
+        `${API_BASE}/variants/${variantId}/attributes`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const existingAttrData = await existingAttrResponse.json();
+
+      // Delete existing attributes one by one
+      if (
+        existingAttrData.attributes &&
+        existingAttrData.attributes.length > 0
+      ) {
+        for (const attr of existingAttrData.attributes) {
+          await fetch(
+            `${API_BASE}/variants/${variantId}/attributes/${attr.value_id}`,
+            {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+        }
+      }
+
+      // Add new attributes
+      for (const attribute of selectedAttributes) {
+        if (attribute.valueId) {
+          const response = await fetch(
+            `${API_BASE}/variants/${variantId}/attributes`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                attribute_value_id: attribute.valueId,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            console.error(
+              `Failed to assign attribute ${attribute.attributeName}`
+            );
+          }
+        }
+      }
+
+      console.log("Variant attributes updated successfully");
+    } catch (error) {
+      console.error("Error updating variant attributes:", error);
+      throw error; // Re-throw to handle in main submission
     }
   };
 
@@ -509,11 +608,11 @@ const AddProductVariant = () => {
   useEffect(() => {
     if (formType === "variant" && categoryId) {
       fetchProductsByCategory(categoryId);
-      if (!state?.preSelectedProduct) {
+      if (!state?.preSelectedProduct && !editMode) {
         setProductId("");
       }
     }
-  }, [categoryId, formType]);
+  }, [categoryId, formType, editMode]);
 
   // Handle multiple image selection
   const handleImageChange = (e) => {
@@ -550,25 +649,36 @@ const AddProductVariant = () => {
   const removeUploadedImage = async (index, imageId) => {
     try {
       const token = localStorage && localStorage.getItem("token");
-      const endpoint =
-        formType === "variant"
-          ? `${API_BASE}/variant-images/${imageId}`
-          : `${API_BASE}/product-images/${imageId}`;
 
-      const response = await fetch(endpoint, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // For variant images loaded from the variant details endpoint, we might not have actual image IDs
+      if (imageId && !imageId.toString().startsWith("temp_")) {
+        const endpoint =
+          formType === "variant"
+            ? `${API_BASE}/variant-images/${imageId}`
+            : `${API_BASE}/product-images/${imageId}`;
 
-      if (response.ok) {
-        setUploadedImages(uploadedImages.filter((_, i) => i !== index));
-        showMessage("Image removed successfully", "success");
-      } else {
-        showMessage("Failed to remove image", "error");
+        const response = await fetch(endpoint, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          showMessage("Failed to remove image from server", "error");
+          return;
+        }
       }
+
+      // Remove from local state regardless
+      setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+      showMessage("Image removed successfully", "success");
     } catch (err) {
       console.error("Failed to remove image", err);
-      showMessage("Failed to remove image", "error");
+      // Still remove from local state even if server request failed
+      setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+      showMessage(
+        "Image removed locally (server removal may have failed)",
+        "error"
+      );
     }
   };
 
@@ -576,28 +686,33 @@ const AddProductVariant = () => {
   const setPrimaryImage = async (imageId) => {
     try {
       const token = localStorage && localStorage.getItem("token");
-      const endpoint =
-        formType === "variant"
-          ? `${API_BASE}/variant-images/${imageId}/primary`
-          : `${API_BASE}/product-images/${imageId}/primary`;
 
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Skip server request for temporary IDs
+      if (imageId && !imageId.toString().startsWith("temp_")) {
+        const endpoint =
+          formType === "variant"
+            ? `${API_BASE}/variant-images/${imageId}/primary`
+            : `${API_BASE}/product-images/${imageId}/primary`;
 
-      if (response.ok) {
-        // Update local state
-        setUploadedImages(
-          uploadedImages.map((img) => ({
-            ...img,
-            is_primary: img.id === imageId ? 1 : 0,
-          }))
-        );
-        showMessage("Primary image updated", "success");
-      } else {
-        showMessage("Failed to update primary image", "error");
+        const response = await fetch(endpoint, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          showMessage("Failed to update primary image on server", "error");
+          return;
+        }
       }
+
+      // Update local state regardless
+      setUploadedImages(
+        uploadedImages.map((img) => ({
+          ...img,
+          is_primary: img.id === imageId ? 1 : 0,
+        }))
+      );
+      showMessage("Primary image updated", "success");
     } catch (err) {
       console.error("Failed to set primary image", err);
       showMessage("Failed to set primary image", "error");
@@ -720,9 +835,9 @@ const AddProductVariant = () => {
             throw new Error("Failed to update variant");
           }
 
-          // Update variant attributes if modified
-          // Note: This would need additional logic to compare existing vs new attributes
-          // For now, we'll just show success message
+          // Update variant attributes
+          await updateVariantAttributes(editingId);
+
           showMessage("Variant updated successfully!", "success");
         }
       } else {
@@ -851,7 +966,9 @@ const AddProductVariant = () => {
     } catch (err) {
       console.error(err);
       showMessage(
-        `Failed to ${editMode ? "update" : "create"} ${formType}`,
+        `Failed to ${editMode ? "update" : "create"} ${formType}: ${
+          err.message
+        }`,
         "error"
       );
     } finally {
@@ -872,6 +989,7 @@ const AddProductVariant = () => {
     setUploadedImages([]);
     setStatus("active");
     setSelectedAttributes([]);
+    setOriginalAttributes([]);
 
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) fileInput.value = "";
@@ -1199,6 +1317,16 @@ const AddProductVariant = () => {
             margin-left: auto;
           }
 
+          .attributes-changed-indicator {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #92400e;
+          }
+
           /* Searchable Select Styles */
           .searchable-select {
             position: relative;
@@ -1495,7 +1623,7 @@ const AddProductVariant = () => {
               )}
 
               {/* Quantity Field (Variant only) */}
-              {formType === "variant" && (
+              {formType === "variant" && !editMode && (
                 <div className="form-group">
                   <label className="form-label">Initial Quantity</label>
                   <input
@@ -1587,6 +1715,17 @@ const AddProductVariant = () => {
                       Add Attribute
                     </button>
                   </div>
+
+                  {/* Show indicator if attributes have changed in edit mode */}
+                  {editMode && attributesChanged() && (
+                    <div className="attributes-changed-indicator">
+                      <AlertCircle
+                        size={16}
+                        style={{ display: "inline", marginRight: "8px" }}
+                      />
+                      Attributes have been modified and will be updated
+                    </div>
+                  )}
 
                   {selectedAttributes.length > 0 ? (
                     selectedAttributes.map((attr) => (
@@ -1706,7 +1845,7 @@ const AddProductVariant = () => {
                   <p
                     style={{ margin: 0, color: "#6b7280", marginBottom: "8px" }}
                   >
-                    Click to select images or drag and drop
+                    Click to select images
                   </p>
                   <input
                     type="file"
@@ -1741,7 +1880,9 @@ const AddProductVariant = () => {
               {/* Current Images (Edit mode) */}
               {uploadedImages.length > 0 && (
                 <div className="form-group">
-                  <label className="form-label">Current Images</label>
+                  <label className="form-label">
+                    {editMode ? "Current Images" : "Existing Images"}
+                  </label>
                   <div className="image-grid">
                     {uploadedImages.map((image, index) => (
                       <div key={index} className="image-item">
@@ -1837,27 +1978,23 @@ const AddProductVariant = () => {
                   type="submit"
                   className="btn-primary"
                   disabled={uploading}
-                  
                 >
                   {uploading ? (
                     <>
                       <div
                         className="loading-spinner"
                         style={{
-                          width: "16px",
                           height: "16px",
                           margin: 0,
                           marginRight: "8px",
-                          width:"100%",
-                          justifyContent:"center",
+                          width: "16px",
                         }}
                       ></div>
                       {editMode ? "Updating" : "Creating"}...
                     </>
                   ) : (
                     <>
-                      {editMode ? <Edit size={16} /> : <Plus size={16} />}
-                      {editMode ? "Update" : "Add"} {formType}
+                      {editMode ? "Update" : "Submit"} {formType}
                     </>
                   )}
                 </button>
