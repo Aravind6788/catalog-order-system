@@ -26,6 +26,9 @@
   color: #fff;
   width: 40%;
 }
+.btn-primary {
+width: 150px;
+}
 
 .btn-secondary {
   background: #2d3748;

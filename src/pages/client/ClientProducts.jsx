@@ -152,69 +152,87 @@ const selectStyle = {
 };
 
 // Modern Navbar Component - MOVED OUTSIDE
-const ModernNavbar = React.memo(({ 
-  searchTerm, 
-  handleSearchChange, 
-  cart, 
-  previousOrders, 
-  setShowOrderHistory, 
-  setShowCheckout 
-}) => (
-  <nav style={navbarStyle}>
-    <div
-      style={{
-        maxWidth: "1200px",
-        margin: "0 auto",
-        padding: "0 1rem",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "1rem",
-      }}
-    >
-      <a href="#" style={brandStyle}>
-        🌿 Green Formula
-      </a>
-
+const ModernNavbar = React.memo(
+  ({
+    searchTerm,
+    handleSearchChange,
+    cart,
+    previousOrders,
+    setShowOrderHistory,
+    setShowCheckout,
+  }) => (
+    <nav style={navbarStyle}>
       <div
         style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+          padding: "0 1rem",
           display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
           gap: "1rem",
-          flex: 1,
-          justifyContent: "center",
-          maxWidth: "500px",
         }}
       >
-        <div style={{ position: "relative", flex: 1, display: "flex" }}>
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            style={inputStyle}
-            onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
-            onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
-          />
-          <button
-            type="button"
-            style={{
-              ...buttonStyle,
-              marginLeft: "0.5rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <Search size={16} />
-            Search
-          </button>
-        </div>
-      </div>
+        <a href="#" style={brandStyle}>
+          🌿 Green Formula
+        </a>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        {previousOrders.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+            flex: 1,
+            justifyContent: "center",
+            maxWidth: "500px",
+          }}
+        >
+          <div style={{ position: "relative", flex: 1, display: "flex" }}>
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
+              onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
+            />
+            <button
+              type="button"
+              style={{
+                ...buttonStyle,
+                marginLeft: "0.5rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <Search size={16} />
+              Search
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {previousOrders.length > 0 && (
+            <button
+              style={{
+                ...buttonStyle,
+                backgroundColor: "transparent",
+                color: "#2d8659",
+                border: "1px solid #2d8659",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+              onClick={() => setShowOrderHistory(true)}
+            >
+              <History size={16} />
+              Orders ({previousOrders.length})
+            </button>
+          )}
+
           <button
             style={{
               ...buttonStyle,
@@ -225,277 +243,101 @@ const ModernNavbar = React.memo(({
               alignItems: "center",
               gap: "0.5rem",
             }}
-            onClick={() => setShowOrderHistory(true)}
+            onClick={() => setShowCheckout(true)}
           >
-            <History size={16} />
-            Orders ({previousOrders.length})
+            <ShoppingCart size={16} />
+            Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
           </button>
-        )}
-
-        <button
-          style={{
-            ...buttonStyle,
-            backgroundColor: "transparent",
-            color: "#2d8659",
-            border: "1px solid #2d8659",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
-          onClick={() => setShowCheckout(true)}
-        >
-          <ShoppingCart size={16} />
-          Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
-        </button>
+        </div>
       </div>
-    </div>
-  </nav>
-));
+    </nav>
+  )
+);
 // Enhanced Previous Orders Modal Component - Add this outside your main component
-const PreviousOrdersModal = React.memo(({ 
-  previousOrders, 
-  setShowOrderHistory 
-}) => {
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [orderDetails, setOrderDetails] = useState(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
+const PreviousOrdersModal = React.memo(
+  ({ previousOrders, setShowOrderHistory }) => {
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [orderDetails, setOrderDetails] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Fetch detailed order information
-  const fetchOrderDetails = async (orderId) => {
-    setLoadingDetails(true);
-    try {
-      const response = await axios.get(`${API_BASE}/orders/${orderId}`);
-      if (response.data.success) {
-        setOrderDetails(response.data.order);
+    // Fetch detailed order information
+    const fetchOrderDetails = async (orderId) => {
+      setLoadingDetails(true);
+      try {
+        const response = await axios.get(`${API_BASE}/orders/${orderId}`);
+        if (response.data.success) {
+          setOrderDetails(response.data.order);
+        }
+      } catch (error) {
+        console.error("Error fetching order details:", error);
+        alert("Failed to load order details");
+      } finally {
+        setLoadingDetails(false);
       }
-    } catch (error) {
-      console.error('Error fetching order details:', error);
-      alert('Failed to load order details');
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
+    };
 
-  const handleViewDetails = (order) => {
-    setSelectedOrder(order);
-    fetchOrderDetails(order.id);
-  };
+    const handleViewDetails = (order) => {
+      setSelectedOrder(order);
+      fetchOrderDetails(order.id);
+    };
 
-  const handleCloseDetails = () => {
-    setSelectedOrder(null);
-    setOrderDetails(null);
-  };
+    const handleCloseDetails = () => {
+      setSelectedOrder(null);
+      setOrderDetails(null);
+    };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'fulfilled':
-        return '#28a745';
-      case 'pending':
-        return '#ffc107';
-      case 'quoted':
-        return '#17a2b8';
-      case 'confirmed':
-        return '#007bff';
-      case 'cancelled':
-        return '#dc3545';
-      default:
-        return '#6c757d';
-    }
-  };
+    const getStatusColor = (status) => {
+      switch (status?.toLowerCase()) {
+        case "completed":
+        case "fulfilled":
+          return "#28a745";
+        case "pending":
+          return "#ffc107";
+        case "quoted":
+          return "#17a2b8";
+        case "confirmed":
+          return "#007bff";
+        case "cancelled":
+          return "#dc3545";
+        default:
+          return "#6c757d";
+      }
+    };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+    const formatDate = (dateString) => {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    };
 
-  return (
-    <div style={modalStyle} onClick={() => setShowOrderHistory(false)}>
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          maxWidth: selectedOrder ? "1100px" : "900px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: selectedOrder ? "row" : "column",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Left Panel - Order List */}
+    return (
+      <div style={modalStyle} onClick={() => setShowOrderHistory(false)}>
         <div
           style={{
-            width: selectedOrder ? "50%" : "100%",
-            borderRight: selectedOrder ? "1px solid #e9ecef" : "none",
+            backgroundColor: "white",
+            borderRadius: "12px",
+            maxWidth: selectedOrder ? "1100px" : "900px",
+            width: "100%",
+            maxHeight: "90vh",
+            overflow: "hidden",
             display: "flex",
-            flexDirection: "column",
+            flexDirection: selectedOrder ? "row" : "column",
           }}
+          onClick={(e) => e.stopPropagation()}
         >
+          {/* Left Panel - Order List */}
           <div
             style={{
-              padding: "1.5rem",
-              borderBottom: "1px solid #e9ecef",
+              width: selectedOrder ? "50%" : "100%",
+              borderRight: selectedOrder ? "1px solid #e9ecef" : "none",
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              flexDirection: "column",
             }}
           >
-            <h5 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <History size={20} />
-              Order History ({previousOrders.length})
-            </h5>
-            {!selectedOrder && (
-              <button
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#6c757d",
-                }}
-                onClick={() => setShowOrderHistory(false)}
-              >
-                <X size={24} />
-              </button>
-            )}
-          </div>
-
-          <div style={{ padding: "1.5rem", overflow: "auto", flex: 1 }}>
-            {previousOrders.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem" }}>
-                <Package
-                  size={48}
-                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
-                />
-                <p style={{ color: "#6c757d" }}>No previous orders found</p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {previousOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    style={{
-                      border: selectedOrder?.id === order.id ? "2px solid #2d8659" : "1px solid #e9ecef",
-                      borderRadius: "8px",
-                      padding: "1rem",
-                      backgroundColor: selectedOrder?.id === order.id ? "#f8f9fa" : "white",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "0.75rem",
-                        flexWrap: "wrap",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <div>
-                        <h6 style={{ margin: 0, fontSize: "1rem", fontWeight: "600" }}>
-                          Order #{order.order_number || order.id}
-                        </h6>
-                        <p style={{ margin: 0, fontSize: "0.8rem", color: "#6c757d" }}>
-                          {formatDate(order.created_at)}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span
-                          style={{
-                            backgroundColor: getStatusColor(order.status),
-                            color: "white",
-                            padding: "0.2rem 0.6rem",
-                            borderRadius: "15px",
-                            fontSize: "0.75rem",
-                            fontWeight: "500",
-                            textTransform: "capitalize",
-                          }}
-                        >
-                          {order.status || "pending"}
-                        </span>
-                        <p
-                          style={{
-                            margin: "0.3rem 0 0 0",
-                            fontSize: "1rem",
-                            fontWeight: "600",
-                            color: "#2d8659",
-                          }}
-                        >
-                          ${parseFloat(order.total_amount || 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quick Order Summary */}
-                    <div style={{ marginBottom: "0.75rem" }}>
-                      <p style={{ 
-                        margin: 0, 
-                        fontSize: "0.85rem", 
-                        color: "#6c757d",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem"
-                      }}>
-                        <Package size={14} />
-                        {order.item_count || 0} item{(order.item_count || 0) !== 1 ? 's' : ''}
-                        {order.customer_name && (
-                          <>
-                            <span style={{ margin: "0 0.25rem" }}>•</span>
-                            <User size={14} />
-                            {order.customer_name}
-                          </>
-                        )}
-                      </p>
-                    </div>
-
-                    {/* Action Button */}
-                    <button
-                      style={{
-                        ...buttonStyle,
-                        width: "100%",
-                        fontSize: "0.85rem",
-                        padding: "0.5rem 1rem",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "0.5rem",
-                        backgroundColor: selectedOrder?.id === order.id ? "#2d8659" : "transparent",
-                        color: selectedOrder?.id === order.id ? "white" : "#2d8659",
-                        border: "1px solid #2d8659",
-                      }}
-                      onClick={() => handleViewDetails(order)}
-                    >
-                      {selectedOrder?.id === order.id ? (
-                        <>
-                          <Check size={16} />
-                          Selected
-                        </>
-                      ) : (
-                        <>
-                          <Search size={16} />
-                          View Details
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Panel - Order Details */}
-        {selectedOrder && (
-          <div style={{ width: "50%", display: "flex", flexDirection: "column" }}>
             <div
               style={{
                 padding: "1.5rem",
@@ -505,21 +347,18 @@ const PreviousOrdersModal = React.memo(({
                 alignItems: "center",
               }}
             >
-              <h5 style={{ margin: 0 }}>Order Details</h5>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button
-                  style={{
-                    ...buttonStyle,
-                    backgroundColor: "transparent",
-                    color: "#6c757d",
-                    border: "1px solid #e9ecef",
-                    padding: "0.5rem",
-                  }}
-                  onClick={handleCloseDetails}
-                  title="Close Details"
-                >
-                  <ChevronLeft size={16} />
-                </button>
+              <h5
+                style={{
+                  margin: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <History size={20} />
+                Order History ({previousOrders.length})
+              </h5>
+              {!selectedOrder && (
                 <button
                   style={{
                     background: "none",
@@ -532,446 +371,759 @@ const PreviousOrdersModal = React.memo(({
                 >
                   <X size={24} />
                 </button>
-              </div>
+              )}
             </div>
 
             <div style={{ padding: "1.5rem", overflow: "auto", flex: 1 }}>
-              {loadingDetails ? (
+              {previousOrders.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "2rem" }}>
-                  <div
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      border: "3px solid #e9ecef",
-                      borderTop: "3px solid #2d8659",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                      margin: "0 auto 1rem",
-                    }}
+                  <Package
+                    size={48}
+                    style={{ color: "#cbd5e1", marginBottom: "1rem" }}
                   />
-                  <p>Loading order details...</p>
+                  <p style={{ color: "#6c757d" }}>No previous orders found</p>
                 </div>
-              ) : orderDetails ? (
-                <div>
-                  {/* Order Header */}
-                  <div
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      padding: "1.5rem",
-                      borderRadius: "8px",
-                      marginBottom: "1.5rem",
-                    }}
-                  >
-                    <h4 style={{ margin: "0 0 1rem 0", color: "#2c3e50" }}>
-                      Order #{orderDetails.order_number || orderDetails.id}
-                    </h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                      <div>
-                        <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
-                          <strong>Date:</strong> {formatDate(orderDetails.created_at)}
-                        </p>
-                        <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
-                          <strong>Status:</strong>{" "}
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1rem",
+                    height:"550px"
+                  }}
+                >
+                  {previousOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      style={{
+                        border:
+                          selectedOrder?.id === order.id
+                            ? "2px solid #2d8659"
+                            : "1px solid #e9ecef",
+                        borderRadius: "8px",
+                        padding: "1rem",
+                        backgroundColor:
+                          selectedOrder?.id === order.id ? "#f8f9fa" : "white",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "0.75rem",
+                          flexWrap: "wrap",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <div>
+                          <h6
+                            style={{
+                              margin: 0,
+                              fontSize: "1rem",
+                              fontWeight: "600",
+                            }}
+                          >
+                            Order #{order.order_number || order.id}
+                          </h6>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "0.8rem",
+                              color: "#6c757d",
+                            }}
+                          >
+                            {formatDate(order.created_at)}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
                           <span
                             style={{
-                              backgroundColor: getStatusColor(orderDetails.status),
+                              backgroundColor: getStatusColor(order.status),
                               color: "white",
                               padding: "0.2rem 0.6rem",
-                              borderRadius: "12px",
+                              borderRadius: "15px",
                               fontSize: "0.75rem",
                               fontWeight: "500",
                               textTransform: "capitalize",
-                              marginLeft: "0.5rem",
                             }}
                           >
-                            {orderDetails.status || "pending"}
+                            {order.status || "pending"}
                           </span>
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}>
-                          <strong>Items:</strong> {orderDetails.item_count || 0}
-                        </p>
-                        <p style={{ margin: "0.25rem 0", fontSize: "1.1rem", fontWeight: "600", color: "#2d8659" }}>
-                          <strong>Total: ${parseFloat(orderDetails.total_amount || 0).toFixed(2)}</strong>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Customer Information */}
-                  <div
-                    style={{
-                      backgroundColor: "white",
-                      border: "1px solid #e9ecef",
-                      borderRadius: "8px",
-                      padding: "1.5rem",
-                      marginBottom: "1.5rem",
-                    }}
-                  >
-                    <h6 style={{ margin: "0 0 1rem 0", color: "#2c3e50" }}>Customer Information</h6>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                      {orderDetails.customer_name && (
-                        <p style={{ margin: 0, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <User size={16} style={{ color: "#6c757d" }} />
-                          <strong>Name:</strong> {orderDetails.customer_name}
-                        </p>
-                      )}
-                      {orderDetails.customer_email && (
-                        <p style={{ margin: 0, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Mail size={16} style={{ color: "#6c757d" }} />
-                          <strong>Email:</strong> {orderDetails.customer_email}
-                        </p>
-                      )}
-                      {orderDetails.customer_phone && (
-                        <p style={{ margin: 0, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Phone size={16} style={{ color: "#6c757d" }} />
-                          <strong>Phone:</strong> {orderDetails.customer_phone}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Order Items */}
-                  <div
-                    style={{
-                      backgroundColor: "white",
-                      border: "1px solid #e9ecef",
-                      borderRadius: "8px",
-                      padding: "1.5rem",
-                    }}
-                  >
-                    <h6 style={{ margin: "0 0 1rem 0", color: "#2c3e50" }}>
-                      Order Items ({orderDetails.items?.length || 0})
-                    </h6>
-                    {orderDetails.items && orderDetails.items.length > 0 ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {orderDetails.items.map((item, index) => {
-                          const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
-                          return (
-                            <div
-                              key={`${orderDetails.id}-item-${index}`}
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                padding: "1rem",
-                                backgroundColor: "#f8f9fa",
-                                borderRadius: "6px",
-                                border: "1px solid #e9ecef",
-                              }}
-                            >
-                              <div style={{ flex: 1 }}>
-                                <h6 style={{ margin: "0 0 0.25rem 0", fontSize: "0.9rem" }}>
-                                  {item.product_name || "Unknown Product"}
-                                </h6>
-                                {item.variant_name && item.variant_name !== "Default" && (
-                                  <p style={{ margin: "0 0 0.25rem 0", fontSize: "0.8rem", color: "#6c757d" }}>
-                                    Variant: {item.variant_name}
-                                    {item.variant_code && ` (${item.variant_code})`}
-                                  </p>
-                                )}
-                                {item.description && (
-                                  <p style={{ margin: "0", fontSize: "0.8rem", color: "#6c757d" }}>
-                                    {item.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div style={{ textAlign: "right", minWidth: "120px" }}>
-                                <p style={{ margin: "0", fontSize: "0.85rem", color: "#6c757d" }}>
-                                  Qty: {item.quantity}
-                                </p>
-                                <p style={{ margin: "0", fontSize: "0.85rem", color: "#6c757d" }}>
-                                  Unit: ${parseFloat(item.price).toFixed(2)}
-                                </p>
-                                <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.9rem", fontWeight: "600", color: "#2d8659" }}>
-                                  ${itemTotal.toFixed(2)}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {/* Order Total */}
-                        <div
-                          style={{
-                            borderTop: "2px solid #e9ecef",
-                            paddingTop: "1rem",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <h5 style={{ margin: 0, color: "#2c3e50" }}>Order Total:</h5>
-                          <h4 style={{ margin: 0, color: "#2d8659" }}>
-                            ${parseFloat(orderDetails.total_amount || 0).toFixed(2)}
-                          </h4>
+                          <p
+                            style={{
+                              margin: "0.3rem 0 0 0",
+                              fontSize: "1rem",
+                              fontWeight: "600",
+                              color: "#2d8659",
+                            }}
+                          >
+                            ₹{parseFloat(order.total_amount || 0).toFixed(2)}
+                          </p>
                         </div>
                       </div>
-                    ) : (
-                      <p style={{ color: "#6c757d", fontStyle: "italic" }}>No items found</p>
-                    )}
-                  </div>
 
-                  {/* Order Notes */}
-                  {orderDetails.note && (
-                    <div
-                      style={{
-                        backgroundColor: "#fff3cd",
-                        border: "1px solid #ffeaa7",
-                        borderRadius: "8px",
-                        padding: "1rem",
-                        marginTop: "1.5rem",
-                      }}
-                    >
-                      <h6 style={{ margin: "0 0 0.5rem 0", color: "#856404" }}>Order Notes:</h6>
-                      <p style={{ margin: 0, fontSize: "0.85rem", color: "#856404", whiteSpace: "pre-wrap" }}>
-                        {orderDetails.note}
-                      </p>
+                      {/* Quick Order Summary */}
+                      <div style={{ marginBottom: "0.75rem" }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.85rem",
+                            color: "#6c757d",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Package size={14} />
+                          {order.item_count || 0} item
+                          {(order.item_count || 0) !== 1 ? "s" : ""}
+                          {order.customer_name && (
+                            <>
+                              <span style={{ margin: "0 0.25rem" }}>•</span>
+                              <User size={14} />
+                              {order.customer_name}
+                            </>
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Action Button */}
+                      <button
+                        style={{
+                          ...buttonStyle,
+                          width: "100%",
+                          fontSize: "0.85rem",
+                          padding: "0.5rem 1rem",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "0.5rem",
+                          backgroundColor:
+                            selectedOrder?.id === order.id
+                              ? "#2d8659"
+                              : "transparent",
+                          color:
+                            selectedOrder?.id === order.id
+                              ? "white"
+                              : "#2d8659",
+                          border: "1px solid #2d8659",
+                        }}
+                        onClick={() => handleViewDetails(order)}
+                      >
+                        {selectedOrder?.id === order.id ? (
+                          <>
+                            <Check size={16} />
+                            Selected
+                          </>
+                        ) : (
+                          <>
+                            <Search size={16} />
+                            View Details
+                          </>
+                        )}
+                      </button>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div style={{ textAlign: "center", padding: "2rem" }}>
-                  <p style={{ color: "#0e2539ff" }}>Failed to load order details</p>
+                  ))}
                 </div>
               )}
             </div>
           </div>
-        )}
-      </div>
-    </div>
-  );
-});
-// Modern Filter Sidebar - MOVED OUTSIDE
-const ModernFilterSidebar = React.memo(({ 
-  categories, 
-  selectedCategory, 
-  handleCategoryChange, 
-  priceRange, 
-  setPriceRange, 
-  setSelectedCategory 
-}) => {
-  return (
-    <div style={sidebarStyle}>
-      <h5
-        style={{
-          marginBottom: "1.5rem",
-          color: "#2c3e50",
-          fontWeight: "600",
-        }}
-      >
-        Filters
-      </h5>
 
-      {/* Categories */}
-      <div
-        style={{
-          marginBottom: "24px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid #e9ecef",
-        }}
-      >
-        <h6
+          {/* Right Panel - Order Details */}
+          {selectedOrder && (
+            <div
+              style={{ width: "50%", display: "flex", flexDirection: "column" }}
+            >
+              <div
+                style={{
+                  padding: "1.5rem",
+                  borderBottom: "1px solid #e9ecef",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h5 style={{ margin: 0 }}>Order Details</h5>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: "transparent",
+                      color: "#6c757d",
+                      border: "1px solid #e9ecef",
+                      padding: "0.5rem",
+                    }}
+                    onClick={handleCloseDetails}
+                    title="Close Details"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    style={{
+                      background: "none",
+                      border: "none",
+                      fontSize: "1.5rem",
+                      cursor: "pointer",
+                      color: "#6c757d",
+                    }}
+                    onClick={() => setShowOrderHistory(false)}
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ padding: "1.5rem", overflow: "auto", flex: 1 }}>
+                {loadingDetails ? (
+                  <div style={{ textAlign: "center", padding: "2rem" }}>
+                    <div
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        border: "3px solid #e9ecef",
+                        borderTop: "3px solid #2d8659",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite",
+                        margin: "0 auto 1rem",
+                      }}
+                    />
+                    <p>Loading order details...</p>
+                  </div>
+                ) : orderDetails ? (
+                  <div>
+                    {/* Order Header */}
+                    <div
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        padding: "1.5rem",
+                        borderRadius: "8px",
+                        marginBottom: "1.5rem",
+                      }}
+                    >
+                      <h4 style={{ margin: "0 0 1rem 0", color: "#2c3e50" }}>
+                        Order #{orderDetails.order_number || orderDetails.id}
+                      </h4>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "1rem",
+                        }}
+                      >
+                        <div>
+                          <p
+                            style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}
+                          >
+                            <strong>Date:</strong>{" "}
+                            {formatDate(orderDetails.created_at)}
+                          </p>
+                          <p
+                            style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}
+                          >
+                            <strong>Status:</strong>{" "}
+                            <span
+                              style={{
+                                backgroundColor: getStatusColor(
+                                  orderDetails.status
+                                ),
+                                color: "white",
+                                padding: "0.2rem 0.6rem",
+                                borderRadius: "12px",
+                                fontSize: "0.75rem",
+                                fontWeight: "500",
+                                textTransform: "capitalize",
+                                marginLeft: "0.5rem",
+                              }}
+                            >
+                              {orderDetails.status || "pending"}
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <p
+                            style={{ margin: "0.25rem 0", fontSize: "0.9rem" }}
+                          >
+                            <strong>Items:</strong>{" "}
+                            {orderDetails.item_count || 0}
+                          </p>
+                          <p
+                            style={{
+                              margin: "0.25rem 0",
+                              fontSize: "1.1rem",
+                              fontWeight: "600",
+                              color: "#2d8659",
+                            }}
+                          >
+                            <strong>
+                              Total: ₹
+                              {parseFloat(
+                                orderDetails.total_amount || 0
+                              ).toFixed(2)}
+                            </strong>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Customer Information */}
+                    <div
+                      style={{
+                        backgroundColor: "white",
+                        border: "1px solid #e9ecef",
+                        borderRadius: "8px",
+                        padding: "1.5rem",
+                        marginBottom: "1.5rem",
+                      }}
+                    >
+                      <h6 style={{ margin: "0 0 1rem 0", color: "#2c3e50" }}>
+                        Customer Information
+                      </h6>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        {orderDetails.customer_name && (
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "0.9rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                            }}
+                          >
+                            <User size={16} style={{ color: "#6c757d" }} />
+                            <strong>Name:</strong> {orderDetails.customer_name}
+                          </p>
+                        )}
+                        {orderDetails.customer_email && (
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "0.9rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                            }}
+                          >
+                            <Mail size={16} style={{ color: "#6c757d" }} />
+                            <strong>Email:</strong>{" "}
+                            {orderDetails.customer_email}
+                          </p>
+                        )}
+                        {orderDetails.customer_phone && (
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "0.9rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                            }}
+                          >
+                            <Phone size={16} style={{ color: "#6c757d" }} />
+                            <strong>Phone:</strong>{" "}
+                            {orderDetails.customer_phone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Order Items */}
+                    <div
+                      style={{
+                        backgroundColor: "white",
+                        border: "1px solid #e9ecef",
+                        borderRadius: "8px",
+                        padding: "1.5rem",
+                      }}
+                    >
+                      <h6 style={{ margin: "0 0 1rem 0", color: "#2c3e50" }}>
+                        Order Items ({orderDetails.items?.length || 0})
+                      </h6>
+                      {orderDetails.items && orderDetails.items.length > 0 ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "1rem",
+                          }}
+                        >
+                          {orderDetails.items.map((item, index) => {
+                            const itemTotal =
+                              parseFloat(item.price) * parseInt(item.quantity);
+                            return (
+                              <div
+                                key={`${orderDetails.id}-item-${index}`}
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  padding: "1rem",
+                                  backgroundColor: "#f8f9fa",
+                                  borderRadius: "6px",
+                                  border: "1px solid #e9ecef",
+                                }}
+                              >
+                                <div style={{ flex: 1 }}>
+                                  <h6
+                                    style={{
+                                      margin: "0 0 0.25rem 0",
+                                      fontSize: "0.9rem",
+                                    }}
+                                  >
+                                    {item.product_name || "Unknown Product"}
+                                  </h6>
+                                  {item.variant_name &&
+                                    item.variant_name !== "Default" && (
+                                      <p
+                                        style={{
+                                          margin: "0 0 0.25rem 0",
+                                          fontSize: "0.8rem",
+                                          color: "#6c757d",
+                                        }}
+                                      >
+                                        Variant: {item.variant_name}
+                                        {item.variant_code &&
+                                          ` (${item.variant_code})`}
+                                      </p>
+                                    )}
+                                  {item.description && (
+                                    <p
+                                      style={{
+                                        margin: "0",
+                                        fontSize: "0.8rem",
+                                        color: "#6c757d",
+                                      }}
+                                    >
+                                      {item.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div
+                                  style={{
+                                    textAlign: "right",
+                                    minWidth: "120px",
+                                  }}
+                                >
+                                  <p
+                                    style={{
+                                      margin: "0",
+                                      fontSize: "0.85rem",
+                                      color: "#6c757d",
+                                    }}
+                                  >
+                                    Qty: {item.quantity}
+                                  </p>
+                                  <p
+                                    style={{
+                                      margin: "0",
+                                      fontSize: "0.85rem",
+                                      color: "#6c757d",
+                                    }}
+                                  >
+                                    Unit: ₹{parseFloat(item.price).toFixed(2)}
+                                  </p>
+                                  <p
+                                    style={{
+                                      margin: "0.25rem 0 0 0",
+                                      fontSize: "0.9rem",
+                                      fontWeight: "600",
+                                      color: "#2d8659",
+                                    }}
+                                  >
+                                    ₹{itemTotal.toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Order Total */}
+                          <div
+                            style={{
+                              borderTop: "2px solid #e9ecef",
+                              paddingTop: "1rem",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <h5 style={{ margin: 0, color: "#2c3e50" }}>
+                              Order Total:
+                            </h5>
+                            <h4 style={{ margin: 0, color: "#2d8659" }}>
+                              ₹
+                              {parseFloat(
+                                orderDetails.total_amount || 0
+                              ).toFixed(2)}
+                            </h4>
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{ color: "#6c757d", fontStyle: "italic" }}>
+                          No items found
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Order Notes */}
+                    {orderDetails.note && (
+                      <div
+                        style={{
+                          backgroundColor: "#fff3cd",
+                          border: "1px solid #ffeaa7",
+                          borderRadius: "8px",
+                          padding: "1rem",
+                          marginTop: "1.5rem",
+                        }}
+                      >
+                        <h6
+                          style={{ margin: "0 0 0.5rem 0", color: "#856404" }}
+                        >
+                          Order Notes:
+                        </h6>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.85rem",
+                            color: "#856404",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {orderDetails.note}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center", padding: "2rem" }}>
+                    <p style={{ color: "#0e2539ff" }}>
+                      Failed to load order details
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+// Modern Filter Sidebar - MOVED OUTSIDE
+const ModernFilterSidebar = React.memo(
+  ({
+    categories,
+    selectedCategory,
+    handleCategoryChange,
+    priceRange,
+    setPriceRange,
+    setSelectedCategory,
+  }) => {
+    return (
+      <div style={sidebarStyle}>
+        <h5
           style={{
-            fontWeight: "600",
-            marginBottom: "1rem",
+            marginBottom: "1.5rem",
             color: "#2c3e50",
+            fontWeight: "600",
           }}
         >
-          Categories ({categories.length})
-        </h6>
-        <select
-          value={selectedCategory}
-          onChange={handleCategoryChange}
-          style={selectStyle}
-          onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
-          onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
-        >
-          <option value="">All Categories</option>
-          {categories.length === 0 ? (
-            <option disabled>Loading categories...</option>
-          ) : (
-            categories.map((category) => (
-              <option key={`category-${category.id}`} value={category.id}>
-                {category.name}
-                {category.product_count && ` (${category.product_count})`}
-              </option>
-            ))
-          )}
-        </select>
+          Filters
+        </h5>
 
+        {/* Categories */}
         <div
           style={{
-            marginTop: "0.5rem",
-            fontSize: "0.8rem",
-            color: "#6c757d",
+            marginBottom: "24px",
+            paddingBottom: "20px",
+            borderBottom: "1px solid #e9ecef",
           }}
         >
-          {categories.length === 0 ? (
-            <p>Loading categories...</p>
-          ) : (
-            <p>Loaded {categories.length} categories</p>
-          )}
-        </div>
-      </div>
+          <h6
+            style={{
+              fontWeight: "600",
+              marginBottom: "1rem",
+              color: "#2c3e50",
+            }}
+          >
+            Categories ({categories.length})
+          </h6>
+          <select
+            value={selectedCategory}
+            onChange={handleCategoryChange}
+            style={selectStyle}
+            onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
+            onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
+          >
+            <option value="">All Categories</option>
+            {categories.length === 0 ? (
+              <option disabled>Loading categories...</option>
+            ) : (
+              categories.map((category) => (
+                <option key={`category-${category.id}`} value={category.id}>
+                  {category.name}
+                  {category.product_count && ` (${category.product_count})`}
+                </option>
+              ))
+            )}
+          </select>
 
-      {/* Price Range */}
-      <div
-        style={{
-          marginBottom: "24px",
-          paddingBottom: "20px",
-          borderBottom: "1px solid #e9ecef",
-        }}
-      >
-        <h6
+          <div
+            style={{
+              marginTop: "0.5rem",
+              fontSize: "0.8rem",
+              color: "#6c757d",
+            }}
+          >
+            {categories.length === 0 ? (
+              <p>Loading categories...</p>
+            ) : (
+              <p>Loaded {categories.length} categories</p>
+            )}
+          </div>
+        </div>
+
+        {/* Price Range */}
+        <div
           style={{
-            fontWeight: "600",
-            marginBottom: "1rem",
-            color: "#2c3e50",
+            marginBottom: "24px",
+            paddingBottom: "20px",
+            borderBottom: "1px solid #e9ecef",
           }}
         >
-          Price Range
-        </h6>
-        <div style={{ margin: "15px 0" }}>
-          <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                fontSize: "0.85rem",
-                marginBottom: "0.5rem",
-                display: "block",
-              }}
-            >
-              Min Price: ${priceRange.min}
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="10000"
-              value={priceRange.min}
-              onChange={(e) =>
-                setPriceRange((prev) => ({
-                  ...prev,
-                  min: parseInt(e.target.value),
-                }))
-              }
-              style={{
-                width: "100%",
-                height: "6px",
-                borderRadius: "3px",
-                background: "#e9ecef",
-                outline: "none",
-                accentColor: "#2d8659",
-              }}
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                fontSize: "0.85rem",
-                marginBottom: "0.5rem",
-                display: "block",
-              }}
-            >
-              Max Price: ${priceRange.max}
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="10000"
-              value={priceRange.max}
-              onChange={(e) =>
-                setPriceRange((prev) => ({
-                  ...prev,
-                  max: parseInt(e.target.value),
-                }))
-              }
-              style={{
-                width: "100%",
-                height: "6px",
-                borderRadius: "3px",
-                background: "#e9ecef",
-                outline: "none",
-                accentColor: "#2d8659",
-              }}
-            />
+          <h6
+            style={{
+              fontWeight: "600",
+              marginBottom: "1rem",
+              color: "#2c3e50",
+            }}
+          >
+            Price Range
+          </h6>
+          <div style={{ margin: "15px 0" }}>
+            <div style={{ marginBottom: "1rem" }}>
+              <label
+                style={{
+                  fontSize: "0.85rem",
+                  marginBottom: "0.5rem",
+                  display: "block",
+                  color: "black",
+                }}
+              >
+                Min Price: ₹{priceRange.min}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100000"
+                value={priceRange.min}
+                onChange={(e) =>
+                  setPriceRange((prev) => ({
+                    ...prev,
+                    min: parseInt(e.target.value),
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "6px",
+                  borderRadius: "3px",
+                  background: "#e9ecef",
+                  outline: "none",
+                  accentColor: "#2d8659",
+                  color: "black",
+                }}
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  fontSize: "0.85rem",
+                  marginBottom: "0.5rem",
+                  display: "block",
+                  color:"black"
+                }}
+              >
+                Max Price: ₹{priceRange.max}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max={priceRange.max}
+                value={priceRange.max}
+                onChange={(e) =>
+                  setPriceRange((prev) => ({
+                    ...prev,
+                    max: parseInt(e.target.value),
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "6px",
+                  borderRadius: "3px",
+                  background: "#e9ecef",
+                  outline: "none",
+                  accentColor: "#2d8659",
+                }}
+              />
+            </div>
           </div>
         </div>
+
+        {/* Clear Filters */}
+        <button
+          style={{
+            width: "100%",
+            padding: "0.75rem",
+            backgroundColor: "transparent",
+            border: "1px solid #2d8659",
+            color: "#2d8659",
+            borderRadius: "8px",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onClick={() => {
+            setSelectedCategory("");
+            setPriceRange({ min: 0, max: 10000 });
+          }}
+        >
+          Clear All Filters
+        </button>
       </div>
-
-      {/* Clear Filters */}
-      <button
-        style={{
-          width: "100%",
-          padding: "0.75rem",
-          backgroundColor: "transparent",
-          border: "1px solid #2d8659",
-          color: "#2d8659",
-          borderRadius: "8px",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-        }}
-        onClick={() => {
-          setSelectedCategory("");
-          setPriceRange({ min: 0, max: 10000 });
-        }}
-      >
-        Clear All Filters
-      </button>
-    </div>
-  );
-});
-
-// Product Card component - MOVED OUTSIDE
-const ProductCard = React.memo(({ product, addToCart }) => {
-  const [selectedVariant, setSelectedVariant] = useState(
-    product.variants && product.variants.length > 0
-      ? product.variants[0]
-      : null
-  );
-  const [quantity, setQuantity] = useState(1);
-  const [isAdding, setIsAdding] = useState(false);
+    );
+  }
+);
+// REPLACE the existing ProductCard component with this simplified version
+const ProductCard = React.memo(({ product, onViewDetails }) => {
   const [expanded, setExpanded] = useState(false);
 
-  const debouncedAddToCart = useMemo(
-    () =>
-      debounce((product, variant, qty) => {
-        addToCart(product, variant, qty);
-        setIsAdding(false);
-      }, 300),
-    [addToCart]
-  );
+  // Get unique attributes from all variants for general product display
+  const getAllAttributes = () => {
+    const attributeMap = new Map();
+    product.variants.forEach((variant) => {
+      variant.attributes?.forEach((attr) => {
+        const key = `${attr.attribute_name}-${attr.value_name}`;
+        if (!attributeMap.has(key)) {
+          attributeMap.set(key, {
+            attribute_name: attr.attribute_name,
+            value_name: attr.value_name,
+            attribute_id: attr.attribute_id,
+            value_id: attr.value_id,
+          });
+        }
+      });
+    });
+    return Array.from(attributeMap.values());
+  };
 
-  useEffect(() => {
-    return () => {
-      debouncedAddToCart.cancel();
-    };
-  }, [debouncedAddToCart]);
-
-  const handleAddToCart = useCallback(() => {
-    if (isAdding) return;
-    if (product.variants.length === 0) {
-      alert(
-        "This product requires a custom quote. Please contact us for pricing."
-      );
-      return;
-    }
-    if (!selectedVariant) return;
-
-    setIsAdding(true);
-    debouncedAddToCart(product, selectedVariant, quantity);
-
-    const button = document.getElementById(`add-btn-${product.id}`);
-    if (button) {
-      const originalText = button.textContent;
-      button.textContent = "Added!";
-      button.style.backgroundColor = "#28a745";
-      setTimeout(() => {
-        button.textContent = originalText;
-        button.style.backgroundColor = "#2d8659";
-      }, 1000);
-    }
-  }, [product, selectedVariant, quantity, isAdding, debouncedAddToCart]);
+  const allAttributes = getAllAttributes();
 
   return (
     <div
@@ -979,24 +1131,24 @@ const ProductCard = React.memo(({ product, addToCart }) => {
         ...cardStyle,
         display: "flex",
         flexDirection: "column",
-        height: "100%", // ensures equal height
+        height: "100%",
       }}
     >
       {/* Product Image */}
       <div style={{ position: "relative" }}>
         <img
           src={
-            selectedVariant && selectedVariant.primary_image
-              ? selectedVariant.primary_image
+            product.variants &&
+            product.variants.length > 0 &&
+            product.variants[0].primary_image
+              ? product.variants[0].primary_image
               : `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
                   product.name
                 )}`
           }
-          alt={`${product.name} - ${
-            selectedVariant ? selectedVariant.name : "Default"
-          }`}
+          alt={product.name}
           style={{
-            height: "200px",
+            height: "288px",
             objectFit: "cover",
             borderRadius: "12px 12px 0 0",
             width: "100%",
@@ -1013,6 +1165,7 @@ const ProductCard = React.memo(({ product, addToCart }) => {
           flexGrow: 1,
         }}
       >
+        {/* Product Name */}
         <h6
           style={{
             marginBottom: "0.5rem",
@@ -1023,6 +1176,7 @@ const ProductCard = React.memo(({ product, addToCart }) => {
           {product.name}
         </h6>
 
+        {/* Category */}
         {product.category_name && (
           <p
             style={{
@@ -1031,57 +1185,76 @@ const ProductCard = React.memo(({ product, addToCart }) => {
               marginBottom: "0.5rem",
             }}
           >
-            📁 {product.category_name}
+            {product.category_name}
           </p>
         )}
 
-        {/* Variant Selector */}
-        <div style={{ marginBottom: "0.5rem" }}>
-          <label
-            style={{
-              fontSize: "0.85rem",
-              fontWeight: "600",
-              display: "block",
-              marginBottom: "0.3rem",
-            }}
-          >
-            Variant:
-          </label>
-          <select
-            style={{
-              borderColor: "#2d8659",
-              borderRadius: "6px",
-              padding: "0.4rem",
-              fontSize: "0.85rem",
-              outline: "none",
-              width: "100%",
-            }}
-            value={selectedVariant?.id || ""}
-            onChange={(e) => {
-              const variant = product.variants.find(
-                (v) => v.id === parseInt(e.target.value)
-              );
-              setSelectedVariant(variant);
-            }}
-            disabled={product.variants.length === 0}
-          >
-            {product.variants.length === 0 ? (
-              <option value="">No variants available</option>
-            ) : (
-              product.variants.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  {variant.name} - ${parseFloat(variant.price).toFixed(2)}
-                </option>
-              ))
+        {/* Available Options as Hashtags */}
+        {allAttributes.length > 0 && (
+          <div style={{ marginBottom: "0.75rem" }}>
+            <label
+              style={{
+                fontSize: "0.8rem",
+                fontWeight: "600",
+                display: "block",
+                marginBottom: "0.3rem",
+                color: "#6c757d",
+              }}
+            >
+              Available Options:
+            </label>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "0.25rem",
+                maxHeight: expanded ? "none" : "50px",
+                overflow: "hidden",
+              }}
+            >
+              {allAttributes.map((attr, index) => (
+                <span
+                  key={`${attr.attribute_id}-${attr.value_id}-${index}`}
+                  style={{
+                    backgroundColor: "#e8f5e8",
+                    color: "#2d8659",
+                    padding: "0.2rem 0.5rem",
+                    borderRadius: "12px",
+                    fontSize: "0.75rem",
+                    fontWeight: "500",
+                    border: "1px solid #c3e6cb",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={`${attr.attribute_name}: ${attr.value_name}`}
+                >
+                  #{attr.value_name}
+                </span>
+              ))}
+            </div>
+            {allAttributes.length > 5 && (
+              <button
+                style={{
+                  marginTop: "0.25rem",
+                  background: "none",
+                  border: "none",
+                  color: "#2d8659",
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? "Show Less" : `+${allAttributes.length - 5} more`}
+              </button>
             )}
-          </select>
-        </div>
+          </div>
+        )}
 
-        {/* Description with scroll */}
+        {/* Description */}
         <div
           style={{
             flexGrow: 1,
-            marginBottom: "0.5rem",
+            marginBottom: "1rem",
             display: "flex",
             flexDirection: "column",
           }}
@@ -1133,63 +1306,483 @@ const ProductCard = React.memo(({ product, addToCart }) => {
           )}
         </div>
 
-        {/* Add to cart section (stuck to bottom) */}
-        {product.variants.length > 0 &&
-          selectedVariant &&
-          parseInt(selectedVariant.quantity) > 0 && (
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                marginTop: "auto", // pushes this section to bottom
-              }}
-            >
-              <div style={{ width: "80px" }}>
-                <input
-                  type="number"
-                  min="1"
-                  max={parseInt(selectedVariant.quantity)}
-                  value={quantity}
-                  onChange={(e) =>
-                    setQuantity(parseInt(e.target.value) || 1)
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem",
-                    border: "1px solid #2d8659",
-                    borderRadius: "6px",
-                    fontSize: "0.85rem",
-                    outline: "none",
-                  }}
-                />
-              </div>
-              <button
-                id={`add-btn-${product.id}`}
-                style={{
-                  ...buttonStyle,
-                  flex: 1,
-                  fontSize: "0.85rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                  opacity: isAdding ? 0.6 : 1,
-                  cursor: isAdding ? "not-allowed" : "pointer",
-                }}
-                onClick={handleAddToCart}
-                disabled={isAdding}
-              >
-                <ShoppingCart size={14} />
-                {isAdding ? "Adding..." : "Add to Cart"}
-              </button>
-            </div>
-          )}
+        {/* View Details Button */}
+        <button
+          style={{
+            ...buttonStyle,
+            width: "100%",
+            fontSize: "0.9rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+            marginTop: "auto",
+          }}
+          onClick={() => onViewDetails(product)}
+        >
+          <ShoppingCart size={16} />
+          Add to cart
+        </button>
       </div>
     </div>
   );
 });
 
+// NEW COMPONENT - Product Detail Modal
+const ProductDetailModal = React.memo(
+  ({ product, isOpen, onClose, addToCart }) => {
+    const [selectedVariant, setSelectedVariant] = useState(
+      product?.variants && product.variants.length > 0
+        ? product.variants[0]
+        : null
+    );
+    const [quantity, setQuantity] = useState(1);
+    const [isAdding, setIsAdding] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+    const debouncedAddToCart = useMemo(
+      () =>
+        debounce((product, variant, qty) => {
+          addToCart(product, variant, qty);
+          setIsAdding(false);
+        }, 300),
+      [addToCart]
+    );
+
+    useEffect(() => {
+      return () => {
+        debouncedAddToCart.cancel();
+      };
+    }, [debouncedAddToCart]);
+
+    useEffect(() => {
+      if (product?.variants && product.variants.length > 0) {
+        setSelectedVariant(product.variants[0]);
+      }
+      setQuantity(1);
+      setSelectedImageIndex(0);
+    }, [product]);
+
+    const handleAddToCart = useCallback(() => {
+      if (isAdding) return;
+      if (!product || product.variants.length === 0) {
+        alert(
+          "This product requires a custom quote. Please contact us for pricing."
+        );
+        return;
+      }
+      if (!selectedVariant) return;
+
+      setIsAdding(true);
+      debouncedAddToCart(product, selectedVariant, quantity);
+
+      // Show success feedback
+      setTimeout(() => {
+        setIsAdding(false);
+      }, 1000);
+    }, [product, selectedVariant, quantity, isAdding, debouncedAddToCart]);
+
+    if (!isOpen || !product) return null;
+
+    // Get all images from selected variant or fallback
+    const getProductImages = () => {
+      const images = [];
+      if (selectedVariant && selectedVariant.primary_image) {
+        images.push(selectedVariant.primary_image);
+      }
+      // Add secondary images if available
+      if (selectedVariant && selectedVariant.secondary_images) {
+        images.push(...selectedVariant.secondary_images);
+      }
+      // Fallback placeholder
+      if (images.length === 0) {
+        images.push(
+          `https://via.placeholder.com/500x400/2d8659/ffffff?text=${encodeURIComponent(
+            product.name
+          )}`
+        );
+      }
+      return images;
+    };
+
+    const productImages = getProductImages();
+
+    return (
+      <div style={modalStyle} onClick={onClose}>
+        <div
+          style={{
+            backgroundColor: "white",
+            borderRadius: "12px",
+            maxWidth: "1200px",
+            width: "100%",
+            maxHeight: "90vh",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "row",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Left Panel - Images */}
+          <div
+            style={{
+              width: "50%",
+              padding: "1.5rem",
+              borderRight: "1px solid #e9ecef",
+            }}
+          >
+            {/* Main Image */}
+            <div style={{ marginBottom: "1rem" }}>
+              <img
+                src={productImages[selectedImageIndex]}
+                alt={`${product.name} - View ${selectedImageIndex + 1}`}
+                style={{
+                  width: "100%",
+                  height: "615px",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  border: "1px solid #e9ecef",
+                }}
+              />
+            </div>
+
+            {/* Image Thumbnails */}
+            {productImages.length > 1 && (
+              <div style={{ display: "flex", gap: "0.5rem", overflow: "auto" }}>
+                {productImages.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`${product.name} - Thumbnail ${index + 1}`}
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      objectFit: "cover",
+                      borderRadius: "4px",
+                      border:
+                        selectedImageIndex === index
+                          ? "2px solid #2d8659"
+                          : "1px solid #e9ecef",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                    onClick={() => setSelectedImageIndex(index)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel - Details */}
+          <div
+            style={{ width: "50%", display: "flex", flexDirection: "column" }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "1.5rem",
+                borderBottom: "1px solid #e9ecef",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h4 style={{ margin: 0, color: "#2c3e50" }}>{product.name}</h4>
+              <button
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                  color: "#6c757d",
+                }}
+                onClick={onClose}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "1.5rem", overflow: "auto", flex: 1 }}>
+              {/* Category */}
+              {product.category_name && (
+                <p
+                  style={{
+                    color: "#6c757d",
+                    fontSize: "0.9rem",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  Category: {product.category_name}
+                </p>
+              )}
+
+              {/* Description */}
+              <div style={{ marginBottom: "1.5rem" }}>
+                <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
+                  Description
+                </h6>
+                <p style={{ color: "#6c757d", lineHeight: "1.5", margin: 0 }}>
+                  {product.description ||
+                    product.short_description ||
+                    product.details ||
+                    "No description available"}
+                </p>
+              </div>
+
+              {/* Variant Selection */}
+              <div style={{ marginBottom: "1.5rem" }}>
+                <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
+                  Select Variant ({product.variants.length} available)
+                </h6>
+                {product.variants.length === 0 ? (
+                  <p style={{ color: "#dc3545", fontStyle: "italic" }}>
+                    No variants available - Contact us for custom quote
+                  </p>
+                ) : (
+                  <select
+                    style={{
+                      ...selectStyle,
+                      borderColor: "#2d8659",
+                    }}
+                    value={selectedVariant?.id || ""}
+                    onChange={(e) => {
+                      const variant = product.variants.find(
+                        (v) => v.id === parseInt(e.target.value)
+                      );
+                      setSelectedVariant(variant);
+                      setSelectedImageIndex(0); // Reset image selection when variant changes
+                    }}
+                  >
+                    {product.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name} - ₹{parseFloat(variant.price).toFixed(2)}
+                        {variant.quantity && ` (Stock: ${variant.quantity})`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Selected Variant Details */}
+              {selectedVariant && (
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
+                    Selected Variant Details
+                  </h6>
+                  <div
+                    style={{
+                      backgroundColor: "#f8f9fa",
+                      padding: "1rem",
+                      borderRadius: "8px",
+                      border: "1px solid #e9ecef",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "0.5rem",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                        <strong>Name:</strong> {selectedVariant.name}
+                      </p>
+                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                        <strong>Code:</strong> {selectedVariant.code}
+                      </p>
+                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                        <strong>Price:</strong>{" "}
+                        <span style={{ color: "#2d8659", fontWeight: "600" }}>
+                          ₹{parseFloat(selectedVariant.price).toFixed(2)}
+                        </span>
+                      </p>
+                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                        <strong>Stock:</strong>{" "}
+                        {selectedVariant.quantity || "N/A"}
+                      </p>
+                    </div>
+
+                    {/* Variant Attributes */}
+                    {selectedVariant.attributes &&
+                      selectedVariant.attributes.length > 0 && (
+                        <div>
+                          <h6
+                            style={{
+                              margin: "0 0 0.5rem 0",
+                              fontSize: "0.85rem",
+                              color: "#2c3e50",
+                            }}
+                          >
+                            Attributes:
+                          </h6>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            {selectedVariant.attributes.map((attr, index) => (
+                              <span
+                                key={`modal-${selectedVariant.id}-${attr.attribute_id}-${attr.value_id}-${index}`}
+                                style={{
+                                  backgroundColor: "#2d8659",
+                                  color: "white",
+                                  padding: "0.2rem 0.5rem",
+                                  borderRadius: "12px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "500",
+                                }}
+                                title={`${attr.attribute_name}: ${attr.value_name}`}
+                              >
+                                {attr.attribute_name}: {attr.value_name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Variant Description */}
+                    {selectedVariant.description && (
+                      <div style={{ marginTop: "1rem" }}>
+                        <h6
+                          style={{
+                            margin: "0 0 0.5rem 0",
+                            fontSize: "0.85rem",
+                            color: "#2c3e50",
+                          }}
+                        >
+                          Variant Description:
+                        </h6>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.85rem",
+                            color: "#6c757d",
+                          }}
+                        >
+                          {selectedVariant.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer - Add to Cart */}
+            {product.variants.length > 0 &&
+              selectedVariant &&
+              parseInt(selectedVariant.quantity) > 0 && (
+                <div
+                  style={{
+                    padding: "1.5rem",
+                    borderTop: "1px solid #e9ecef",
+                    backgroundColor: "#f8f9fa",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "1rem",
+                      alignItems: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <div>
+                      <label
+                        style={{
+                          fontSize: "0.85rem",
+                          fontWeight: "600",
+                          display: "block",
+                          marginBottom: "0.3rem",
+                        }}
+                      >
+                        Quantity:
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={parseInt(selectedVariant.quantity)}
+                        value={quantity}
+                        onChange={(e) =>
+                          setQuantity(parseInt(e.target.value) || 1)
+                        }
+                        style={{
+                          width: "80px",
+                          padding: "0.5rem",
+                          border: "1px solid #2d8659",
+                          borderRadius: "6px",
+                          fontSize: "0.9rem",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label
+                        style={{
+                          fontSize: "0.85rem",
+                          fontWeight: "600",
+                          display: "block",
+                          marginBottom: "0.3rem",
+                        }}
+                      >
+                        Total:
+                      </label>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "1.2rem",
+                          fontWeight: "600",
+                          color: "#2d8659",
+                        }}
+                      >
+                        ₹
+                        {(parseFloat(selectedVariant.price) * quantity).toFixed(
+                          2
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    style={{
+                      ...buttonStyle,
+                      width: "100%",
+                      padding: "1rem",
+                      fontSize: "1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.5rem",
+                      opacity: isAdding ? 0.6 : 1,
+                      cursor: isAdding ? "not-allowed" : "pointer",
+                      backgroundColor: isAdding ? "#28a745" : "#2d8659",
+                    }}
+                    onClick={handleAddToCart}
+                    disabled={isAdding}
+                  >
+                    {isAdding ? (
+                      <>
+                        <Check size={16} />
+                        Added to Cart!
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart size={16} />
+                        Add to Cart
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+); // <-- ADD THIS LINE
 // Pagination component - MOVED OUTSIDE
 const Pagination = React.memo(({ currentPage, totalPages, setCurrentPage }) => {
   const getPageNumbers = () => {
@@ -1250,8 +1843,7 @@ const Pagination = React.memo(({ currentPage, totalPages, setCurrentPage }) => {
             key={page}
             style={{
               ...buttonStyle,
-              backgroundColor:
-                page === currentPage ? "#2d8659" : "transparent",
+              backgroundColor: page === currentPage ? "#2d8659" : "transparent",
               color: page === currentPage ? "white" : "#2d8659",
               border: "1px solid #2d8659",
               minWidth: "40px",
@@ -1274,9 +1866,7 @@ const Pagination = React.memo(({ currentPage, totalPages, setCurrentPage }) => {
           alignItems: "center",
           gap: "0.5rem",
         }}
-        onClick={() =>
-          setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-        }
+        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
         disabled={currentPage === totalPages}
       >
         Next
@@ -1287,327 +1877,328 @@ const Pagination = React.memo(({ currentPage, totalPages, setCurrentPage }) => {
 });
 
 // Cart Modal Component - MOVED OUTSIDE
-const CartModal = React.memo(({ 
-  cart, 
-  setShowCheckout, 
-  updateCartQuantity, 
-  removeFromCart, 
-  customerData, 
-  handleCustomerDataChange, 
-  submitOrder, 
-  orderLoading 
-}) => {
-  const cartItems = useMemo(() => {
-    return cart.map((item, index) => (
-      <div
-        key={`${item.productId}-${item.variantId}-${index}`}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "1rem",
-          padding: "1rem",
-          border: "1px solid #e9ecef",
-          borderRadius: "8px",
-          marginBottom: "0.5rem",
-        }}
-      >
-        
-        <img
-          src={item.image}
-          alt={item.productName}
-          style={{
-            width: "60px",
-            height: "60px",
-            objectFit: "cover",
-            borderRadius: "6px",
-          }}
-        />
-        <div style={{ flex: 1 }}>
-          <h6 style={{ margin: 0, fontSize: "0.9rem" }}>
-            {item.productName}
-          </h6>
-          <p style={{ margin: 0, color: "#6c757d", fontSize: "0.8rem" }}>
-            {item.variantName} • SKU: {item.sku}
-          </p>
-          <p style={{ margin: 0, fontWeight: "600", color: "#2d8659" }}>
-            ${parseFloat(item.price).toFixed(2)}
-          </p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <input
-            type="number"
-            min="1"
-            value={item.quantity}
-            onChange={(e) =>
-              updateCartQuantity(index, parseInt(e.target.value) || 1)
-            }
-            style={{
-              width: "60px",
-              padding: "0.25rem",
-              border: "1px solid #e9ecef",
-              borderRadius: "4px",
-              textAlign: "center",
-            }}
-          />
-          <button
-            onClick={() => removeFromCart(index)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#dc3545",
-              cursor: "pointer",
-              padding: "0.25rem",
-            }}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </div>
-    ));
-  }, [cart, updateCartQuantity, removeFromCart]);
-
-  return (
-    <div style={modalStyle} onClick={() => setShowCheckout(false)}>
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          maxWidth: "800px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+const CartModal = React.memo(
+  ({
+    cart,
+    setShowCheckout,
+    updateCartQuantity,
+    removeFromCart,
+    customerData,
+    handleCustomerDataChange,
+    submitOrder,
+    orderLoading,
+  }) => {
+    const cartItems = useMemo(() => {
+      return cart.map((item, index) => (
         <div
+          key={`${item.productId}-${item.variantId}-${index}`}
           style={{
-            padding: "1.5rem",
-            borderBottom: "1px solid #e9ecef",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
+            gap: "1rem",
+            padding: "1rem",
+            border: "1px solid #e9ecef",
+            borderRadius: "8px",
+            marginBottom: "0.5rem",
           }}
         >
-          <h5 style={{ margin: 0 }}>Shopping Cart</h5>
-          <button
+          <img
+            src={item.image}
+            alt={item.productName}
             style={{
-              background: "none",
-              border: "none",
-              fontSize: "1.5rem",
-              cursor: "pointer",
-              color: "#6c757d",
+              width: "60px",
+              height: "60px",
+              objectFit: "cover",
+              borderRadius: "6px",
             }}
-            onClick={() => setShowCheckout(false)}
-          >
-            <X size={24} />
-          </button>
+          />
+          <div style={{ flex: 1 }}>
+            <h6 style={{ margin: 0, fontSize: "0.9rem" }}>
+              {item.productName}
+            </h6>
+            <p style={{ margin: 0, color: "#6c757d", fontSize: "0.8rem" }}>
+              {item.variantName} • SKU: {item.sku}
+            </p>
+            <p style={{ margin: 0, fontWeight: "600", color: "#2d8659" }}>
+              ₹{parseFloat(item.price).toFixed(2)}
+            </p>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <input
+              type="number"
+              min="1"
+              value={item.quantity}
+              onChange={(e) =>
+                updateCartQuantity(index, parseInt(e.target.value) || 1)
+              }
+              style={{
+                width: "60px",
+                padding: "0.25rem",
+                border: "1px solid #e9ecef",
+                borderRadius: "4px",
+                textAlign: "center",
+              }}
+            />
+            <button
+              onClick={() => removeFromCart(index)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#dc3545",
+                cursor: "pointer",
+                padding: "0.25rem",
+              }}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
+      ));
+    }, [cart, updateCartQuantity, removeFromCart]);
 
-        <div style={{ padding: "1.5rem" }}>
-          {cart.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "2rem" }}>
-              <ShoppingCart
-                size={48}
-                style={{ color: "#cbd5e1", marginBottom: "1rem" }}
-              />
-              <p>Your cart is empty</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ marginBottom: "2rem" }}>{cartItems}</div>
+    return (
+      <div style={modalStyle} onClick={() => setShowCheckout(false)}>
+        <div
+          style={{
+            backgroundColor: "white",
+            borderRadius: "12px",
+            maxWidth: "800px",
+            width: "100%",
+            maxHeight: "90vh",
+            overflow: "auto",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            style={{
+              padding: "1.5rem",
+              borderBottom: "1px solid #e9ecef",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h5 style={{ margin: 0 }}>Shopping Cart</h5>
+            <button
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                color: "#6c757d",
+              }}
+              onClick={() => setShowCheckout(false)}
+            >
+              <X size={24} />
+            </button>
+          </div>
 
-              <div
-                style={{
-                  borderTop: "1px solid #e9ecef",
-                  paddingTop: "1rem",
-                  marginBottom: "2rem",
-                }}
-              >
+          <div style={{ padding: "1.5rem" }}>
+            {cart.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <ShoppingCart
+                  size={48}
+                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
+                />
+                <p>Your cart is empty</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: "2rem" }}>{cartItems}</div>
+
                 <div
                   style={{
+                    borderTop: "1px solid #e9ecef",
+                    paddingTop: "1rem",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontSize: "1.2rem",
+                      fontWeight: "600",
+                    }}
+                  >
+                    <span>Total:</span>
+                    <span style={{ color: "#2d8659" }}>
+                      ₹
+                      {cart
+                        .reduce(
+                          (sum, item) =>
+                            sum + parseFloat(item.price) * item.quantity,
+                          0
+                        )
+                        .toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid #e9ecef",
+                    borderRadius: "8px",
+                    padding: "1.5rem",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  <h6 style={{ marginBottom: "1rem", color: "#2c3e50" }}>
+                    Customer Information
+                  </h6>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr",
+                      gap: "1rem",
+                    }}
+                  >
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        <User
+                          size={16}
+                          style={{ display: "inline", marginRight: "0.5rem" }}
+                        />
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={customerData.name}
+                        onChange={(e) =>
+                          handleCustomerDataChange("name", e.target.value)
+                        }
+                        placeholder="Enter your full name"
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: "1px solid #e9ecef",
+                          borderRadius: "6px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        <Mail
+                          size={16}
+                          style={{ display: "inline", marginRight: "0.5rem" }}
+                        />
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={customerData.email}
+                        onChange={(e) =>
+                          handleCustomerDataChange("email", e.target.value)
+                        }
+                        placeholder="Enter your email address"
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: "1px solid #e9ecef",
+                          borderRadius: "6px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        <Phone
+                          size={16}
+                          style={{ display: "inline", marginRight: "0.5rem" }}
+                        />
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        value={customerData.phone}
+                        onChange={(e) =>
+                          handleCustomerDataChange("phone", e.target.value)
+                        }
+                        placeholder="Enter your phone number"
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: "1px solid #e9ecef",
+                          borderRadius: "6px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  style={{
+                    ...buttonStyle,
+                    width: "100%",
+                    padding: "1rem",
+                    fontSize: "1rem",
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "center",
-                    fontSize: "1.2rem",
-                    fontWeight: "600",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    opacity: orderLoading ? 0.6 : 1,
                   }}
+                  onClick={submitOrder}
+                  disabled={
+                    orderLoading || (!customerData.email && !customerData.phone)
+                  }
                 >
-                  <span>Total:</span>
-                  <span style={{ color: "#2d8659" }}>
-                    $
-                    {cart
-                      .reduce(
-                        (sum, item) =>
-                          sum + parseFloat(item.price) * item.quantity,
-                        0
-                      )
-                      .toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid #e9ecef",
-                  borderRadius: "8px",
-                  padding: "1.5rem",
-                  marginBottom: "1.5rem",
-                }}
-              >
-                <h6 style={{ marginBottom: "1rem", color: "#2c3e50" }}>
-                  Customer Information
-                </h6>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr",
-                    gap: "1rem",
-                  }}
-                >
-                  <div>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "0.5rem",
-                        fontSize: "0.9rem",
-                        fontWeight: "500",
-                      }}
-                    >
-                      <User
-                        size={16}
-                        style={{ display: "inline", marginRight: "0.5rem" }}
+                  {orderLoading ? (
+                    <>
+                      <div
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          border: "2px solid transparent",
+                          borderTop: "2px solid white",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite",
+                        }}
                       />
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={customerData.name}
-                      onChange={(e) =>
-                        handleCustomerDataChange("name", e.target.value)
-                      }
-                      placeholder="Enter your full name"
-                      style={{
-                        width: "100%",
-                        padding: "0.75rem",
-                        border: "1px solid #e9ecef",
-                        borderRadius: "6px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "0.5rem",
-                        fontSize: "0.9rem",
-                        fontWeight: "500",
-                      }}
-                    >
-                      <Mail
-                        size={16}
-                        style={{ display: "inline", marginRight: "0.5rem" }}
-                      />
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={customerData.email}
-                      onChange={(e) =>
-                        handleCustomerDataChange("email", e.target.value)
-                      }
-                      placeholder="Enter your email address"
-                      style={{
-                        width: "100%",
-                        padding: "0.75rem",
-                        border: "1px solid #e9ecef",
-                        borderRadius: "6px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "0.5rem",
-                        fontSize: "0.9rem",
-                        fontWeight: "500",
-                      }}
-                    >
-                      <Phone
-                        size={16}
-                        style={{ display: "inline", marginRight: "0.5rem" }}
-                      />
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      value={customerData.phone}
-                      onChange={(e) =>
-                        handleCustomerDataChange("phone", e.target.value)
-                      }
-                      placeholder="Enter your phone number"
-                      style={{
-                        width: "100%",
-                        padding: "0.75rem",
-                        border: "1px solid #e9ecef",
-                        borderRadius: "6px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                style={{
-                  ...buttonStyle,
-                  width: "100%",
-                  padding: "1rem",
-                  fontSize: "1rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem",
-                  opacity: orderLoading ? 0.6 : 1,
-                }}
-                onClick={submitOrder}
-                disabled={
-                  orderLoading || (!customerData.email && !customerData.phone)
-                }
-              >
-                {orderLoading ? (
-                  <>
-                    <div
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                        border: "2px solid transparent",
-                        borderTop: "2px solid white",
-                        borderRadius: "50%",
-                        animation: "spin 1s linear infinite",
-                      }}
-                    />
-                    Processing Order...
-                  </>
-                ) : (
-                  <>
-                    <Check size={16} />
-                    Submit Order Request
-                  </>
-                )}
-              </button>
-            </>
-          )}
+                      Processing Order...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      Submit Order Request
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 // MAIN COMPONENT - ClientProducts
 const ClientProducts = () => {
@@ -1618,16 +2209,19 @@ const ClientProducts = () => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("newest");
-
+  // Product Detail Modal States - ADD THESE
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [productsPerPage] = useState(12);
-
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [orderNumber, setOrderNumber] = useState("");
   // Filters
   const [showFilters, setShowFilters] = useState(true);
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 2000000 });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 100000 });
   const [selectedStatus, setSelectedStatus] = useState("");
 
   // Cart and Session Management
@@ -1646,8 +2240,6 @@ const ClientProducts = () => {
 
   // Wishlist
   const [wishlist, setWishlist] = useState(new Set());
-
-  // Stable fetchProducts function
   const fetchProducts = useCallback(
     async (page = 1, search = "", category = "", status = "") => {
       try {
@@ -1675,7 +2267,29 @@ const ClientProducts = () => {
                 `${API_BASE}/products/${product.id}/variants`
               );
               const variants = variantsRes.data.variants || [];
-              return { ...product, variants };
+
+              // Fetch attributes for each variant
+              const variantsWithAttributes = await Promise.all(
+                variants.map(async (variant) => {
+                  try {
+                    const attributesRes = await axios.get(
+                      `${API_BASE}/variants/${variant.id}/attributes`
+                    );
+                    return {
+                      ...variant,
+                      attributes: attributesRes.data.attributes || [],
+                    };
+                  } catch (error) {
+                    console.error(
+                      `Error fetching attributes for variant ${variant.id}:`,
+                      error
+                    );
+                    return { ...variant, attributes: [] };
+                  }
+                })
+              );
+
+              return { ...product, variants: variantsWithAttributes };
             } catch (error) {
               console.error(
                 `Error fetching variants for product ${product.id}:`,
@@ -1699,7 +2313,6 @@ const ClientProducts = () => {
     },
     [productsPerPage]
   );
-
   // Stable debounced search function
   const debouncedSearch = useMemo(
     () =>
@@ -1760,7 +2373,16 @@ const ClientProducts = () => {
       }
     }
   };
+  // Handle product detail modal - ADD THESE
+  const handleViewDetails = useCallback((product) => {
+    setSelectedProduct(product);
+    setShowProductDetail(true);
+  }, []);
 
+  const handleCloseProductDetail = useCallback(() => {
+    setShowProductDetail(false);
+    setSelectedProduct(null);
+  }, []);
   // Stable event handlers
   const handleSearchChange = useCallback(
     (e) => {
@@ -1839,7 +2461,6 @@ const ClientProducts = () => {
       setPreviousOrders([]);
     }
   }, []);
-
   // Initialize session and load cart from cookies
   const initializeSession = useCallback(async () => {
     let existingSessionId = CookieManager.getCookie("greenland_session");
@@ -1854,13 +2475,38 @@ const ClientProducts = () => {
     const ip = await CookieManager.getClientIP();
     setClientIP(ip);
 
+    // Load saved customer data from cookies
+    const savedCustomer = CookieManager.getCookie("greenland_customer");
+    if (savedCustomer) {
+      try {
+        const customerData = JSON.parse(decodeURIComponent(savedCustomer));
+        setCustomerData(customerData);
+
+        // Load previous orders if email is available
+        if (customerData.email) {
+          loadPreviousOrders(customerData.email, customerData.phone || "");
+        }
+      } catch (error) {
+        console.error("Error parsing customer cookie:", error);
+      }
+    } else {
+      // Fallback: check for separate email cookie
+      const savedEmail = CookieManager.getCookie("greenland_customer_email");
+      if (savedEmail) {
+        loadPreviousOrders(savedEmail, "");
+      }
+    }
+
     try {
       const response = await axios.get(`${API_BASE}/cart/${existingSessionId}`);
       if (response.data.cart) {
         setCart(response.data.cart);
       }
       if (response.data.customer) {
-        setCustomerData(response.data.customer);
+        setCustomerData((prevData) => ({
+          ...prevData,
+          ...response.data.customer,
+        }));
       }
     } catch (error) {
       console.error("Error loading cart from server:", error);
@@ -1874,7 +2520,7 @@ const ClientProducts = () => {
         }
       }
     }
-  }, []);
+  }, [loadPreviousOrders]);
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
@@ -1926,7 +2572,13 @@ const ClientProducts = () => {
       debouncedCustomerSave.cancel();
     };
   }, [debouncedSearch, debouncedCustomerSave]);
-
+  // Load previous orders on component mount if email is saved in cookies
+  useEffect(() => {
+    const savedEmail = CookieManager.getCookie("greenland_customer_email");
+    if (savedEmail) {
+      loadPreviousOrders(savedEmail, "");
+    }
+  }, [loadPreviousOrders]);
   // Sort and filter products
   const sortedAndFilteredProducts = useMemo(() => {
     return [...products]
@@ -2029,62 +2681,179 @@ const ClientProducts = () => {
   );
 
   // Load previous orders when cart modal is opened
+  // Load previous orders when customer data changes
   useEffect(() => {
-    if (!showCheckout) return;
-
-    const timeoutId = setTimeout(() => {
-      if (customerData.email || customerData.phone) {
-        loadPreviousOrders(customerData.email, customerData.phone);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    customerData.email,
-    customerData.phone,
-    showCheckout,
-    loadPreviousOrders,
-  ]);
-
+    if (customerData.email || customerData.phone) {
+      loadPreviousOrders(customerData.email, customerData.phone);
+    }
+  }, [customerData.email, customerData.phone, loadPreviousOrders]);
   // Submit order
-  const submitOrder = async () => {
-    if (cart.length === 0) return;
-    if (!customerData.email && !customerData.phone) {
-      alert("Please provide either email or phone number");
-      return;
-    }
+  
+// 3. REPLACE YOUR EXISTING submitOrder FUNCTION WITH THIS ONE
+const submitOrder = async () => {
+  if (cart.length === 0) return;
+  if (!customerData.email && !customerData.phone) {
+    alert("Please provide either email or phone number");
+    return;
+  }
 
-    setOrderLoading(true);
-    try {
-      const orderData = {
-        customer: customerData,
-        items: cart,
-        session_id: sessionId,
-        ip_address: clientIP,
-        total_amount: cart.reduce(
-          (sum, item) => sum + parseFloat(item.price) * item.quantity,
-          0
-        ),
-      };
+  setOrderLoading(true);
+  try {
+    const orderData = {
+      customer: customerData,
+      items: cart,
+      session_id: sessionId,
+      ip_address: clientIP,
+      total_amount: cart.reduce(
+        (sum, item) => sum + parseFloat(item.price) * item.quantity,
+        0
+      ),
+    };
 
-      const response = await axios.post(`${API_BASE}/orders`, orderData);
+    const response = await axios.post(`${API_BASE}/orders`, orderData);
 
-      if (response.data.success) {
-        alert(
-          `Order submitted successfully! Order number: ${response.data.order_number}`
+    if (response.data.success) {
+      // Save customer data to cookies after successful order
+      const customerJson = encodeURIComponent(JSON.stringify(customerData));
+      CookieManager.setCookie("greenland_customer", customerJson);
+
+      // If email is provided, save it separately for easier access
+      if (customerData.email) {
+        CookieManager.setCookie(
+          "greenland_customer_email",
+          customerData.email
         );
-        setCart([]);
-        setShowCheckout(false);
-        CookieManager.setCookie("greenland_cart", "", -1);
-        loadPreviousOrders(customerData.email, customerData.phone);
       }
-    } catch (error) {
-      console.error("Error submitting order:", error);
-      alert("Error submitting order. Please try again.");
-    } finally {
-      setOrderLoading(false);
+
+      // Clear cart and close checkout modal
+      setCart([]);
+      setShowCheckout(false);
+      CookieManager.setCookie("greenland_cart", "", -1);
+      loadPreviousOrders(customerData.email, customerData.phone);
+      
+      // Show order confirmation modal instead of alert
+      setOrderNumber(response.data.order_number);
+      setShowOrderConfirmation(true);
     }
-  };
+  } catch (error) {
+    console.error("Error submitting order:", error);
+    alert("Error submitting order. Please try again.");
+  } finally {
+    setOrderLoading(false);
+  }
+};
+  // 2. ADD THIS NEW COMPONENT OUTSIDE YOUR MAIN COMPONENT (alongside other modal components)
+  const OrderConfirmationModal = React.memo(
+    ({ isOpen, orderNumber, onClose }) => {
+      if (!isOpen) return null;
+
+      return (
+        <div style={modalStyle} onClick={onClose}>
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              maxWidth: "500px",
+              width: "100%",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
+                color: "white",
+                padding: "2rem",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 1rem",
+                }}
+              >
+                <Check size={32} />
+              </div>
+              <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "1.5rem" }}>
+                Order Placed Successfully!
+              </h4>
+              <p style={{ margin: 0, opacity: 0.9 }}>Order #{orderNumber}</p>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "2rem" }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  marginBottom: "1.5rem",
+                  color: "#2c3e50",
+                }}
+              >
+                <p style={{ marginBottom: "1rem", fontSize: "1.1rem" }}>
+                  Thank you for your order! We'll reach out to you with the
+                  quote shortly.
+                </p>
+                <p style={{ marginBottom: "0", color: "#6c757d" }}>
+                  For further queries, please contact us at:
+                </p>
+              </div>
+
+              {/* Contact Information */}
+              <div
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  border: "1px solid #e9ecef",
+                  borderRadius: "8px",
+                  padding: "1.5rem",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    fontSize: "1.2rem",
+                    fontWeight: "600",
+                    color: "#2d8659",
+                  }}
+                >
+                  <Phone size={20} />
+                  8940160721
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                style={{
+                  ...buttonStyle,
+                  width: "100%",
+                  padding: "1rem",
+                  fontSize: "1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                }}
+                onClick={onClose}
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  );
 
   return (
     <div style={containerStyle}>
@@ -2092,6 +2861,21 @@ const ClientProducts = () => {
         <PreviousOrdersModal
           previousOrders={previousOrders}
           setShowOrderHistory={setShowOrderHistory}
+        />
+      )}
+      {showOrderConfirmation && (
+        <OrderConfirmationModal
+          isOpen={showOrderConfirmation}
+          orderNumber={orderNumber}
+          onClose={() => setShowOrderConfirmation(false)}
+        />
+      )}
+      {showProductDetail && selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          isOpen={showProductDetail}
+          onClose={handleCloseProductDetail}
+          addToCart={addToCart}
         />
       )}
       <ModernNavbar
@@ -2191,7 +2975,7 @@ const ClientProducts = () => {
               >
                 <Grid size={16} />
               </button>
-              <button
+              {/* <button
                 style={{
                   padding: "0.5rem",
                   border: "none",
@@ -2203,7 +2987,7 @@ const ClientProducts = () => {
                 onClick={() => setViewMode("list")}
               >
                 <List size={16} />
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -2263,7 +3047,7 @@ const ClientProducts = () => {
                     <ProductCard
                       key={product.id}
                       product={product}
-                      addToCart={addToCart}
+                      onViewDetails={handleViewDetails}
                     />
                   ))}
                 </div>

@@ -518,7 +518,7 @@ const Dashboard = () => {
           {/* Header */}
           <div className="page-header">
             <h1 className="page-title">Dashboard</h1>
-            <div className="header-controls">
+            {/* <div className="header-controls">
               <div className="notification-wrapper">
                 <Bell size={20} />
                 <span className="notification-badge">3</span>
@@ -526,7 +526,7 @@ const Dashboard = () => {
               <div className="user-avatar">
                 <img src="/avatar.png" alt="User" />
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Stats Cards */}
@@ -584,7 +584,7 @@ const Dashboard = () => {
           <div className="content-grid">
             <div className="content-section recent-orders">
               <h2 className="section-title">
-                <Calendar size={20} />
+                {/* <Calendar size={20} /> */}
                 Recent Orders
               </h2>
               {recentOrders && recentOrders.length > 0 ? (
@@ -592,7 +592,7 @@ const Dashboard = () => {
                   {recentOrders.map((order, index) => (
                     <li key={order.id || index}>
                       <div className="order-info">
-                        <p>{order.name}</p>
+                        <p>{order.name}</p> 
                         <p className="text-muted">{order.date}</p>
                       </div>
                       <div className="order-meta">
@@ -617,7 +617,7 @@ const Dashboard = () => {
 
             <div className="content-section top-products">
               <h2 className="section-title">
-                <DollarSign size={20} />
+                {/* <DollarSign size={20} /> */}
                 Top Products
               </h2>
               {topProducts && topProducts.length > 0 ? (
