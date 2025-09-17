@@ -36,6 +36,18 @@ const OrderManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingItems, setEditingItems] = useState([]);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [variants, setVariants] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState("");
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
+  // const [orderVersions, setOrderVersions] = useState([]);
+  // const [activeVersionTab, setActiveVersionTab] = useState("current");
 
   // Modal states
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -52,7 +64,176 @@ const OrderManagement = () => {
   const [customerNameFilter, setCustomerNameFilter] = useState("");
   // Add processing state to prevent multiple clicks
   const [processing, setProcessing] = useState(false);
+  // Add Item Modal Component
+  const AddItemModal = ({ isOpen, onClose, onAddItem }) => {
+    if (!isOpen) return null;
 
+    const handleCategoryChange = (categoryId) => {
+      setSelectedCategory(categoryId);
+      setSelectedProduct("");
+      setSelectedVariant("");
+      setProducts([]);
+      setVariants([]);
+      if (categoryId) {
+        fetchProductsByCategory(categoryId);
+      }
+    };
+
+    const handleProductChange = (productId) => {
+      setSelectedProduct(productId);
+      setSelectedVariant("");
+      setVariants([]);
+      if (productId) {
+        fetchVariantsByProduct(productId);
+      }
+    };
+
+    const handleAddItem = () => {
+      if (!selectedVariant || !newItemQuantity) {
+        setModalMessage("Please select a variant and specify quantity");
+        setShowErrorModal(true);
+        return;
+      }
+
+      const selectedVariantData = variants.find((v) => v.id == selectedVariant);
+      if (!selectedVariantData) {
+        setModalMessage("Selected variant not found");
+        setShowErrorModal(true);
+        return;
+      }
+
+      if (newItemQuantity > selectedVariantData.quantity) {
+        setModalMessage(
+          `Quantity exceeds available inventory (${selectedVariantData.quantity})`
+        );
+        setShowErrorModal(true);
+        return;
+      }
+
+      const selectedProductData = products.find((p) => p.id == selectedProduct);
+
+      const newItem = {
+        variant_id: selectedVariant,
+        product_name: selectedProductData?.name || "Unknown Product",
+        variant_name: selectedVariantData.name,
+        variant_code: selectedVariantData.code,
+        quantity: newItemQuantity,
+        price: selectedVariantData.price,
+        available_quantity: selectedVariantData.quantity,
+      };
+
+      onAddItem(newItem);
+
+      // Reset form
+      setSelectedCategory("");
+      setSelectedProduct("");
+      setSelectedVariant("");
+      setNewItemQuantity(1);
+      setProducts([]);
+      setVariants([]);
+      onClose();
+    };
+
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h2>Add New Item</h2>
+            <button className="modal-close" onClick={onClose}>
+              ×
+            </button>
+          </div>
+          <div className="modal-body">
+            <div style={{ display: "grid", gap: "16px" }}>
+              <div>
+                <label className="form-label">Category</label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className="search-input"
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Product</label>
+                <select
+                  value={selectedProduct}
+                  onChange={(e) => handleProductChange(e.target.value)}
+                  className="search-input"
+                  disabled={!selectedCategory}
+                >
+                  <option value="">Select Product</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Variant</label>
+                <select
+                  value={selectedVariant}
+                  onChange={(e) => setSelectedVariant(e.target.value)}
+                  className="search-input"
+                  disabled={!selectedProduct}
+                >
+                  <option value="">Select Variant</option>
+                  {variants.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
+                      {variant.name} ({variant.code}) - Available:{" "}
+                      {variant.quantity}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Quantity</label>
+                <input
+                  type="number"
+                  value={newItemQuantity}
+                  onChange={(e) =>
+                    setNewItemQuantity(
+                      Math.max(1, parseInt(e.target.value) || 1)
+                    )
+                  }
+                  className="search-input"
+                  min="1"
+                  max={
+                    variants.find((v) => v.id == selectedVariant)?.quantity || 1
+                  }
+                />
+                {selectedVariant && (
+                  <small style={{ color: "#64748b", fontSize: "12px" }}>
+                    Available:{" "}
+                    {variants.find((v) => v.id == selectedVariant)?.quantity ||
+                      0}
+                  </small>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="btn-primary" onClick={handleAddItem}>
+              Add Item
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
   // Success/Error Modal Component
   const NotificationModal = ({
     isOpen,
@@ -139,285 +320,300 @@ const OrderManagement = () => {
       setModalMessage("Failed to fetch order details for Excel download");
       setShowErrorModal(true);
     }
-  };// Frontend PDF generation with Nature Theme
-const generateAndDownloadPDF = (order) => {
-  console.log("Starting PDF generation with validated data...");
+  }; // Frontend PDF generation with Nature Theme
+  const generateAndDownloadPDF = (order) => {
+    console.log("Starting PDF generation with validated data...");
 
-  try {
-    // Double check data validation
-    if (
-      !order ||
-      !order.items ||
-      !Array.isArray(order.items) ||
-      order.items.length === 0
-    ) {
-      throw new Error("Order validation failed: No items found");
-    }
-
-    const doc = new jsPDF();
-
-    // Nature Color Palette
-    const colors = {
-      forestGreen: [34, 139, 34],      // Primary green
-      leafGreen: [107, 142, 35],       // Secondary green
-      earthBrown: [139, 69, 19],       // Accent brown
-      cream: [253, 245, 230],          // Background cream
-      darkGreen: [0, 100, 0],          // Dark text green
-      lightGreen: [144, 238, 144],     // Light accent
-      sage: [158, 171, 141],           // Muted green
-      bark: [101, 67, 33],             // Dark brown
-    };
-
-    // Add subtle background texture
-    doc.setFillColor(...colors.cream);
-    doc.rect(0, 0, 210, 297, 'F'); // A4 page background
-
-    // Header with nature-inspired design
-    doc.setFillColor(...colors.forestGreen);
-    doc.roundedRect(10, 10, 190, 35, 3, 3, 'F');
-
-    // Add decorative leaf border elements
-    doc.setFillColor(...colors.leafGreen);
-    // Left leaf accent
-    doc.circle(15, 27.5, 3, 'F');
-    doc.ellipse(18, 27.5, 4, 2, 'F');
-    // Right leaf accent
-    doc.circle(195, 27.5, 3, 'F');
-    doc.ellipse(192, 27.5, 4, 2, 'F');
-
-    // Company Header with enhanced styling
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.text("GreenLand", 30, 25);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text("Naturally Sustainable Solutions", 30, 32);
-    doc.text("123 Forest Avenue, Green Valley, GV 12345", 30, 37);
-    doc.text("(555) 123-LEAF |hello@greenland.eco", 30, 42);
-
-    // Invoice Title with nature accent
-    doc.setFillColor(...colors.earthBrown);
-    doc.roundedRect(130, 55, 65, 20, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("INVOICE", 145, 62);
-    doc.setFontSize(12);
-    doc.text(`#${order.order_number}`, 145, 70);
-
-    // Invoice Details with styled box
-    doc.setFillColor(...colors.sage);
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(130, 78, 65, 25, 2, 2, 'F');
-    doc.setDrawColor(...colors.sage);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(130, 78, 65, 25, 2, 2, 'S');
-
-    doc.setTextColor(...colors.darkGreen);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("Date:", 135, 85);
-    doc.text("Status:", 135, 92);
-    
-    doc.setFont("helvetica", "normal");
-    doc.text(new Date(order.created_at).toLocaleDateString(), 155, 85);
-    doc.text(order.status.toUpperCase(), 155, 92);
-
-    // Bill To Section with leaf decoration
-    doc.setFillColor(...colors.lightGreen);
-    // doc.roundedRect(15, 110, 90, 35, 3, 3, 'F');
-    
-    // Leaf decoration
-    doc.setFillColor(...colors.forestGreen);
-    doc.circle(20, 115, 1.5, 'F');
-    doc.ellipse(22, 115, 2, 1, 'F');
-
-    doc.setTextColor(...colors.darkGreen);
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Bill To", 25, 118);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(order.customer_name || "Valued Customer", 20, 127);
-    doc.setFontSize(9);
-    doc.text(`${order.customer_email || "N/A"}`, 20, 134);
-    doc.text(`${order.customer_phone || "N/A"}`, 20, 140);
-
-    // Items Table with nature styling
-    const tableData = order.items.map((item, index) => [
-      ` ${item.product_name || "Unknown Product"}`,
-      item.variant_name || "Standard",
-      item.variant_code || "N/A",
-      item.quantity || 0,
-      `${parseFloat(item.price || 0).toFixed(2)}`,
-      `${(parseFloat(item.price || 0) * parseInt(item.quantity || 0)).toFixed(2)}`,
-    ]);
-
-    autoTable(doc, {
-      startY: 155,
-      head: [["Product", "Variant", "Code", "Qty", "Price", "Total"]],
-      body: tableData,
-      theme: "plain",
-      headStyles: {
-        fillColor: colors.forestGreen,
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 11,
-        cellPadding: { top: 8, right: 5, bottom: 8, left: 5 },
-      },
-      bodyStyles: {
-        textColor: colors.darkGreen,
-        fontSize: 10,
-        cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
-      },
-      alternateRowStyles: {
-        fillColor: colors.cream,
-      },
-      styles: {
-        fontSize: 10,
-        cellPadding: 6,
-        overflow: "linebreak",
-        halign: "left",
-        lineColor: colors.sage,
-        lineWidth: 0.3,
-      },
-      columnStyles: {
-        0: { cellWidth: 60 }, // Product name
-        1: { cellWidth: 30 }, // Variant
-        2: { cellWidth: 25, halign: "center" }, // Code
-        3: { cellWidth: 20, halign: "center" }, // Quantity
-        4: { cellWidth: 25, halign: "right" }, // Price
-        5: { cellWidth: 30, halign: "right", fontStyle: "bold" }, // Total
-      },
-      margin: { left: 15, right: 15 },
-    });
-
-    // Total Section with enhanced styling
-    let currentY = doc.lastAutoTable.finalY + 15;
-    
-    // Total box with nature styling
-    doc.setFillColor(...colors.earthBrown);
-    doc.roundedRect(120, currentY - 5, 75, 18, 3, 3, 'F');
-    
-    // Decorative elements
-    doc.setFillColor(...colors.leafGreen);
-    doc.circle(125, currentY + 4, 2, 'F');
-    doc.ellipse(128, currentY + 4, 3, 1.5, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text(" TOTAL:", 135, currentY + 2);
-    doc.setFontSize(18);
-    doc.text(`$${parseFloat(order.total_amount || 0).toFixed(2)}`, 135, currentY + 9);
-
-    // Payment Status
-    currentY += 25;
-    doc.setFillColor(...colors.lightGreen);
-    doc.roundedRect(15, currentY, 180, 12, 2, 2, 'F');
-    doc.setTextColor(...colors.darkGreen);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text(" Payment Required: 100% Advance Payment", 20, currentY + 7);
-
-    // Terms & Conditions with nature styling
-    currentY += 25;
-    
-    // Check if we need a new page
-    if (currentY > 220) {
-      doc.addPage();
-      doc.setFillColor(...colors.cream);
-      doc.rect(0, 0, 210, 297, 'F');
-      currentY = 20;
-    }
-
-    // Terms header with leaf decoration
-    doc.setFillColor(...colors.forestGreen);
-    doc.roundedRect(15, currentY, 180, 15, 2, 2, 'F');
-    
-    doc.setFillColor(...colors.leafGreen);
-    doc.circle(22, currentY + 7.5, 2, 'F');
-    doc.ellipse(25, currentY + 7.5, 3, 1.5, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(" Terms & Conditions", 30, currentY + 9);
-    
-    currentY += 20;
-    doc.setTextColor(...colors.darkGreen);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    
-    const terms = [
-      "Payment: 100% advance payment required for sustainable processing",
-      "Shipping: Eco-friendly packaging, charges apply based on location",
-      "Delivery: Estimated timelines, weather delays possible",
-      "Risk Transfer: Responsibility transfers upon eco-friendly dispatch",
-      "Returns: Defective items only, supporting our green initiative"
-    ];
-
-    terms.forEach((term, index) => {
-      // Alternate background for readability
-      if (index % 2 === 0) {
-        doc.setFillColor(...colors.cream);
-        const termLines = doc.splitTextToSize(term, 165);
-        doc.rect(15, currentY - 2, 180, (termLines.length * 4) + 2, 'F');
+    try {
+      // Double check data validation
+      if (
+        !order ||
+        !order.items ||
+        !Array.isArray(order.items) ||
+        order.items.length === 0
+      ) {
+        throw new Error("Order validation failed: No items found");
       }
-      
-      const termLines = doc.splitTextToSize(term, 165);
-      doc.text(termLines, 20, currentY + 2);
-      currentY += (termLines.length * 4) + 6;
-      
+
+      const doc = new jsPDF();
+
+      // Nature Color Palette
+      const colors = {
+        forestGreen: [34, 139, 34], // Primary green
+        leafGreen: [107, 142, 35], // Secondary green
+        earthBrown: [139, 69, 19], // Accent brown
+        cream: [253, 245, 230], // Background cream
+        darkGreen: [0, 100, 0], // Dark text green
+        lightGreen: [144, 238, 144], // Light accent
+        sage: [158, 171, 141], // Muted green
+        bark: [101, 67, 33], // Dark brown
+      };
+
+      // Add subtle background texture
+      doc.setFillColor(...colors.cream);
+      doc.rect(0, 0, 210, 297, "F"); // A4 page background
+
+      // Header with nature-inspired design
+      doc.setFillColor(...colors.forestGreen);
+      doc.roundedRect(10, 10, 190, 35, 3, 3, "F");
+
+      // Add decorative leaf border elements
+      doc.setFillColor(...colors.leafGreen);
+      // Left leaf accent
+      doc.circle(15, 27.5, 3, "F");
+      doc.ellipse(18, 27.5, 4, 2, "F");
+      // Right leaf accent
+      doc.circle(195, 27.5, 3, "F");
+      doc.ellipse(192, 27.5, 4, 2, "F");
+
+      // Company Header with enhanced styling
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont("helvetica", "bold");
+      doc.text("GreenLand", 30, 25);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Naturally Sustainable Solutions", 30, 32);
+      doc.text("123 Forest Avenue, Green Valley, GV 12345", 30, 37);
+      doc.text("(555) 123-LEAF |hello@greenland.eco", 30, 42);
+
+      // Invoice Title with nature accent
+      doc.setFillColor(...colors.earthBrown);
+      doc.roundedRect(130, 55, 65, 20, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("INVOICE", 145, 62);
+      doc.setFontSize(12);
+      doc.text(`#${order.order_number}`, 145, 70);
+
+      // Invoice Details with styled box
+      doc.setFillColor(...colors.sage);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(130, 78, 65, 25, 2, 2, "F");
+      doc.setDrawColor(...colors.sage);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(130, 78, 65, 25, 2, 2, "S");
+
+      doc.setTextColor(...colors.darkGreen);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Date:", 135, 85);
+      doc.text("Status:", 135, 92);
+
+      doc.setFont("helvetica", "normal");
+      doc.text(new Date(order.created_at).toLocaleDateString(), 155, 85);
+      doc.text(order.status.toUpperCase(), 155, 92);
+
+      // Bill To Section with leaf decoration
+      doc.setFillColor(...colors.lightGreen);
+      // doc.roundedRect(15, 110, 90, 35, 3, 3, 'F');
+
+      // Leaf decoration
+      doc.setFillColor(...colors.forestGreen);
+      doc.circle(20, 115, 1.5, "F");
+      doc.ellipse(22, 115, 2, 1, "F");
+
+      doc.setTextColor(...colors.darkGreen);
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Bill To", 25, 118);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text(order.customer_name || "Valued Customer", 20, 127);
+      doc.setFontSize(9);
+      doc.text(`${order.customer_email || "N/A"}`, 20, 134);
+      doc.text(`${order.customer_phone || "N/A"}`, 20, 140);
+
+      // Items Table with nature styling
+      const tableData = order.items.map((item, index) => [
+        ` ${item.product_name || "Unknown Product"}`,
+        item.variant_name || "Standard",
+        item.variant_code || "N/A",
+        item.quantity || 0,
+        `${parseFloat(item.price || 0).toFixed(2)}`,
+        `${(parseFloat(item.price || 0) * parseInt(item.quantity || 0)).toFixed(
+          2
+        )}`,
+      ]);
+
+      autoTable(doc, {
+        startY: 155,
+        head: [["Product", "Variant", "Code", "Qty", "Price", "Total"]],
+        body: tableData,
+        theme: "plain",
+        headStyles: {
+          fillColor: colors.forestGreen,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 11,
+          cellPadding: { top: 8, right: 5, bottom: 8, left: 5 },
+        },
+        bodyStyles: {
+          textColor: colors.darkGreen,
+          fontSize: 10,
+          cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
+        },
+        alternateRowStyles: {
+          fillColor: colors.cream,
+        },
+        styles: {
+          fontSize: 10,
+          cellPadding: 6,
+          overflow: "linebreak",
+          halign: "left",
+          lineColor: colors.sage,
+          lineWidth: 0.3,
+        },
+        columnStyles: {
+          0: { cellWidth: 60 }, // Product name
+          1: { cellWidth: 30 }, // Variant
+          2: { cellWidth: 25, halign: "center" }, // Code
+          3: { cellWidth: 20, halign: "center" }, // Quantity
+          4: { cellWidth: 25, halign: "right" }, // Price
+          5: { cellWidth: 30, halign: "right", fontStyle: "bold" }, // Total
+        },
+        margin: { left: 15, right: 15 },
+      });
+
+      // Total Section with enhanced styling
+      let currentY = doc.lastAutoTable.finalY + 15;
+
+      // Total box with nature styling
+      doc.setFillColor(...colors.earthBrown);
+      doc.roundedRect(120, currentY - 5, 75, 18, 3, 3, "F");
+
+      // Decorative elements
+      doc.setFillColor(...colors.leafGreen);
+      doc.circle(125, currentY + 4, 2, "F");
+      doc.ellipse(128, currentY + 4, 3, 1.5, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(" TOTAL:", 135, currentY + 2);
+      doc.setFontSize(18);
+      doc.text(
+        `$${parseFloat(order.total_amount || 0).toFixed(2)}`,
+        135,
+        currentY + 9
+      );
+
+      // Payment Status
+      currentY += 25;
+      doc.setFillColor(...colors.lightGreen);
+      doc.roundedRect(15, currentY, 180, 12, 2, 2, "F");
+      doc.setTextColor(...colors.darkGreen);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(" Payment Required: 100% Advance Payment", 20, currentY + 7);
+
+      // Terms & Conditions with nature styling
+      currentY += 25;
+
       // Check if we need a new page
-      if (currentY > 270) {
+      if (currentY > 220) {
         doc.addPage();
         doc.setFillColor(...colors.cream);
-        doc.rect(0, 0, 210, 297, 'F');
+        doc.rect(0, 0, 210, 297, "F");
         currentY = 20;
       }
-    });
 
-    // Footer with nature theme
-    currentY = Math.max(currentY, 270);
-    doc.setFillColor(...colors.sage);
-    doc.rect(0, currentY, 210, 27, 'F');
-    
-    // Decorative footer elements
-    doc.setFillColor(...colors.forestGreen);
-    for (let i = 0; i < 8; i++) {
-      const x = 25 + (i * 20);
-      doc.circle(x, currentY + 8, 1, 'F');
-      doc.ellipse(x + 2, currentY + 8, 2, 1, 'F');
+      // Terms header with leaf decoration
+      doc.setFillColor(...colors.forestGreen);
+      doc.roundedRect(15, currentY, 180, 15, 2, 2, "F");
+
+      doc.setFillColor(...colors.leafGreen);
+      doc.circle(22, currentY + 7.5, 2, "F");
+      doc.ellipse(25, currentY + 7.5, 3, 1.5, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(" Terms & Conditions", 30, currentY + 9);
+
+      currentY += 20;
+      doc.setTextColor(...colors.darkGreen);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+
+      const terms = [
+        "Payment: 100% advance payment required for sustainable processing",
+        "Shipping: Eco-friendly packaging, charges apply based on location",
+        "Delivery: Estimated timelines, weather delays possible",
+        "Risk Transfer: Responsibility transfers upon eco-friendly dispatch",
+        "Returns: Defective items only, supporting our green initiative",
+      ];
+
+      terms.forEach((term, index) => {
+        // Alternate background for readability
+        if (index % 2 === 0) {
+          doc.setFillColor(...colors.cream);
+          const termLines = doc.splitTextToSize(term, 165);
+          doc.rect(15, currentY - 2, 180, termLines.length * 4 + 2, "F");
+        }
+
+        const termLines = doc.splitTextToSize(term, 165);
+        doc.text(termLines, 20, currentY + 2);
+        currentY += termLines.length * 4 + 6;
+
+        // Check if we need a new page
+        if (currentY > 270) {
+          doc.addPage();
+          doc.setFillColor(...colors.cream);
+          doc.rect(0, 0, 210, 297, "F");
+          currentY = 20;
+        }
+      });
+
+      // Footer with nature theme
+      currentY = Math.max(currentY, 270);
+      doc.setFillColor(...colors.sage);
+      doc.rect(0, currentY, 210, 27, "F");
+
+      // Decorative footer elements
+      doc.setFillColor(...colors.forestGreen);
+      for (let i = 0; i < 8; i++) {
+        const x = 25 + i * 20;
+        doc.circle(x, currentY + 8, 1, "F");
+        doc.ellipse(x + 2, currentY + 8, 2, 1, "F");
+      }
+
+      doc.setTextColor(...colors.darkGreen);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        " Thank you for choosing sustainable solutions! ",
+        105,
+        currentY + 12,
+        { align: "center" }
+      );
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Together we grow a greener future - GreenLand Eco Solutions",
+        105,
+        currentY + 20,
+        { align: "center" }
+      );
+
+      // Save with nature-themed filename
+      const filename = `GreenLand-Invoice-${order.order_number}-${
+        order.customer_name?.replace(/\s+/g, "_") || "EcoCustomer"
+      }.pdf`;
+      doc.save(filename);
+
+      setModalMessage(`PDF generated successfully: ${filename}`);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      setModalMessage(`Failed to generate PDF: ${error.message}`);
+      setShowErrorModal(true);
     }
-
-    doc.setTextColor(...colors.darkGreen);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(" Thank you for choosing sustainable solutions! ", 105, currentY + 12, { align: "center" });
-    
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text("Together we grow a greener future - GreenLand Eco Solutions", 105, currentY + 20, { align: "center" });
-
-    // Save with nature-themed filename
-    const filename = `GreenLand-Invoice-${order.order_number}-${
-      order.customer_name?.replace(/\s+/g, "_") || "EcoCustomer"
-    }.pdf`;
-    doc.save(filename);
-
-    setModalMessage(`PDF generated successfully: ${filename}`);
-    setShowSuccessModal(true);
-    
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    setModalMessage(`Failed to generate PDF: ${error.message}`);
-    setShowErrorModal(true);
-  }
-};
+  };
   // Export only the selected/filtered customer data
   const handleExportFilteredCustomers = async () => {
     try {
@@ -587,6 +783,53 @@ const generateAndDownloadPDF = (order) => {
   };
 
   // Helper function to create sheet data for a single customer
+  // Fetch categories for add item modal
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/categories`);
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    }
+  };
+
+  // Fetch products by category
+  const fetchProductsByCategory = async (categoryId) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE}/categories/${categoryId}/products`
+      );
+      setProducts(response.data.products || []);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    }
+  };
+
+  // Fetch variants by product
+  const fetchVariantsByProduct = async (productId) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE}/products/${productId}/variants`
+      );
+      setVariants(response.data.variants || []);
+    } catch (error) {
+      console.error("Failed to fetch variants:", error);
+    }
+  };
+  // Remove this entire function
+  const fetchOrderVersions = async (orderId) => {
+    try {
+      console.log("Fetching versions for order:", orderId);
+      const response = await axios.get(
+        `${API_BASE}/orders/${orderId}/versions`
+      );
+      console.log("Order versions response:", response.data);
+      setOrderVersions(response.data.versions || []);
+    } catch (error) {
+      console.error("Failed to fetch order versions:", error);
+      setOrderVersions([]);
+    }
+  };
   const createCustomerSheetData = (customer) => {
     const sheetData = [];
 
@@ -1024,202 +1267,439 @@ const generateAndDownloadPDF = (order) => {
       setShowErrorModal(true);
     }
   };
-const generateAndDownloadExcel = (order) => {
-  console.log("Starting Excel generation with validated data...");
+  const generateAndDownloadExcel = (order) => {
+    console.log("Starting Excel generation with validated data...");
 
-  try {
-    if (
-      !order ||
-      !order.items ||
-      !Array.isArray(order.items) ||
-      order.items.length === 0
-    ) {
-      throw new Error("Order validation failed: No items found");
-    }
+    try {
+      if (
+        !order ||
+        !order.items ||
+        !Array.isArray(order.items) ||
+        order.items.length === 0
+      ) {
+        throw new Error("Order validation failed: No items found");
+      }
 
-    const wb = XLSX.utils.book_new();
+      const wb = XLSX.utils.book_new();
 
-    // Build sheet data
-    const sheetData = [
-      ["GreenLand Eco Solutions"], // Company name
-      ["123 Forest Avenue, Green Valley, GV 12345"],
-      ["Phone: (555) 123-LEAF | Email: hello@greenland.eco"],
-      [""],
-      ["INVOICE", "", "", "", "", `#${order.order_number}`],
-      [""],
-      ["Order Information", "", "", "", "", ""],
-      [
-        "Order Number:",
-        order.order_number,
-        "",
-        "Date:",
-        new Date(order.created_at).toLocaleDateString(),
-      ],
-      ["Status:", order.status, "", "Due:", "Upon Receipt"],
-      [""],
-      ["Bill To"],
-      ["Customer:", order.customer_name || "N/A"],
-      ["Email:", order.customer_email || "N/A"],
-      ["Phone:", order.customer_phone || "N/A"],
-      [""],
-      ["Product Name", "Variant", "Code", "Quantity", "Price (₹)", "Total (₹)"],
-    ];
+      // Build sheet data
+      const sheetData = [
+        ["GreenLand Eco Solutions"], // Company name
+        ["123 Forest Avenue, Green Valley, GV 12345"],
+        ["Phone: (555) 123-LEAF | Email: hello@greenland.eco"],
+        [""],
+        ["INVOICE", "", "", "", "", `#${order.order_number}`],
+        [""],
+        ["Order Information", "", "", "", "", ""],
+        [
+          "Order Number:",
+          order.order_number,
+          "",
+          "Date:",
+          new Date(order.created_at).toLocaleDateString(),
+        ],
+        ["Status:", order.status, "", "Due:", "Upon Receipt"],
+        [""],
+        ["Bill To"],
+        ["Customer:", order.customer_name || "N/A"],
+        ["Email:", order.customer_email || "N/A"],
+        ["Phone:", order.customer_phone || "N/A"],
+        [""],
+        [
+          "Product Name",
+          "Variant",
+          "Code",
+          "Quantity",
+          "Price (₹)",
+          "Total (₹)",
+        ],
+      ];
 
-    // Add items
-    order.items.forEach((item) => {
-      const total = parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+      // Add items
+      order.items.forEach((item) => {
+        const total =
+          parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+        sheetData.push([
+          item.product_name || "Unknown",
+          item.variant_name || "N/A",
+          item.variant_code || "N/A",
+          item.quantity || 0,
+          parseFloat(item.price || 0),
+          total,
+        ]);
+      });
+
+      // Grand Total
+      sheetData.push([]);
       sheetData.push([
-        item.product_name || "Unknown",
-        item.variant_name || "N/A",
-        item.variant_code || "N/A",
-        item.quantity || 0,
-        parseFloat(item.price || 0),
-        total,
+        "",
+        "",
+        "",
+        "",
+        "Grand Total:",
+        parseFloat(order.total_amount || 0),
       ]);
-    });
 
-    // Grand Total
-    sheetData.push([]);
-    sheetData.push([
-      "",
-      "",
-      "",
-      "",
-      "Grand Total:",
-      parseFloat(order.total_amount || 0),
-    ]);
+      // Terms & Conditions
+      sheetData.push([]);
+      sheetData.push(["Terms & Conditions"]);
+      sheetData.push(["1. Payment: 100% advance payment required."]);
+      sheetData.push([
+        "2. Shipping: Additional charges apply, post payment confirmation.",
+      ]);
+      sheetData.push([
+        "3. Delivery: Timelines are estimates only; delays may occur.",
+      ]);
+      sheetData.push([
+        "4. Risk: Responsibility transfers once goods are dispatched.",
+      ]);
+      sheetData.push([
+        "5. Returns: Accepted only for defective/incorrect items.",
+      ]);
 
-    // Terms & Conditions
-    sheetData.push([]);
-    sheetData.push(["Terms & Conditions"]);
-    sheetData.push(["1. Payment: 100% advance payment required."]);
-    sheetData.push([
-      "2. Shipping: Additional charges apply, post payment confirmation.",
-    ]);
-    sheetData.push([
-      "3. Delivery: Timelines are estimates only; delays may occur.",
-    ]);
-    sheetData.push([
-      "4. Risk: Responsibility transfers once goods are dispatched.",
-    ]);
-    sheetData.push([
-      "5. Returns: Accepted only for defective/incorrect items.",
-    ]);
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      // Set column widths
+      ws["!cols"] = [
+        { width: 40 },
+        { width: 20 },
+        { width: 15 },
+        { width: 10 },
+        { width: 15 },
+        { width: 15 },
+      ];
 
-    // Set column widths
-    ws["!cols"] = [
-      { width: 40 },
-      { width: 20 },
-      { width: 15 },
-      { width: 10 },
-      { width: 15 },
-      { width: 15 },
-    ];
+      // Merge company header
+      ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // GreenLand
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // Address
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }, // Phone/Email
+      ];
 
-    // Merge company header
-    ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // GreenLand
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // Address
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }, // Phone/Email
-    ];
+      // Style company name
+      ws["A1"].s = {
+        font: { bold: true, size: 18, color: { rgb: "006400" } },
+        alignment: { horizontal: "center" },
+      };
 
-    // Style company name
-    ws["A1"].s = {
-      font: { bold: true, size: 18, color: { rgb: "006400" } },
-      alignment: { horizontal: "center" },
-    };
+      // Style INVOICE row
+      ws["A5"].s = {
+        font: { bold: true, size: 16 },
+        fill: { fgColor: { rgb: "E8F5E9" } },
+      };
+      ws["F5"].s = {
+        font: { bold: true, size: 14 },
+        alignment: { horizontal: "right" },
+      };
 
-    // Style INVOICE row
-    ws["A5"].s = {
-      font: { bold: true, size: 16 },
-      fill: { fgColor: { rgb: "E8F5E9" } },
-    };
-    ws["F5"].s = {
-      font: { bold: true, size: 14 },
-      alignment: { horizontal: "right" },
-    };
+      // Style table headers
+      const itemsHeaderRow =
+        sheetData.findIndex((row) => row[0] === "Product Name") + 1;
+      ["A", "B", "C", "D", "E", "F"].forEach((col) => {
+        const ref = col + itemsHeaderRow;
+        if (ws[ref]) {
+          ws[ref].s = {
+            font: { bold: true },
+            alignment: { horizontal: "center" },
+            fill: { fgColor: { rgb: "C8E6C9" } },
+            border: {
+              top: { style: "thin" },
+              bottom: { style: "thin" },
+              left: { style: "thin" },
+              right: { style: "thin" },
+            },
+          };
+        }
+      });
 
-    // Style table headers
-    const itemsHeaderRow =
-      sheetData.findIndex((row) => row[0] === "Product Name") + 1;
-    ["A", "B", "C", "D", "E", "F"].forEach((col) => {
-      const ref = col + itemsHeaderRow;
-      if (ws[ref]) {
-        ws[ref].s = {
+      // Style Grand Total
+      const totalRowIndex =
+        sheetData.findIndex((row) => row[4] === "Grand Total:") + 1;
+      if (totalRowIndex > 0) {
+        ws["E" + totalRowIndex].s = {
           font: { bold: true },
-          alignment: { horizontal: "center" },
-          fill: { fgColor: { rgb: "C8E6C9" } },
-          border: {
-            top: { style: "thin" },
-            bottom: { style: "thin" },
-            left: { style: "thin" },
-            right: { style: "thin" },
-          },
+          alignment: { horizontal: "right" },
+          fill: { fgColor: { rgb: "FFF3E0" } },
+        };
+        ws["F" + totalRowIndex].s = {
+          font: { bold: true },
+          alignment: { horizontal: "right" },
+          fill: { fgColor: { rgb: "FFF3E0" } },
+          numFmt: "₹#,##0.00",
         };
       }
-    });
 
-    // Style Grand Total
-    const totalRowIndex =
-      sheetData.findIndex((row) => row[4] === "Grand Total:") + 1;
-    if (totalRowIndex > 0) {
-      ws["E" + totalRowIndex].s = {
-        font: { bold: true },
-        alignment: { horizontal: "right" },
-        fill: { fgColor: { rgb: "FFF3E0" } },
-      };
-      ws["F" + totalRowIndex].s = {
-        font: { bold: true },
-        alignment: { horizontal: "right" },
-        fill: { fgColor: { rgb: "FFF3E0" } },
-        numFmt: "₹#,##0.00",
-      };
+      // Style Terms & Conditions header
+      const termsRowIndex =
+        sheetData.findIndex((row) => row[0] === "Terms & Conditions") + 1;
+      if (termsRowIndex > 0) {
+        ws["A" + termsRowIndex].s = {
+          font: { bold: true, size: 12 },
+          fill: { fgColor: { rgb: "F5F5F5" } },
+        };
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, "Invoice");
+
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = `Invoice-${order.order_number}-${
+        order.customer_name?.replace(/\s+/g, "_") || "Customer"
+      }.xlsx`;
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setModalMessage(`Excel downloaded successfully: ${filename}`);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("Excel generation error:", error);
+      setModalMessage(`Failed to generate Excel: ${error.message}`);
+      setShowErrorModal(true);
     }
-
-    // Style Terms & Conditions header
-    const termsRowIndex =
-      sheetData.findIndex((row) => row[0] === "Terms & Conditions") + 1;
-    if (termsRowIndex > 0) {
-      ws["A" + termsRowIndex].s = {
-        font: { bold: true, size: 12 },
-        fill: { fgColor: { rgb: "F5F5F5" } },
-      };
-    }
-
-    XLSX.utils.book_append_sheet(wb, ws, "Invoice");
-
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const filename = `Invoice-${order.order_number}-${
-      order.customer_name?.replace(/\s+/g, "_") || "Customer"
-    }.xlsx`;
-    link.href = url;
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-
-    setModalMessage(`Excel downloaded successfully: ${filename}`);
-    setShowSuccessModal(true);
-  } catch (error) {
-    console.error("Excel generation error:", error);
-    setModalMessage(`Failed to generate Excel: ${error.message}`);
-    setShowErrorModal(true);
-  }
-};
-
-  // Order Detail Modal Component
+  }; // Order Detail Modal Component - COMPLETE REPLACEMENT
+  // Fixed OrderDetailModal Component - Replace the existing one
   const OrderDetailModal = ({ isOpen, onClose, order }) => {
+    // Local state for order versions to avoid infinite loops
+    const [localOrderVersions, setLocalOrderVersions] = useState([]);
+    const [localActiveVersionTab, setLocalActiveVersionTab] =
+      useState("current");
+    // Add this useEffect in your OrderDetailModal component
+    useEffect(() => {
+      if (isEditMode && editingItems.length > 0) {
+        // Real-time total calculation as user edits
+        console.log("Items updated in edit mode:", editingItems);
+      }
+    }, [editingItems, isEditMode]);
     if (!isOpen || !order) return null;
+    const handleToggleEditMode = async () => {
+      console.log("Toggle edit mode clicked, current state:", isEditMode);
 
+      if (!isEditMode) {
+        // Enter edit mode - initialize editing items with deep copy
+        const itemsCopy = selectedOrder.items.map((item) => ({
+          ...item,
+          available_quantity: item.available_quantity || 999, // Fallback if not provided
+        }));
+        setEditingItems(itemsCopy);
+        await fetchCategories();
+        console.log("Entering edit mode, editing items set:", itemsCopy);
+      } else {
+        // Exit edit mode - reset states
+        setEditingItems([]);
+        setSelectedCategory("");
+        setSelectedProduct("");
+        setSelectedVariant("");
+        setProducts([]);
+        setVariants([]);
+        console.log("Exiting edit mode");
+      }
+      setIsEditMode(!isEditMode);
+    };
+
+    // Update the total calculation in the OrderDetailModal
+    const calculateCurrentTotal = () => {
+      const items = isEditMode ? editingItems : order?.items || [];
+      return items
+        .reduce(
+          (sum, item) =>
+            sum + parseFloat(item.price || 0) * parseInt(item.quantity || 0),
+          0
+        )
+        .toFixed(2);
+    };
+
+    const handleQuantityChange = (itemIndex, newQuantity) => {
+      const updatedItems = [...editingItems];
+      updatedItems[itemIndex].quantity = Math.max(
+        0,
+        parseInt(newQuantity) || 0
+      );
+      setEditingItems(updatedItems);
+    };
+
+    const handleRemoveItem = (itemIndex) => {
+      const updatedItems = editingItems.filter(
+        (_, index) => index !== itemIndex
+      );
+      setEditingItems(updatedItems);
+    };
+
+    const handleAddNewItem = (newItem) => {
+      setEditingItems([...editingItems, newItem]);
+    };
+    const handleSaveChanges = async () => {
+      const editReason = prompt(
+        "Please provide a reason for editing this order:"
+      );
+      if (!editReason || editReason.trim() === "") return;
+
+      try {
+        setProcessing(true);
+
+        // Get token from localStorage or wherever you store it
+        const token =
+          localStorage.getItem("authToken") || localStorage.getItem("token");
+
+        const response = await axios.put(
+          `${API_BASE}/orders/${selectedOrder.id}/update`,
+          {
+            items: editingItems,
+            edit_reason: editReason,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.data.success) {
+          // Update the selected order with the new order data returned from server
+          const newOrder = response.data.order;
+          setSelectedOrder(newOrder);
+
+          // Helper function to get base order number (without version suffix)
+          const getBaseOrderNumber = (orderNumber) => {
+            if (!orderNumber) return "";
+            return orderNumber.split("-v")[0];
+          };
+
+          // Get the base order number for comparison
+          const baseOrderNumber = getBaseOrderNumber(
+            selectedOrder.order_number
+          );
+
+          // Update the orders list based on active tab
+          if (activeTab === "orders") {
+            setOrders((prev) =>
+              prev.map((order) => {
+                // Safety check for null/undefined order_number
+                if (!order.order_number || !selectedOrder.order_number) {
+                  return order;
+                }
+
+                // Check if this order matches the base order number
+                const orderBaseNumber = getBaseOrderNumber(order.order_number);
+
+                return orderBaseNumber === baseOrderNumber ? newOrder : order;
+              })
+            );
+          } else if (activeTab === "history") {
+            setOrderHistory((prev) =>
+              prev.map((order) => {
+                // Safety check for null/undefined order_number
+                if (!order.order_number || !selectedOrder.order_number) {
+                  return order;
+                }
+
+                // Check if this order matches the base order number
+                const orderBaseNumber = getBaseOrderNumber(order.order_number);
+
+                return orderBaseNumber === baseOrderNumber ? newOrder : order;
+              })
+            );
+          }
+
+          setModalMessage(
+            "Order updated successfully. Previous version moved to history."
+          );
+          setShowSuccessModal(true);
+          setIsEditMode(false);
+          setEditingItems([]);
+
+          // Refresh order versions to show the new history
+          await fetchLocalOrderVersions(newOrder.id);
+        } else {
+          throw new Error(response.data.message || "Update failed");
+        }
+      } catch (error) {
+        console.error("Order update error:", error);
+        setModalMessage(
+          "Failed to update order: " +
+            (error.response?.data?.error || error.message)
+        );
+        setShowErrorModal(true);
+      } finally {
+        setProcessing(false);
+      }
+    };
+
+    // Also update the fetchLocalOrderVersions function to be more robust
+    const fetchLocalOrderVersions = async (orderId) => {
+      try {
+        console.log("Fetching versions for order:", orderId);
+        const response = await axios.get(
+          `${API_BASE}/orders/${orderId}/versions`
+        );
+        console.log("Order versions response:", response.data);
+
+        // Sort versions by creation date, most recent first
+        const versions = (response.data.versions || []).sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        setLocalOrderVersions(versions);
+      } catch (error) {
+        console.error("Failed to fetch order versions:", error);
+        setLocalOrderVersions([]);
+      }
+    };
+
+    // Update the OrderDetailModal useEffect to handle data refresh
+    useEffect(() => {
+      let mounted = true;
+
+      const loadVersions = async () => {
+        if (isOpen && order && order.id && mounted) {
+          try {
+            await fetchLocalOrderVersions(order.id);
+            if (mounted) {
+              setLocalActiveVersionTab("current");
+            }
+          } catch (error) {
+            console.error("Error loading versions:", error);
+          }
+        }
+      };
+
+      // Only load versions when modal opens or order changes
+      if (isOpen && order?.id) {
+        loadVersions();
+      }
+
+      // Reset local state when modal closes
+      if (!isOpen) {
+        setLocalOrderVersions([]);
+        setLocalActiveVersionTab("current");
+        setIsEditMode(false);
+        setEditingItems([]);
+      }
+
+      return () => {
+        mounted = false;
+      };
+    }, [isOpen, order?.id]);
+    // Add this function to refresh data after successful operations
+    const refreshCurrentData = async () => {
+      try {
+        setLoading(true);
+        await fetchData(); // This will refresh the current tab's data
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     const downloadPDF = () => {
       generateAndDownloadPDF(order);
     };
@@ -1228,240 +1708,543 @@ const generateAndDownloadExcel = (order) => {
       generateAndDownloadExcel(order);
     };
 
+    const currentItems = isEditMode ? editingItems : order.items;
+
     return (
-      <div className="modal-overlay">
-        <div className="modal-content modal-large">
-          <div className="modal-header">
-            <h2>Order Details - {order.order_number}</h2>
-            <button className="modal-close" onClick={onClose}>
-              ×
-            </button>
-          </div>
-          <div className="modal-body">
-            <div style={{ display: "grid", gap: "24px" }}>
-              {/* Customer Information */}
-              <div>
-                <h3
+      <>
+        <div className="modal-overlay">
+          <div className="modal-content modal-large">
+            <div className="modal-header">
+              <h2>Order Details - {order.order_number}</h2>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "12px" }}
+              >
+                {/* Edit Toggle Switch */}
+                <label
                   style={{
-                    margin: "0 0 12px 0",
-                    color: "#1e293b",
-                    fontSize: "18px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
                   }}
                 >
-                  Customer Information
-                </h3>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: "16px",
-                    padding: "16px",
-                    backgroundColor: "#f8fafc",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <div>
-                    <label className="form-label">Name</label>
-                    <p style={{ margin: 0, color: "#374151" }}>
-                      {order.customer_name || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="form-label">Email</label>
-                    <p style={{ margin: 0, color: "#374151" }}>
-                      {order.customer_email || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="form-label">Phone</label>
-                    <p style={{ margin: 0, color: "#374151" }}>
-                      {order.customer_phone || "N/A"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Order Information */}
-              <div>
-                <h3
-                  style={{
-                    margin: "0 0 12px 0",
-                    color: "#1e293b",
-                    fontSize: "18px",
-                  }}
-                >
-                  Order Information
-                </h3>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                    gap: "16px",
-                    padding: "16px",
-                    backgroundColor: "#f8fafc",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <div>
-                    <label className="form-label">Status</label>
-                    <span className={`status-badge status-${order.status}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="form-label">Created</label>
-                    <p style={{ margin: 0, color: "#374151" }}>
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="form-label">Items</label>
-                    <p style={{ margin: 0, color: "#374151" }}>
-                      {order.item_count} items
-                    </p>
-                  </div>
-                  <div>
-                    <label className="form-label">Total</label>
-                    <p
-                      style={{ margin: 0, color: "#374151", fontWeight: "600" }}
-                    >
-                      ₹{parseFloat(order.total_amount || 0).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Order Items */}
-              {order.items && order.items.length > 0 && (
-                <div>
-                  <h3
-                    style={{
-                      margin: "0 0 12px 0",
-                      color: "#1e293b",
-                      fontSize: "18px",
-                    }}
-                  >
-                    Order Items
-                  </h3>
+                  <input
+                    type="checkbox"
+                    checked={isEditMode}
+                    onChange={handleToggleEditMode}
+                    style={{ display: "none" }}
+                  />
                   <div
                     style={{
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      overflow: "hidden",
+                      width: "44px",
+                      height: "24px",
+                      backgroundColor: isEditMode ? "#3b82f6" : "#d1d5db",
+                      borderRadius: "12px",
+                      position: "relative",
+                      transition: "all 0.2s",
                     }}
                   >
                     <div
                       style={{
-                        backgroundColor: "#f8fafc",
-                        padding: "12px 16px",
-                        borderBottom: "1px solid #e2e8f0",
-                        display: "grid",
-                        gridTemplateColumns: "2fr 1fr 1fr 1fr",
-                        gap: "16px",
-                        fontWeight: "600",
-                        fontSize: "14px",
+                        width: "20px",
+                        height: "20px",
+                        backgroundColor: "white",
+                        borderRadius: "50%",
+                        position: "absolute",
+                        top: "2px",
+                        left: isEditMode ? "22px" : "2px",
+                        transition: "all 0.2s",
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: "14px", fontWeight: "500" }}>
+                    {isEditMode ? "Edit Mode" : "View Mode"}
+                  </span>
+                </label>
+                <button className="modal-close" onClick={onClose}>
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-body">
+              {/* Version Tabs */}
+              <div style={{ marginBottom: "24px" }}>
+                <div
+                  style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}
+                >
+                  <button
+                    className={`tab-button ${
+                      localActiveVersionTab === "current" ? "active" : ""
+                    }`}
+                    onClick={() => setLocalActiveVersionTab("current")}
+                    style={{
+                      padding: "8px 16px",
+                      border: "none",
+                      background:
+                        localActiveVersionTab === "current" ? "white" : "none",
+                      borderBottom:
+                        localActiveVersionTab === "current"
+                          ? "2px solid #3b82f6"
+                          : "none",
+                      color:
+                        localActiveVersionTab === "current"
+                          ? "#3b82f6"
+                          : "#64748b",
+                    }}
+                  >
+                    Current Order
+                  </button>
+                  {localOrderVersions.length > 0 && (
+                    <button
+                      className={`tab-button ${
+                        localActiveVersionTab === "history" ? "active" : ""
+                      }`}
+                      onClick={() => setLocalActiveVersionTab("history")}
+                      style={{
+                        padding: "8px 16px",
+                        border: "none",
+                        background:
+                          localActiveVersionTab === "history"
+                            ? "white"
+                            : "none",
+                        borderBottom:
+                          localActiveVersionTab === "history"
+                            ? "2px solid #3b82f6"
+                            : "none",
+                        color:
+                          localActiveVersionTab === "history"
+                            ? "#3b82f6"
+                            : "#64748b",
                       }}
                     >
-                      <span>Product</span>
-                      <span>Quantity</span>
-                      <span>Price</span>
-                      <span>Total</span>
+                      Order History ({localOrderVersions.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {localActiveVersionTab === "current" ? (
+                <div style={{ display: "grid", gap: "24px" }}>
+                  {/* Customer Information */}
+                  <div>
+                    <h3
+                      style={{
+                        margin: "0 0 12px 0",
+                        color: "#1e293b",
+                        fontSize: "18px",
+                      }}
+                    >
+                      Customer Information
+                    </h3>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: "16px",
+                        padding: "16px",
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div>
+                        <label className="form-label">Name</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.customer_name || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">Email</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.customer_email || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">Phone</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.customer_phone || "N/A"}
+                        </p>
+                      </div>
                     </div>
-                    {order.items.map((item, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom:
-                            index < order.items.length - 1
-                              ? "1px solid #e2e8f0"
-                              : "none",
-                          display: "grid",
-                          gridTemplateColumns: "2fr 1fr 1fr 1fr",
-                          gap: "16px",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div>
-                          <p style={{ margin: "0 0 4px 0", fontWeight: "500" }}>
-                            {item.product_name || "Unknown Product"}
-                          </p>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "12px",
-                              color: "#64748b",
-                            }}
-                          >
-                            {item.variant_name} • {item.variant_code}
-                          </p>
-                        </div>
-                        <span>{item.quantity}</span>
-                        <span>₹{parseFloat(item.price).toFixed(2)}</span>
-                        <span style={{ fontWeight: "600" }}>
-                          ₹
-                          {(
-                            parseFloat(item.price) * parseInt(item.quantity)
-                          ).toFixed(2)}
+                  </div>
+
+                  {/* Order Information */}
+                  <div>
+                    <h3
+                      style={{
+                        margin: "0 0 12px 0",
+                        color: "#1e293b",
+                        fontSize: "18px",
+                      }}
+                    >
+                      Order Information
+                    </h3>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(150px, 1fr))",
+                        gap: "16px",
+                        padding: "16px",
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div>
+                        <label className="form-label">Status</label>
+                        <span className={`status-badge status-${order.status}`}>
+                          {order.status}
                         </span>
                       </div>
-                    ))}
+                      <div>
+                        <label className="form-label">Created</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">Items</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {currentItems?.length || 0} items
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">Total</label>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#374151",
+                            fontWeight: "600",
+                          }}
+                        >
+                          ₹
+                          {currentItems
+                            ?.reduce(
+                              (sum, item) =>
+                                sum +
+                                parseFloat(item.price || 0) *
+                                  parseInt(item.quantity || 0),
+                              0
+                            )
+                            .toFixed(2) || "0.00"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Notes */}
-              {order.note && (
+                  {/* Order Items */}
+                  {currentItems && currentItems.length > 0 && (
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            margin: 0,
+                            color: "#1e293b",
+                            fontSize: "18px",
+                          }}
+                        >
+                          Order Items
+                        </h3>
+                        {isEditMode && (
+                          <button
+                            className="btn-primary"
+                            onClick={() => setShowAddItemModal(true)}
+                            style={{ padding: "8px 16px", fontSize: "14px" }}
+                          >
+                            <Plus size={14} />
+                            Add Item
+                          </button>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "8px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            backgroundColor: "#f8fafc",
+                            padding: "12px 16px",
+                            borderBottom: "1px solid #e2e8f0",
+                            display: "grid",
+                            gridTemplateColumns: isEditMode
+                              ? "2fr 1fr 1fr 1fr 80px"
+                              : "2fr 1fr 1fr 1fr",
+                            gap: "16px",
+                            fontWeight: "600",
+                            fontSize: "14px",
+                          }}
+                        >
+                          <span>Product</span>
+                          <span>Quantity</span>
+                          <span>Price</span>
+                          <span>Total</span>
+                          {isEditMode && <span>Actions</span>}
+                        </div>
+                        {currentItems.map((item, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              padding: "12px 16px",
+                              borderBottom:
+                                index < currentItems.length - 1
+                                  ? "1px solid #e2e8f0"
+                                  : "none",
+                              display: "grid",
+                              gridTemplateColumns: isEditMode
+                                ? "2fr 1fr 1fr 1fr 80px"
+                                : "2fr 1fr 1fr 1fr",
+                              gap: "16px",
+                              alignItems: "center",
+                            }}
+                          >
+                            <div>
+                              <p
+                                style={{
+                                  margin: "0 0 4px 0",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {item.product_name || "Unknown Product"}
+                              </p>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: "12px",
+                                  color: "#64748b",
+                                }}
+                              >
+                                {item.variant_name} • {item.variant_code}
+                              </p>
+                            </div>
+                            <div>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) =>
+                                    handleQuantityChange(index, e.target.value)
+                                  }
+                                  min="0"
+                                  max={item.available_quantity || 999}
+                                  style={{
+                                    width: "60px",
+                                    padding: "4px 8px",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: "4px",
+                                  }}
+                                />
+                              ) : (
+                                <span>{item.quantity}</span>
+                              )}
+                            </div>
+                            <span>
+                              ₹{parseFloat(item.price || 0).toFixed(2)}
+                            </span>
+                            <span style={{ fontWeight: "600" }}>
+                              ₹
+                              {(
+                                parseFloat(item.price || 0) *
+                                parseInt(item.quantity || 0)
+                              ).toFixed(2)}
+                            </span>
+                            {isEditMode && (
+                              <button
+                                onClick={() => handleRemoveItem(index)}
+                                style={{
+                                  background: "#ef4444",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  padding: "4px 8px",
+                                  cursor: "pointer",
+                                  fontSize: "12px",
+                                }}
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {order.note && (
+                    <div>
+                      <h3
+                        style={{
+                          margin: "0 0 12px 0",
+                          color: "#1e293b",
+                          fontSize: "18px",
+                        }}
+                      >
+                        Notes
+                      </h3>
+                      <div
+                        style={{
+                          padding: "16px",
+                          backgroundColor: "#f8fafc",
+                          borderRadius: "8px",
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#374151",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {order.note}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Order History Tab
                 <div>
                   <h3
                     style={{
-                      margin: "0 0 12px 0",
+                      margin: "0 0 16px 0",
                       color: "#1e293b",
                       fontSize: "18px",
                     }}
                   >
-                    Notes
+                    Order History
                   </h3>
-                  <div
-                    style={{
-                      padding: "16px",
-                      backgroundColor: "#f8fafc",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                    }}
-                  >
+                  {localOrderVersions.length > 0 ? (
+                    localOrderVersions.map((version, index) => (
+                      <div
+                        key={version.id || index}
+                        style={{
+                          padding: "16px",
+                          backgroundColor: "#f8fafc",
+                          borderRadius: "8px",
+                          border: "1px solid #e2e8f0",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <h4 style={{ margin: "0 0 4px 0" }}>
+                              {version.order_number}
+                            </h4>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "14px",
+                                color: "#64748b",
+                              }}
+                            >
+                              {new Date(version.created_at).toLocaleString()}
+                            </p>
+                            {version.edit_reason && (
+                              <p
+                                style={{
+                                  margin: "4px 0 0 0",
+                                  fontSize: "12px",
+                                  color: "#64748b",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Reason: {version.edit_reason}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            className="btn-secondary"
+                            onClick={() => handleViewOrder({ id: version.id })}
+                            style={{ padding: "6px 12px", fontSize: "12px" }}
+                          >
+                            <Eye size={12} />
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
                     <p
                       style={{
-                        margin: 0,
-                        color: "#374151",
-                        whiteSpace: "pre-wrap",
+                        color: "#64748b",
+                        textAlign: "center",
+                        padding: "24px",
                       }}
                     >
-                      {order.note}
+                      No order history available
                     </p>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-          <div className="modal-actions">
-            <button className="btn-secondary" onClick={downloadExcel}>
-              <FileSpreadsheet size={16} />
-              Download Excel
-            </button>
-            <button className="btn-secondary" onClick={downloadPDF}>
-              <Download size={16} />
-              Download PDF
-            </button>
-            <button className="btn-primary" onClick={onClose}>
-              Close
-            </button>
+
+            <div className="modal-actions">
+              {isEditMode ? (
+                <>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setIsEditMode(false);
+                      setEditingItems([]);
+                    }}
+                    disabled={processing}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={handleSaveChanges}
+                    disabled={processing}
+                  >
+                    {processing ? "Saving..." : "Save Changes"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-secondary" onClick={downloadExcel}>
+                    <FileSpreadsheet size={16} />
+                    Download Excel
+                  </button>
+                  <button className="btn-secondary" onClick={downloadPDF}>
+                    <Download size={16} />
+                    Download PDF
+                  </button>
+                  <button className="btn-primary" onClick={onClose}>
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Add Item Modal */}
+        <AddItemModal
+          isOpen={showAddItemModal}
+          onClose={() => setShowAddItemModal(false)}
+          onAddItem={handleAddNewItem}
+        />
+      </>
     );
   };
-
   // Customer Detail Modal Component
   const CustomerDetailModal = ({ isOpen, onClose, customer, orders }) => {
     if (!isOpen || !customer) return null;
@@ -1628,42 +2411,44 @@ const generateAndDownloadExcel = (order) => {
     fetchData();
   }, [activeTab]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+ // Replace your existing fetchData function
+const fetchData = async () => {
+  try {
+    setLoading(true);
 
-      if (activeTab === "orders") {
-        const res = await axios.get(`${API_BASE}/orders?status=pending`);
-        setOrders(res.data.orders || []);
-      } else if (activeTab === "customers") {
-        // Fetch customers - you'll need to create this endpoint
-        const res = await axios.get(`${API_BASE}/customers`);
-        setCustomers(res.data.customers || []);
-      } else if (activeTab === "history") {
-        const res = await axios.get(`${API_BASE}/orders`);
-        setOrderHistory(res.data.orders || []);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setModalMessage("Failed to load data");
-      setShowErrorModal(true);
-    } finally {
-      setLoading(false);
+    if (activeTab === "orders") {
+      const res = await axios.get(`${API_BASE}/orders?status=pending`);
+      setOrders(res.data.orders || []);
+    } else if (activeTab === "customers") {
+      const res = await axios.get(`${API_BASE}/customers`);
+      setCustomers(res.data.customers || []);
+    } else if (activeTab === "history") {
+      const res = await axios.get(`${API_BASE}/orders`);
+      setOrderHistory(res.data.orders || []);
     }
-  };
-
-  // View order details
-  const handleViewOrder = async (order) => {
-    try {
-      const res = await axios.get(`${API_BASE}/orders/${order.id}`);
-      setSelectedOrder(res.data.order);
-      setShowOrderModal(true);
-    } catch (error) {
-      console.error("Error fetching order details:", error);
-      setModalMessage("Failed to load order details");
-      setShowErrorModal(true);
-    }
-  };
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    setModalMessage("Failed to load data");
+    setShowErrorModal(true);
+  } finally {
+    setLoading(false);
+  }
+};
+// Update the handleViewOrder function to fetch fresh data
+const handleViewOrder = async (order) => {
+  try {
+    setLoading(true);
+    const res = await axios.get(`${API_BASE}/orders/${order.id}`);
+    setSelectedOrder(res.data.order);
+    setShowOrderModal(true);
+  } catch (error) {
+    console.error("Error fetching order details:", error);
+    setModalMessage("Failed to load order details");
+    setShowErrorModal(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // View customer details
   const handleViewCustomer = async (customer) => {
@@ -2357,6 +3142,7 @@ const generateAndDownloadExcel = (order) => {
                 <div className="table-container">
                   {/* Orders Table */}
                   {(activeTab === "orders" || activeTab === "history") && (
+                    
                     <table className="data-table">
                       <thead>
                         <tr>
@@ -2465,7 +3251,6 @@ const generateAndDownloadExcel = (order) => {
                           </label>
                           <div
                             style={{
-                              
                               gridTemplateColumns: "1fr 1fr",
                               gap: "8px",
                               display: "none",
@@ -2637,15 +3422,19 @@ const generateAndDownloadExcel = (order) => {
           customer={selectedCustomer}
           orders={customerOrders}
         />
-
-        {/* Success Modal */}
-        <NotificationModal
-          isOpen={showSuccessModal}
-          onClose={() => setShowSuccessModal(false)}
-          title="Success"
-          message={modalMessage}
-          type="success"
-        />
+<NotificationModal
+  isOpen={showSuccessModal}
+  onClose={() => {
+    setShowSuccessModal(false);
+    // Refresh data after successful operations
+    if (modalMessage.includes("updated successfully")) {
+      fetchData();
+    }
+  }}
+  title="Success"
+  message={modalMessage}
+  type="success"
+/>
 
         {/* Error Modal */}
         <NotificationModal

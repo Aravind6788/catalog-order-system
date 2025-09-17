@@ -938,58 +938,64 @@ const ModernFilterSidebar = React.memo(
         >
           Filters
         </h5>
+{/* Categories */}
+<div
+  style={{
+    marginBottom: "24px",
+    paddingBottom: "20px",
+    borderBottom: "1px solid #e9ecef",
+  }}
+>
+  <h6
+    style={{
+      fontWeight: "600",
+      marginBottom: "1rem",
+      color: "#2c3e50",
+    }}
+  >
+    Categories ({categories.length})
+  </h6>
+  <select
+    value={selectedCategory}
+    onChange={handleCategoryChange}
+    style={selectStyle}
+    onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
+    onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
+  >
+    <option value="">All Categories</option>
+    {categories.length === 0 ? (
+      <option disabled>Loading categories...</option>
+    ) : (
+      categories.map((category) => {
+        // Handle different category object structures
+        const categoryId = category.id || category.category_id;
+        const categoryName = category.name || category.category_name || category.title;
+        const productCount = category.product_count || category.count;
+        
+        return (
+          <option key={`category-${categoryId}`} value={categoryId}>
+            {categoryName}
+            {productCount && ` (${productCount})`}
+          </option>
+        );
+      })
+    )}
+  </select>
 
-        {/* Categories */}
-        <div
-          style={{
-            marginBottom: "24px",
-            paddingBottom: "20px",
-            borderBottom: "1px solid #e9ecef",
-          }}
-        >
-          <h6
-            style={{
-              fontWeight: "600",
-              marginBottom: "1rem",
-              color: "#2c3e50",
-            }}
-          >
-            Categories ({categories.length})
-          </h6>
-          <select
-            value={selectedCategory}
-            onChange={handleCategoryChange}
-            style={selectStyle}
-            onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
-            onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
-          >
-            <option value="">All Categories</option>
-            {categories.length === 0 ? (
-              <option disabled>Loading categories...</option>
-            ) : (
-              categories.map((category) => (
-                <option key={`category-${category.id}`} value={category.id}>
-                  {category.name}
-                  {category.product_count && ` (${category.product_count})`}
-                </option>
-              ))
-            )}
-          </select>
-
-          <div
-            style={{
-              marginTop: "0.5rem",
-              fontSize: "0.8rem",
-              color: "#6c757d",
-            }}
-          >
-            {categories.length === 0 ? (
-              <p>Loading categories...</p>
-            ) : (
-              <p>Loaded {categories.length} categories</p>
-            )}
-          </div>
-        </div>
+  <div
+    style={{
+      marginTop: "0.5rem",
+      fontSize: "0.8rem",
+      color: "#6c757d",
+    }}
+  >
+    {categories.length === 0 ? (
+      <p>Loading categories...</p>
+    ) : (
+      <p>Loaded {categories.length} categories</p>
+    )}
+  </div>
+</div>
 
         {/* Price Range */}
         <div
@@ -2268,6 +2274,11 @@ const ClientProducts = () => {
               );
               const variants = variantsRes.data.variants || [];
 
+              // Skip products with no variants
+              if (variants.length === 0) {
+                return null;
+              }
+
               // Fetch attributes for each variant
               const variantsWithAttributes = await Promise.all(
                 variants.map(async (variant) => {
@@ -2295,14 +2306,21 @@ const ClientProducts = () => {
                 `Error fetching variants for product ${product.id}:`,
                 error
               );
-              return { ...product, variants: [] };
+              return null; // Return null for products with variant fetch errors
             }
           })
         );
 
-        setProducts(productsWithVariants || []);
-        setTotalProducts(total || 0);
-        setTotalPages(Math.ceil((total || 0) / productsPerPage));
+        // Filter out null entries (products with 0 variants or fetch errors)
+        const filteredProducts = productsWithVariants.filter(
+          (product) => product !== null
+        );
+
+        setProducts(filteredProducts);
+
+        // Update pagination based on filtered results
+        setTotalProducts(filteredProducts.length);
+        setTotalPages(Math.ceil(filteredProducts.length / productsPerPage));
         setCurrentPage(currentPageRes || 1);
       } catch (error) {
         console.error("Error fetching products:", error);
@@ -2521,18 +2539,44 @@ const ClientProducts = () => {
       }
     }
   }, [loadPreviousOrders]);
-
-  // Fetch categories
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/categories`);
-      console.log("Categories fetched:", res.data);
-      setCategories(res.data.categories || []);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      setCategories([]);
-    }
-  }, []);
+const fetchCategories = useCallback(async () => {
+  try {
+    const res = await axios.get(`${API_BASE}/categories`);
+    console.log("Raw categories response:", res.data);
+    
+    // Since your backend returns a tree structure directly, we need to flatten it
+    const flattenCategories = (categories, level = 0) => {
+      let flattened = [];
+      categories.forEach(category => {
+        // Add prefix for subcategories to show hierarchy
+        const displayName =
+          level > 0 ? `${"└─".repeat(level)} ${category.name}` : category.name;
+        
+        flattened.push({
+          id: category.id,
+          name: displayName,
+          original_name: category.name,
+          code: category.code,
+          parent_id: category.parent_id,
+          level: level
+        });
+        
+        // If this category has children, recursively add them
+        if (category.children && category.children.length > 0) {
+          flattened = flattened.concat(flattenCategories(category.children, level + 1));
+        }
+      });
+      return flattened;
+    };
+    
+    const flattenedCategories = flattenCategories(res.data);
+    console.log("Flattened categories:", flattenedCategories);
+    setCategories(flattenedCategories);
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    setCategories([]);
+  }
+}, []);
 
   // Initialize on component mount
   useEffect(() => {
