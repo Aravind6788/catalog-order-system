@@ -272,41 +272,35 @@ const Products = () => {
       loadVariantAttributes(variant.id);
     };
     const handleActivateVariant = (variant, e) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent event bubbling
-      }
+      e?.preventDefault();
+      e?.stopPropagation();
       setVariantToActivate(variant);
       setShowVariantActivateModal(true);
     };
 
     const handleEditVariant = (variant, e) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent event bubbling
-      }
+      e?.preventDefault();
+      e?.stopPropagation();
       navigate("/add-product-variant", {
         state: {
           editMode: true,
           formType: "variant",
           editData: {
             ...variant,
-            product_id: product.product.id,
-            category_id: product.product.category_id,
+            product_id: selectedProduct.product.id,
+            category_id: selectedProduct.product.category_id,
           },
         },
       });
-      onClose();
+      setSelectedProduct(null); // Close detail modal
     };
-const handleDeleteVariant = (variant, e) => {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
-  }
-  setVariantToDelete(variant);
-  setShowVariantDeleteModal(true);
-  onClose();
-};
+    const handleDeleteVariant = (variant, e) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      setVariantToDelete(variant);
+      setShowVariantDeleteModal(true);
+      // Don't close the detail modal here - let user see the action
+    };
 
     const openProductImageGallery = () => {
       const images = productImages[product.product.id] || [];
@@ -539,7 +533,7 @@ const handleDeleteVariant = (variant, e) => {
                                   className="action-btn activate-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleActivateVariant(variant,e);
+                                    handleActivateVariant(variant, e);
                                     onClose();
                                   }}
                                   title="Activate variant"
@@ -555,7 +549,7 @@ const handleDeleteVariant = (variant, e) => {
                                   className="action-btn delete-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteVariant(variant,e);
+                                    handleDeleteVariant(variant, e);
                                   }}
                                   title="Deactivate variant"
                                 >
@@ -1023,32 +1017,32 @@ const handleDeleteVariant = (variant, e) => {
       setShowErrorModal(true);
     }
   };
-
-  // Add the confirm activate function
+  // === FIXED: Consolidated confirm handlers ===
   const confirmVariantActivate = async () => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
         `${API_BASE}/variants/${variantToActivate.id}/activate`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // Close modals in correct order
       setShowVariantActivateModal(false);
       setVariantToActivate(null);
+      setSelectedProduct(null); // Close detail modal
+
       setModalMessage("Variant activated successfully");
       setShowSuccessModal(true);
       fetchProducts();
     } catch (error) {
       console.error("Error activating variant:", error);
       setShowVariantActivateModal(false);
+      setVariantToActivate(null);
       setModalMessage("Failed to activate variant");
       setShowErrorModal(true);
     }
   };
-
   const confirmVariantDelete = async () => {
     try {
       const token = localStorage.getItem("token");
