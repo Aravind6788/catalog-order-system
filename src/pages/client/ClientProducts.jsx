@@ -2539,44 +2539,48 @@ const ClientProducts = () => {
       }
     }
   }, [loadPreviousOrders]);
-const fetchCategories = useCallback(async () => {
-  try {
-    const res = await axios.get(`${API_BASE}/categories`);
-    console.log("Raw categories response:", res.data);
-    
-    // Since your backend returns a tree structure directly, we need to flatten it
-    const flattenCategories = (categories, level = 0) => {
-      let flattened = [];
-      categories.forEach(category => {
-        // Add prefix for subcategories to show hierarchy
-        const displayName =
-          level > 0 ? `${"└─".repeat(level)} ${category.name}` : category.name;
-        
-        flattened.push({
-          id: category.id,
-          name: displayName,
-          original_name: category.name,
-          code: category.code,
-          parent_id: category.parent_id,
-          level: level
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/categories`);
+      console.log("Raw categories response:", res.data);
+
+      // Since your backend returns a tree structure directly, we need to flatten it
+      const flattenCategories = (categories, level = 0) => {
+        let flattened = [];
+        categories.forEach((category) => {
+          // Add prefix for subcategories to show hierarchy
+          const displayName =
+            level > 0
+              ? `${"└─".repeat(level)} ${category.name}`
+              : category.name;
+
+          flattened.push({
+            id: category.id,
+            name: displayName,
+            original_name: category.name,
+            code: category.code,
+            parent_id: category.parent_id,
+            level: level,
+          });
+
+          // If this category has children, recursively add them
+          if (category.children && category.children.length > 0) {
+            flattened = flattened.concat(
+              flattenCategories(category.children, level + 1)
+            );
+          }
         });
-        
-        // If this category has children, recursively add them
-        if (category.children && category.children.length > 0) {
-          flattened = flattened.concat(flattenCategories(category.children, level + 1));
-        }
-      });
-      return flattened;
-    };
-    
-    const flattenedCategories = flattenCategories(res.data);
-    console.log("Flattened categories:", flattenedCategories);
-    setCategories(flattenedCategories);
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    setCategories([]);
-  }
-}, []);
+        return flattened;
+      };
+
+      const flattenedCategories = flattenCategories(res.data);
+      console.log("Flattened categories:", flattenedCategories);
+      setCategories(flattenedCategories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setCategories([]);
+    }
+  }, []);
 
   // Initialize on component mount
   useEffect(() => {
@@ -2669,12 +2673,20 @@ const fetchCategories = useCallback(async () => {
   }, [products, sortBy, priceRange]);
 
   // Add to cart function
+  // REPLACE your existing addToCart function with this improved version:
+
   const addToCart = useCallback((product, selectedVariant, quantity) => {
+    console.log("=== ADD TO CART DEBUG ===");
+    console.log("Product:", product);
+    console.log("Selected Variant:", selectedVariant);
+    console.log("Quantity:", quantity);
+
     const cartItem = {
       variantId: selectedVariant?.id || null,
       productId: product.id,
       productName: product.name,
       variantName: selectedVariant?.name || "Default",
+      variantCode: selectedVariant?.code || "DEFAULT", // Add variant code separately
       price: selectedVariant?.price || 0,
       quantity: quantity,
       image:
@@ -2682,8 +2694,12 @@ const fetchCategories = useCallback(async () => {
         `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
           product.name
         )}`,
-      sku: `${product.sku_prefix}-${selectedVariant?.code || "DEFAULT"}`,
+      sku: `${product.sku_prefix || "PROD"}-${
+        selectedVariant?.code || "DEFAULT"
+      }`,
     };
+
+    console.log("Cart Item being added:", cartItem);
 
     setCart((prevCart) => {
       const existingIndex = prevCart.findIndex(
@@ -2695,8 +2711,10 @@ const fetchCategories = useCallback(async () => {
       if (existingIndex >= 0) {
         const newCart = [...prevCart];
         newCart[existingIndex].quantity += quantity;
+        console.log("Updated existing cart item:", newCart[existingIndex]);
         return newCart;
       } else {
+        console.log("Added new cart item:", cartItem);
         return [...prevCart, cartItem];
       }
     });
@@ -2732,60 +2750,85 @@ const fetchCategories = useCallback(async () => {
     }
   }, [customerData.email, customerData.phone, loadPreviousOrders]);
   // Submit order
-  
-// 3. REPLACE YOUR EXISTING submitOrder FUNCTION WITH THIS ONE
-const submitOrder = async () => {
-  if (cart.length === 0) return;
-  if (!customerData.email && !customerData.phone) {
-    alert("Please provide either email or phone number");
-    return;
-  }
 
-  setOrderLoading(true);
-  try {
-    const orderData = {
-      customer: customerData,
-      items: cart,
-      session_id: sessionId,
-      ip_address: clientIP,
-      total_amount: cart.reduce(
-        (sum, item) => sum + parseFloat(item.price) * item.quantity,
-        0
-      ),
-    };
+  // 3. REPLACE YOUR EXISTING submitOrder FUNCTION WITH THIS ONE
+  // REPLACE your existing submitOrder function with this fixed version:
+  // REPLACE your existing submitOrder function with this fixed version:
 
-    const response = await axios.post(`${API_BASE}/orders`, orderData);
-
-    if (response.data.success) {
-      // Save customer data to cookies after successful order
-      const customerJson = encodeURIComponent(JSON.stringify(customerData));
-      CookieManager.setCookie("greenland_customer", customerJson);
-
-      // If email is provided, save it separately for easier access
-      if (customerData.email) {
-        CookieManager.setCookie(
-          "greenland_customer_email",
-          customerData.email
-        );
-      }
-
-      // Clear cart and close checkout modal
-      setCart([]);
-      setShowCheckout(false);
-      CookieManager.setCookie("greenland_cart", "", -1);
-      loadPreviousOrders(customerData.email, customerData.phone);
-      
-      // Show order confirmation modal instead of alert
-      setOrderNumber(response.data.order_number);
-      setShowOrderConfirmation(true);
+  const submitOrder = async () => {
+    if (cart.length === 0) return;
+    if (!customerData.email && !customerData.phone) {
+      alert("Please provide either email or phone number");
+      return;
     }
-  } catch (error) {
-    console.error("Error submitting order:", error);
-    alert("Error submitting order. Please try again.");
-  } finally {
-    setOrderLoading(false);
-  }
-};
+
+    setOrderLoading(true);
+    try {
+      // Transform cart items to match backend expectations
+      const transformedItems = cart.map((item) => ({
+        variant_id: item.variantId,
+        product_name: item.productName,
+        variant_name: item.variantName,
+        variant_code:
+          item.variantCode ||
+          (item.sku ? item.sku.split("-").pop() : "DEFAULT"), // Use variantCode if available
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      console.log("=== CART DEBUG - SUBMIT ORDER ===");
+      console.log("Original cart:", cart);
+      console.log("Transformed items:", transformedItems);
+      console.log("Customer data:", customerData);
+
+      const orderData = {
+        customer: customerData,
+        items: transformedItems, // Use transformed items instead of raw cart
+        session_id: sessionId,
+        ip_address: clientIP,
+        total_amount: cart.reduce(
+          (sum, item) => sum + parseFloat(item.price) * item.quantity,
+          0
+        ),
+      };
+
+      console.log("Final order data being sent:", orderData);
+
+      const response = await axios.post(`${API_BASE}/orders`, orderData);
+
+      console.log("Order response:", response.data);
+
+      if (response.data.success) {
+        // Save customer data to cookies after successful order
+        const customerJson = encodeURIComponent(JSON.stringify(customerData));
+        CookieManager.setCookie("greenland_customer", customerJson);
+
+        // If email is provided, save it separately for easier access
+        if (customerData.email) {
+          CookieManager.setCookie(
+            "greenland_customer_email",
+            customerData.email
+          );
+        }
+
+        // Clear cart and close checkout modal
+        setCart([]);
+        setShowCheckout(false);
+        CookieManager.setCookie("greenland_cart", "", -1);
+        loadPreviousOrders(customerData.email, customerData.phone);
+
+        // Show order confirmation modal instead of alert
+        setOrderNumber(response.data.order_number);
+        setShowOrderConfirmation(true);
+      }
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      console.error("Error response:", error.response?.data);
+      alert("Error submitting order. Please try again.");
+    } finally {
+      setOrderLoading(false);
+    }
+  };
   // 2. ADD THIS NEW COMPONENT OUTSIDE YOUR MAIN COMPONENT (alongside other modal components)
   const OrderConfirmationModal = React.memo(
     ({ isOpen, orderNumber, onClose }) => {

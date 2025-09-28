@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import axios from "axios";
+import  { useCallback, useMemo } from "react";
 import {
   Search,
   Eye,
@@ -29,6 +30,293 @@ import * as XLSX from "xlsx";
 
 const API_BASE = "http://localhost/GreenLand/api";
 
+const AddItemModal = React.memo(({ isOpen, onClose, onAddItem }) => {
+  // Move all state and functions inside the modal component
+  const [localCategories, setLocalCategories] = useState([]);
+  const [localProducts, setLocalProducts] = useState([]);
+  const [localVariants, setLocalVariants] = useState([]);
+  const [localSelectedCategory, setLocalSelectedCategory] = useState("");
+  const [localSelectedProduct, setLocalSelectedProduct] = useState("");
+  const [localSelectedVariant, setLocalSelectedVariant] = useState("");
+  const [localNewItemQuantity, setLocalNewItemQuantity] = useState(1);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch categories only when modal opens
+  useEffect(() => {
+    if (isOpen && localCategories.length === 0) {
+      fetchLocalCategories();
+    }
+  }, [isOpen, localCategories.length]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
+  const fetchLocalCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE}/categories`);
+      setLocalCategories(response.data || []);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLocalProductsByCategory = async (categoryId) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE}/categories/${categoryId}/products`);
+      setLocalProducts(response.data.products || []);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      setLocalProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLocalVariantsByProduct = async (productId) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE}/products/${productId}/variants`);
+      setLocalVariants(response.data.variants || []);
+    } catch (error) {
+      console.error("Failed to fetch variants:", error);
+      setLocalVariants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = useCallback(() => {
+    setLocalSelectedCategory("");
+    setLocalSelectedProduct("");
+    setLocalSelectedVariant("");
+    setLocalNewItemQuantity(1);
+    setLocalProducts([]);
+    setLocalVariants([]);
+  }, []);
+
+  const handleCategoryChange = useCallback((categoryId) => {
+    setLocalSelectedCategory(categoryId);
+    setLocalSelectedProduct("");
+    setLocalSelectedVariant("");
+    setLocalProducts([]);
+    setLocalVariants([]);
+    if (categoryId) {
+      fetchLocalProductsByCategory(categoryId);
+    }
+  }, []);
+
+  const handleProductChange = useCallback((productId) => {
+    setLocalSelectedProduct(productId);
+    setLocalSelectedVariant("");
+    setLocalVariants([]);
+    if (productId) {
+      fetchLocalVariantsByProduct(productId);
+    }
+  }, []);
+
+  const handleAddItem = useCallback(() => {
+    if (!localSelectedVariant || !localNewItemQuantity) {
+      alert("Please select a variant and specify quantity");
+      return;
+    }
+
+    const selectedVariantData = localVariants.find((v) => v.id == localSelectedVariant);
+    if (!selectedVariantData) {
+      alert("Selected variant not found");
+      return;
+    }
+
+    if (localNewItemQuantity > selectedVariantData.quantity) {
+      alert(`Quantity exceeds available inventory (${selectedVariantData.quantity})`);
+      return;
+    }
+
+    const selectedProductData = localProducts.find((p) => p.id == localSelectedProduct);
+    const newItem = {
+      variant_id: localSelectedVariant,
+      product_name: selectedProductData?.name || "Unknown Product",
+      variant_name: selectedVariantData.name,
+      variant_code: selectedVariantData.code,
+      quantity: localNewItemQuantity,
+      price: selectedVariantData.price,
+      available_quantity: selectedVariantData.quantity,
+    };
+
+    onAddItem(newItem);
+    resetForm();
+    onClose();
+  }, [localSelectedVariant, localNewItemQuantity, localVariants, localProducts, onAddItem, resetForm, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h2>Add New Item</h2>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <div className="modal-body">
+          {loading && (
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              <div className="loading-spinner"></div>
+              <p>Loading...</p>
+            </div>
+          )}
+          <div style={{ display: "grid", gap: "16px" }}>
+            <div>
+              <label className="form-label">Category</label>
+              <select
+                value={localSelectedCategory}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="search-input"
+                disabled={loading}
+              >
+                <option value="">Select Category</option>
+                {localCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Product</label>
+              <select
+                value={localSelectedProduct}
+                onChange={(e) => handleProductChange(e.target.value)}
+                className="search-input"
+                disabled={!localSelectedCategory || loading}
+              >
+                <option value="">Select Product</option>
+                {localProducts.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Variant</label>
+              <select
+                value={localSelectedVariant}
+                onChange={(e) => setLocalSelectedVariant(e.target.value)}
+                className="search-input"
+                disabled={!localSelectedProduct || loading}
+              >
+                <option value="">Select Variant</option>
+                {localVariants.map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {variant.name} ({variant.code}) - Available: {variant.quantity}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-label">Quantity</label>
+              <input
+                type="number"
+                value={localNewItemQuantity}
+                onChange={(e) =>
+                  setLocalNewItemQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                className="search-input"
+                min="1"
+                max={localVariants.find((v) => v.id == localSelectedVariant)?.quantity || 1}
+              />
+              {localSelectedVariant && (
+                <small style={{ color: "#64748b", fontSize: "12px" }}>
+                  Available: {localVariants.find((v) => v.id == localSelectedVariant)?.quantity || 0}
+                </small>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="modal-actions">
+          <button className="btn-secondary" onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button className="btn-primary" onClick={handleAddItem} disabled={loading}>
+            Add Item
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+// Place these components BEFORE the OrderManagement component definition
+// Right after your imports and before const OrderManagement = () => {
+
+const StableQuantityInput = React.memo(({ item, index, onQuantityChange, currentValue }) => {
+  const handleChange = useCallback(
+    (e) => {
+      const newValue = Math.max(0, parseInt(e.target.value) || 0);
+      onQuantityChange(index, newValue);
+    },
+    [index, onQuantityChange]
+  );
+
+  return (
+    <input
+      type="number"
+      value={currentValue}
+      onChange={handleChange}
+      min="0"
+      max={item.available_quantity || 999}
+      style={{
+        width: "60px",
+        padding: "4px 8px",
+        border: "1px solid #d1d5db",
+        borderRadius: "4px",
+      }}
+    />
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  return (
+    prevProps.index === nextProps.index &&
+    prevProps.currentValue === nextProps.currentValue &&
+    prevProps.item.available_quantity === nextProps.item.available_quantity
+  );
+});
+
+const StableRemoveButton = React.memo(({ index, onRemove }) => {
+  const handleClick = useCallback(() => {
+    onRemove(index);
+  }, [index, onRemove]);
+
+  return (
+    <button
+      onClick={handleClick}
+      style={{
+        background: "#ef4444",
+        color: "white",
+        border: "none",
+        borderRadius: "4px",
+        padding: "4px 8px",
+        cursor: "pointer",
+        fontSize: "12px",
+      }}
+    >
+      <X size={12} />
+    </button>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.index === nextProps.index;
+});
 const OrderManagement = () => {
   const [activeTab, setActiveTab] = useState("orders");
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,13 +327,13 @@ const OrderManagement = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingItems, setEditingItems] = useState([]);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [variants, setVariants] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [selectedVariant, setSelectedVariant] = useState("");
-  const [newItemQuantity, setNewItemQuantity] = useState(1);
+  // const [categories, setCategories] = useState([]);
+  // const [products, setProducts] = useState([]);
+  // const [variants, setVariants] = useState([]);
+  // const [selectedCategory, setSelectedCategory] = useState("");
+  // const [selectedProduct, setSelectedProduct] = useState("");
+  // const [selectedVariant, setSelectedVariant] = useState("");
+  // const [newItemQuantity, setNewItemQuantity] = useState(1);
   // const [orderVersions, setOrderVersions] = useState([]);
   // const [activeVersionTab, setActiveVersionTab] = useState("current");
 
@@ -65,175 +353,31 @@ const OrderManagement = () => {
   // Add processing state to prevent multiple clicks
   const [processing, setProcessing] = useState(false);
   // Add Item Modal Component
-  const AddItemModal = ({ isOpen, onClose, onAddItem }) => {
-    if (!isOpen) return null;
+ // Replace the existing AddItemModal component with this optimized version
 
-    const handleCategoryChange = (categoryId) => {
-      setSelectedCategory(categoryId);
-      setSelectedProduct("");
-      setSelectedVariant("");
-      setProducts([]);
-      setVariants([]);
-      if (categoryId) {
-        fetchProductsByCategory(categoryId);
-      }
-    };
 
-    const handleProductChange = (productId) => {
-      setSelectedProduct(productId);
-      setSelectedVariant("");
-      setVariants([]);
-      if (productId) {
-        fetchVariantsByProduct(productId);
-      }
-    };
+const memoizedGenerateAndDownloadPDF = useCallback((order) => {
+  generateAndDownloadPDF(order);
+}, []);
 
-    const handleAddItem = () => {
-      if (!selectedVariant || !newItemQuantity) {
-        setModalMessage("Please select a variant and specify quantity");
-        setShowErrorModal(true);
-        return;
-      }
+const memoizedGenerateAndDownloadExcel = useCallback((order) => {
+  generateAndDownloadExcel(order);
+}, []);
 
-      const selectedVariantData = variants.find((v) => v.id == selectedVariant);
-      if (!selectedVariantData) {
-        setModalMessage("Selected variant not found");
-        setShowErrorModal(true);
-        return;
-      }
-
-      if (newItemQuantity > selectedVariantData.quantity) {
-        setModalMessage(
-          `Quantity exceeds available inventory (${selectedVariantData.quantity})`
-        );
-        setShowErrorModal(true);
-        return;
-      }
-
-      const selectedProductData = products.find((p) => p.id == selectedProduct);
-
-      const newItem = {
-        variant_id: selectedVariant,
-        product_name: selectedProductData?.name || "Unknown Product",
-        variant_name: selectedVariantData.name,
-        variant_code: selectedVariantData.code,
-        quantity: newItemQuantity,
-        price: selectedVariantData.price,
-        available_quantity: selectedVariantData.quantity,
-      };
-
-      onAddItem(newItem);
-
-      // Reset form
-      setSelectedCategory("");
-      setSelectedProduct("");
-      setSelectedVariant("");
-      setNewItemQuantity(1);
-      setProducts([]);
-      setVariants([]);
-      onClose();
-    };
-
-    return (
-      <div className="modal-overlay">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h2>Add New Item</h2>
-            <button className="modal-close" onClick={onClose}>
-              ×
-            </button>
-          </div>
-          <div className="modal-body">
-            <div style={{ display: "grid", gap: "16px" }}>
-              <div>
-                <label className="form-label">Category</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="search-input"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label">Product</label>
-                <select
-                  value={selectedProduct}
-                  onChange={(e) => handleProductChange(e.target.value)}
-                  className="search-input"
-                  disabled={!selectedCategory}
-                >
-                  <option value="">Select Product</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label">Variant</label>
-                <select
-                  value={selectedVariant}
-                  onChange={(e) => setSelectedVariant(e.target.value)}
-                  className="search-input"
-                  disabled={!selectedProduct}
-                >
-                  <option value="">Select Variant</option>
-                  {variants.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name} ({variant.code}) - Available:{" "}
-                      {variant.quantity}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label">Quantity</label>
-                <input
-                  type="number"
-                  value={newItemQuantity}
-                  onChange={(e) =>
-                    setNewItemQuantity(
-                      Math.max(1, parseInt(e.target.value) || 1)
-                    )
-                  }
-                  className="search-input"
-                  min="1"
-                  max={
-                    variants.find((v) => v.id == selectedVariant)?.quantity || 1
-                  }
-                />
-                {selectedVariant && (
-                  <small style={{ color: "#64748b", fontSize: "12px" }}>
-                    Available:{" "}
-                    {variants.find((v) => v.id == selectedVariant)?.quantity ||
-                      0}
-                  </small>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="modal-actions">
-            <button className="btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="btn-primary" onClick={handleAddItem}>
-              Add Item
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+const memoizedHandleViewOrder = useCallback(async (order) => {
+  try {
+    setLoading(true);
+    const res = await axios.get(`${API_BASE}/orders/${order.id}`);
+    setSelectedOrder(res.data.order);
+    setShowOrderModal(true);
+  } catch (error) {
+    console.error("Error fetching order details:", error);
+    setModalMessage("Failed to load order details");
+    setShowErrorModal(true);
+  } finally {
+    setLoading(false);
+  }
+}, []);
   // Success/Error Modal Component
   const NotificationModal = ({
     isOpen,
@@ -784,52 +928,52 @@ const OrderManagement = () => {
 
   // Helper function to create sheet data for a single customer
   // Fetch categories for add item modal
-  const fetchCategories = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/categories`);
-      setCategories(response.data || []);
-    } catch (error) {
-      console.error("Failed to fetch categories:", error);
-    }
-  };
+  // const fetchCategories = async () => {
+  //   try {
+  //     const response = await axios.get(`${API_BASE}/categories`);
+  //     setCategories(response.data || []);
+  //   } catch (error) {
+  //     console.error("Failed to fetch categories:", error);
+  //   }
+  // };
 
-  // Fetch products by category
-  const fetchProductsByCategory = async (categoryId) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE}/categories/${categoryId}/products`
-      );
-      setProducts(response.data.products || []);
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    }
-  };
+  // // Fetch products by category
+  // const fetchProductsByCategory = async (categoryId) => {
+  //   try {
+  //     const response = await axios.get(
+  //       `${API_BASE}/categories/${categoryId}/products`
+  //     );
+  //     setProducts(response.data.products || []);
+  //   } catch (error) {
+  //     console.error("Failed to fetch products:", error);
+  //   }
+  // };
 
-  // Fetch variants by product
-  const fetchVariantsByProduct = async (productId) => {
-    try {
-      const response = await axios.get(
-        `${API_BASE}/products/${productId}/variants`
-      );
-      setVariants(response.data.variants || []);
-    } catch (error) {
-      console.error("Failed to fetch variants:", error);
-    }
-  };
+  // // Fetch variants by product
+  // const fetchVariantsByProduct = async (productId) => {
+  //   try {
+  //     const response = await axios.get(
+  //       `${API_BASE}/products/${productId}/variants`
+  //     );
+  //     setVariants(response.data.variants || []);
+  //   } catch (error) {
+  //     console.error("Failed to fetch variants:", error);
+  //   }
+  // };
   // Remove this entire function
-  const fetchOrderVersions = async (orderId) => {
-    try {
-      console.log("Fetching versions for order:", orderId);
-      const response = await axios.get(
-        `${API_BASE}/orders/${orderId}/versions`
-      );
-      console.log("Order versions response:", response.data);
-      setOrderVersions(response.data.versions || []);
-    } catch (error) {
-      console.error("Failed to fetch order versions:", error);
-      setOrderVersions([]);
-    }
-  };
+  // const fetchOrderVersions = async (orderId) => {
+  //   try {
+  //     console.log("Fetching versions for order:", orderId);
+  //     const response = await axios.get(
+  //       `${API_BASE}/orders/${orderId}/versions`
+  //     );
+  //     console.log("Order versions response:", response.data);
+  //     setOrderVersions(response.data.versions || []);
+  //   } catch (error) {
+  //     console.error("Failed to fetch order versions:", error);
+  //     setOrderVersions([]);
+  //   }
+  // };
   const createCustomerSheetData = (customer) => {
     const sheetData = [];
 
@@ -867,6 +1011,7 @@ const OrderManagement = () => {
       sheetData.push([]);
 
       // Order Items
+      
       if (order.items && order.items.length > 0) {
         sheetData.push(["ORDER ITEMS"]);
         sheetData.push([
@@ -1467,784 +1612,713 @@ const OrderManagement = () => {
     }
   }; // Order Detail Modal Component - COMPLETE REPLACEMENT
   // Fixed OrderDetailModal Component - Replace the existing one
-  const OrderDetailModal = ({ isOpen, onClose, order }) => {
-    // Local state for order versions to avoid infinite loops
-    const [localOrderVersions, setLocalOrderVersions] = useState([]);
-    const [localActiveVersionTab, setLocalActiveVersionTab] =
-      useState("current");
-    // Add this useEffect in your OrderDetailModal component
-    useEffect(() => {
-      if (isEditMode && editingItems.length > 0) {
-        // Real-time total calculation as user edits
-        console.log("Items updated in edit mode:", editingItems);
-      }
-    }, [editingItems, isEditMode]);
-    if (!isOpen || !order) return null;
-    const handleToggleEditMode = async () => {
-      console.log("Toggle edit mode clicked, current state:", isEditMode);
+  
+// // Move these components outside the main component to prevent recreation
+// const StableQuantityInput = React.memo(({ item, index, onQuantityChange, currentValue }) => {
+//   const handleChange = useCallback(
+//     (e) => {
+//       const newValue = Math.max(0, parseInt(e.target.value) || 0);
+//       onQuantityChange(index, newValue);
+//     },
+//     [index, onQuantityChange]
+//   );
 
-      if (!isEditMode) {
-        // Enter edit mode - initialize editing items with deep copy
-        const itemsCopy = selectedOrder.items.map((item) => ({
-          ...item,
-          available_quantity: item.available_quantity || 999, // Fallback if not provided
-        }));
-        setEditingItems(itemsCopy);
-        await fetchCategories();
-        console.log("Entering edit mode, editing items set:", itemsCopy);
+//   return (
+//     <input
+//       type="number"
+//       value={currentValue}
+//       onChange={handleChange}
+//       min="0"
+//       max={item.available_quantity || 999}
+//       style={{
+//         width: "60px",
+//         padding: "4px 8px",
+//         border: "1px solid #d1d5db",
+//         borderRadius: "4px",
+//       }}
+//     />
+//   );
+// }, (prevProps, nextProps) => {
+//   // Custom comparison to prevent unnecessary re-renders
+//   return (
+//     prevProps.index === nextProps.index &&
+//     prevProps.currentValue === nextProps.currentValue &&
+//     prevProps.item.available_quantity === nextProps.item.available_quantity
+//   );
+// });
+
+// const StableRemoveButton = React.memo(({ index, onRemove }) => {
+//   const handleClick = useCallback(() => {
+//     onRemove(index);
+//   }, [index, onRemove]);
+
+//   return (
+//     <button
+//       onClick={handleClick}
+//       style={{
+//         background: "#ef4444",
+//         color: "white",
+//         border: "none",
+//         borderRadius: "4px",
+//         padding: "4px 8px",
+//         cursor: "pointer",
+//         fontSize: "12px",
+//       }}
+//     >
+//       <X size={12} />
+//     </button>
+//   );
+// }, (prevProps, nextProps) => {
+//   return prevProps.index === nextProps.index;
+// });
+const OrderDetailModal = ({ 
+  isOpen, 
+  onClose, 
+  order,
+  isEditMode,
+  setIsEditMode,
+  editingItems,
+  setEditingItems,
+  showAddItemModal,
+  setShowAddItemModal,
+  processing,
+  setProcessing,
+  activeTab,
+  setOrders,
+  setOrderHistory,
+  setSelectedOrder,
+  setModalMessage,
+  setShowSuccessModal,
+  setShowErrorModal,
+  generateAndDownloadPDF,
+  generateAndDownloadExcel,
+  handleViewOrder
+}) => {
+  const [localOrderVersions, setLocalOrderVersions] = useState([]);
+  const [localActiveVersionTab, setLocalActiveVersionTab] = useState("current");
+  
+  if (!isOpen || !order) return null;
+
+  // CRITICAL: Memoize fetchLocalOrderVersions to prevent infinite re-renders
+  const fetchLocalOrderVersions = useCallback(async (orderId) => {
+    try {
+      console.log("Fetching versions for order:", orderId);
+      const response = await axios.get(`${API_BASE}/orders/${orderId}/versions`);
+      console.log("Order versions response:", response.data);
+
+      const versions = (response.data.versions || []).sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+
+      setLocalOrderVersions(versions);
+    } catch (error) {
+      console.error("Failed to fetch order versions:", error);
+      setLocalOrderVersions([]);
+    }
+  }, []); // Empty deps - function doesn't depend on external state
+useEffect(() => {
+    if (order && isOpen) {
+      console.log("=== ORDER DEBUG INFO ===");
+      console.log("Full Order Object:", order);
+      console.log("Order ID:", order.id);
+      console.log("Order Number:", order.order_number);
+      
+      if (order.items && Array.isArray(order.items)) {
+        console.log("Order Items Count:", order.items.length);
+        console.log("=== INDIVIDUAL ITEMS ===");
+        
+        order.items.forEach((item, index) => {
+          console.log(`--- Item ${index + 1} ---`);
+          console.log("Full Item Object:", item);
+          console.log("Product Name:", item.product_name);
+          console.log("Variant Name:", item.variant_name);
+          console.log("Variant Code:", item.variant_code);
+          console.log("Variant ID:", item.variant_id);
+          console.log("Quantity:", item.quantity);
+          console.log("Price:", item.price);
+          console.log("Description:", item.description);
+          console.log("Available Quantity:", item.available_quantity);
+          console.log("SKU Prefix:", item.sku_prefix);
+          console.log("Product ID:", item.product_id);
+          console.log("-------------------------");
+        });
       } else {
-        // Exit edit mode - reset states
-        setEditingItems([]);
-        setSelectedCategory("");
-        setSelectedProduct("");
-        setSelectedVariant("");
-        setProducts([]);
-        setVariants([]);
-        console.log("Exiting edit mode");
+        console.log("No items found or items is not an array");
+        console.log("Items value:", order.items);
       }
-      setIsEditMode(!isEditMode);
-    };
+      
+      console.log("=== END ORDER DEBUG ===");
+    }
+  }, [order, isOpen]);
 
-    // Update the total calculation in the OrderDetailModal
-    const calculateCurrentTotal = () => {
-      const items = isEditMode ? editingItems : order?.items || [];
-      return items
-        .reduce(
-          (sum, item) =>
-            sum + parseFloat(item.price || 0) * parseInt(item.quantity || 0),
-          0
-        )
-        .toFixed(2);
-    };
+  // Memoize the add new item handler
+  const handleAddNewItem = useCallback((newItem) => {
+    setEditingItems((prev) => [...prev, newItem]);
+  }, [setEditingItems]);
 
-    const handleQuantityChange = (itemIndex, newQuantity) => {
-      const updatedItems = [...editingItems];
-      updatedItems[itemIndex].quantity = Math.max(
-        0,
-        parseInt(newQuantity) || 0
-      );
-      setEditingItems(updatedItems);
-    };
+  // FIXED: Stable modal props with proper memoization
+  const stableModalProps = useMemo(() => ({
+    isOpen: showAddItemModal,
+    onClose: () => setShowAddItemModal(false),
+    onAddItem: handleAddNewItem
+  }), [showAddItemModal, setShowAddItemModal, handleAddNewItem]);
 
-    const handleRemoveItem = (itemIndex) => {
-      const updatedItems = editingItems.filter(
-        (_, index) => index !== itemIndex
-      );
-      setEditingItems(updatedItems);
-    };
+  // FIXED: Toggle edit mode handler with proper dependencies
+  const handleToggleEditMode = useCallback(() => {
+    console.log("Toggle edit mode clicked, current state:", isEditMode);
 
-    const handleAddNewItem = (newItem) => {
-      setEditingItems([...editingItems, newItem]);
-    };
-    const handleSaveChanges = async () => {
-      const editReason = prompt(
-        "Please provide a reason for editing this order:"
-      );
-      if (!editReason || editReason.trim() === "") return;
+    if (!isEditMode) {
+      const itemsCopy = order.items.map((item) => ({
+        ...item,
+        available_quantity: item.available_quantity || 999,
+      }));
+      setEditingItems(itemsCopy);
+      console.log("Entering edit mode, editing items set:", itemsCopy);
+    } else {
+      setEditingItems([]);
+      console.log("Exiting edit mode");
+    }
+    setIsEditMode(!isEditMode);
+  }, [isEditMode, order?.items, setEditingItems, setIsEditMode]);
 
-      try {
-        setProcessing(true);
+  // Memoize current items
+  const currentItems = useMemo(() => {
+    return isEditMode ? editingItems : (order?.items || []);
+  }, [isEditMode, editingItems, order?.items]);
 
-        // Get token from localStorage or wherever you store it
-        const token =
-          localStorage.getItem("authToken") || localStorage.getItem("token");
+  // Memoize total calculation
+  const currentTotal = useMemo(() => {
+    return currentItems
+      .reduce(
+        (sum, item) =>
+          sum + parseFloat(item.price || 0) * parseInt(item.quantity || 0),
+        0
+      )
+      .toFixed(2);
+  }, [currentItems]);
 
-        const response = await axios.put(
-          `${API_BASE}/orders/${selectedOrder.id}/update`,
-          {
-            items: editingItems,
-            edit_reason: editReason,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.data.success) {
-          // Update the selected order with the new order data returned from server
-          const newOrder = response.data.order;
-          setSelectedOrder(newOrder);
-
-          // Helper function to get base order number (without version suffix)
-          const getBaseOrderNumber = (orderNumber) => {
-            if (!orderNumber) return "";
-            return orderNumber.split("-v")[0];
-          };
-
-          // Get the base order number for comparison
-          const baseOrderNumber = getBaseOrderNumber(
-            selectedOrder.order_number
-          );
-
-          // Update the orders list based on active tab
-          if (activeTab === "orders") {
-            setOrders((prev) =>
-              prev.map((order) => {
-                // Safety check for null/undefined order_number
-                if (!order.order_number || !selectedOrder.order_number) {
-                  return order;
-                }
-
-                // Check if this order matches the base order number
-                const orderBaseNumber = getBaseOrderNumber(order.order_number);
-
-                return orderBaseNumber === baseOrderNumber ? newOrder : order;
-              })
-            );
-          } else if (activeTab === "history") {
-            setOrderHistory((prev) =>
-              prev.map((order) => {
-                // Safety check for null/undefined order_number
-                if (!order.order_number || !selectedOrder.order_number) {
-                  return order;
-                }
-
-                // Check if this order matches the base order number
-                const orderBaseNumber = getBaseOrderNumber(order.order_number);
-
-                return orderBaseNumber === baseOrderNumber ? newOrder : order;
-              })
-            );
-          }
-
-          setModalMessage(
-            "Order updated successfully. Previous version moved to history."
-          );
-          setShowSuccessModal(true);
-          setIsEditMode(false);
-          setEditingItems([]);
-
-          // Refresh order versions to show the new history
-          await fetchLocalOrderVersions(newOrder.id);
-        } else {
-          throw new Error(response.data.message || "Update failed");
-        }
-      } catch (error) {
-        console.error("Order update error:", error);
-        setModalMessage(
-          "Failed to update order: " +
-            (error.response?.data?.error || error.message)
-        );
-        setShowErrorModal(true);
-      } finally {
-        setProcessing(false);
+  // CRITICAL: Optimized quantity change with debouncing
+  const handleQuantityChange = useCallback((itemIndex, newQuantity) => {
+    console.log(`Quantity change: item ${itemIndex}, new value: ${newQuantity}`);
+    
+    setEditingItems(prev => {
+      // Check if value actually changed
+      if (prev[itemIndex]?.quantity === newQuantity) {
+        console.log("No change detected, returning same reference");
+        return prev;
       }
-    };
-
-    // Also update the fetchLocalOrderVersions function to be more robust
-    const fetchLocalOrderVersions = async (orderId) => {
-      try {
-        console.log("Fetching versions for order:", orderId);
-        const response = await axios.get(
-          `${API_BASE}/orders/${orderId}/versions`
-        );
-        console.log("Order versions response:", response.data);
-
-        // Sort versions by creation date, most recent first
-        const versions = (response.data.versions || []).sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        );
-
-        setLocalOrderVersions(versions);
-      } catch (error) {
-        console.error("Failed to fetch order versions:", error);
-        setLocalOrderVersions([]);
-      }
-    };
-
-    // Update the OrderDetailModal useEffect to handle data refresh
-    useEffect(() => {
-      let mounted = true;
-
-      const loadVersions = async () => {
-        if (isOpen && order && order.id && mounted) {
-          try {
-            await fetchLocalOrderVersions(order.id);
-            if (mounted) {
-              setLocalActiveVersionTab("current");
-            }
-          } catch (error) {
-            console.error("Error loading versions:", error);
-          }
-        }
+      
+      console.log("Value changed, updating state");
+      const updatedItems = [...prev];
+      updatedItems[itemIndex] = {
+        ...updatedItems[itemIndex],
+        quantity: Math.max(0, parseInt(newQuantity) || 0)
       };
+      return updatedItems;
+    });
+  }, [setEditingItems]);
 
-      // Only load versions when modal opens or order changes
-      if (isOpen && order?.id) {
-        loadVersions();
-      }
+  const handleRemoveItem = useCallback((itemIndex) => {
+    setEditingItems(prev => prev.filter((_, index) => index !== itemIndex));
+  }, [setEditingItems]);
 
-      // Reset local state when modal closes
-      if (!isOpen) {
-        setLocalOrderVersions([]);
-        setLocalActiveVersionTab("current");
+  // FIXED: Proper async handling for save changes
+  const handleSaveChanges = useCallback(async () => {
+    const editReason = prompt("Please provide a reason for editing this order:");
+    if (!editReason || editReason.trim() === "") return;
+
+    try {
+      setProcessing(true);
+
+      const token = localStorage.getItem("authToken") || localStorage.getItem("token");
+
+      const response = await axios.put(
+        `${API_BASE}/orders/${order.id}/update`,
+        {
+          items: editingItems,
+          edit_reason: editReason,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        const newOrder = response.data.order;
+        setSelectedOrder(newOrder);
+
+        const getBaseOrderNumber = (orderNumber) => {
+          if (!orderNumber) return "";
+          return orderNumber.split("-v")[0];
+        };
+
+        const baseOrderNumber = getBaseOrderNumber(order.order_number);
+
+        if (activeTab === "orders") {
+          setOrders((prev) =>
+            prev.map((ord) => {
+              if (!ord.order_number || !order.order_number) {
+                return ord;
+              }
+              const orderBaseNumber = getBaseOrderNumber(ord.order_number);
+              return orderBaseNumber === baseOrderNumber ? newOrder : ord;
+            })
+          );
+        } else if (activeTab === "history") {
+          setOrderHistory((prev) =>
+            prev.map((ord) => {
+              if (!ord.order_number || !order.order_number) {
+                return ord;
+              }
+              const orderBaseNumber = getBaseOrderNumber(ord.order_number);
+              return orderBaseNumber === baseOrderNumber ? newOrder : ord;
+            })
+          );
+        }
+
+        setModalMessage("Order updated successfully. Previous version moved to history.");
+        setShowSuccessModal(true);
         setIsEditMode(false);
         setEditingItems([]);
+
+        // CRITICAL: Await the fetch to prevent race conditions
+        await fetchLocalOrderVersions(newOrder.id);
+      } else {
+        throw new Error(response.data.message || "Update failed");
       }
+    } catch (error) {
+      console.error("Order update error:", error);
+      setModalMessage(
+        "Failed to update order: " + (error.response?.data?.error || error.message)
+      );
+      setShowErrorModal(true);
+    } finally {
+      setProcessing(false);
+    }
+  }, [
+    order.id, 
+    editingItems, 
+    setProcessing, 
+    setSelectedOrder, 
+    activeTab, 
+    setOrders, 
+    setOrderHistory, 
+    order.order_number,
+    setModalMessage,
+    setShowSuccessModal,
+    setShowErrorModal,
+    setIsEditMode,
+    setEditingItems,
+    fetchLocalOrderVersions
+  ]);
 
-      return () => {
-        mounted = false;
-      };
-    }, [isOpen, order?.id]);
-    // Add this function to refresh data after successful operations
-    const refreshCurrentData = async () => {
-      try {
-        setLoading(true);
-        await fetchData(); // This will refresh the current tab's data
-      } catch (error) {
-        console.error("Error refreshing data:", error);
-      } finally {
-        setLoading(false);
+  // FIXED: Optimized useEffect with minimal dependencies
+  useEffect(() => {
+    let mounted = true;
+
+    const loadVersions = async () => {
+      if (isOpen && order?.id && mounted) {
+        try {
+          await fetchLocalOrderVersions(order.id);
+          if (mounted) {
+            setLocalActiveVersionTab("current");
+          }
+        } catch (error) {
+          console.error("Error loading versions:", error);
+        }
       }
     };
-    const downloadPDF = () => {
-      generateAndDownloadPDF(order);
+
+    if (isOpen && order?.id) {
+      loadVersions();
+    }
+
+    // Clean up when modal closes
+    if (!isOpen && mounted) {
+      setLocalOrderVersions([]);
+      setLocalActiveVersionTab("current");
+      // Don't reset edit mode here - let the parent handle it
+    }
+
+    return () => {
+      mounted = false;
     };
+  }, [isOpen, order?.id, fetchLocalOrderVersions]); // Minimal deps
 
-    const downloadExcel = () => {
-      generateAndDownloadExcel(order);
-    };
+  // Memoize download handlers
+  const downloadPDF = useCallback(() => {
+    generateAndDownloadPDF(order);
+  }, [order, generateAndDownloadPDF]);
 
-    const currentItems = isEditMode ? editingItems : order.items;
+  const downloadExcel = useCallback(() => {
+    generateAndDownloadExcel(order);
+  }, [order, generateAndDownloadExcel]);
 
-    return (
-      <>
-        <div className="modal-overlay">
-          <div className="modal-content modal-large">
-            <div className="modal-header">
-              <h2>Order Details - {order.order_number}</h2>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "12px" }}
-              >
-                {/* Edit Toggle Switch */}
-                <label
+  const handleCancelEdit = useCallback(() => {
+    setIsEditMode(false);
+    setEditingItems([]);
+  }, [setIsEditMode, setEditingItems]);
+
+  // REMOVED: Debug useEffect that was causing unnecessary renders
+
+  return (
+    <>
+      <div className="modal-overlay">
+        <div className="modal-content modal-large">
+          <div className="modal-header">
+            <h2>Order Details - {order.order_number}</h2>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={isEditMode}
+                  onChange={handleToggleEditMode}
+                  style={{ display: "none" }}
+                />
+                <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
+                    width: "44px",
+                    height: "24px",
+                    backgroundColor: isEditMode ? "#3b82f6" : "#d1d5db",
+                    borderRadius: "12px",
+                    position: "relative",
+                    transition: "all 0.2s",
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isEditMode}
-                    onChange={handleToggleEditMode}
-                    style={{ display: "none" }}
-                  />
                   <div
                     style={{
-                      width: "44px",
-                      height: "24px",
-                      backgroundColor: isEditMode ? "#3b82f6" : "#d1d5db",
-                      borderRadius: "12px",
-                      position: "relative",
+                      width: "20px",
+                      height: "20px",
+                      backgroundColor: "white",
+                      borderRadius: "50%",
+                      position: "absolute",
+                      top: "2px",
+                      left: isEditMode ? "22px" : "2px",
                       transition: "all 0.2s",
                     }}
-                  >
-                    <div
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        backgroundColor: "white",
-                        borderRadius: "50%",
-                        position: "absolute",
-                        top: "2px",
-                        left: isEditMode ? "22px" : "2px",
-                        transition: "all 0.2s",
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: "14px", fontWeight: "500" }}>
-                    {isEditMode ? "Edit Mode" : "View Mode"}
-                  </span>
-                </label>
-                <button className="modal-close" onClick={onClose}>
-                  ×
-                </button>
-              </div>
+                  />
+                </div>
+                <span style={{ fontSize: "14px", fontWeight: "500" }}>
+                  {isEditMode ? "Edit Mode" : "View Mode"}
+                </span>
+              </label>
+              <button className="modal-close" onClick={onClose}>×</button>
             </div>
+          </div>
 
-            <div className="modal-body">
-              {/* Version Tabs */}
-              <div style={{ marginBottom: "24px" }}>
-                <div
-                  style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}
+          <div className="modal-body">
+            {/* Version Tabs */}
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
+                <button
+                  className={`tab-button ${localActiveVersionTab === "current" ? "active" : ""}`}
+                  onClick={() => setLocalActiveVersionTab("current")}
+                  style={{
+                    padding: "8px 16px",
+                    border: "none",
+                    background: localActiveVersionTab === "current" ? "white" : "none",
+                    borderBottom: localActiveVersionTab === "current" ? "2px solid #3b82f6" : "none",
+                    color: localActiveVersionTab === "current" ? "#3b82f6" : "#64748b",
+                  }}
                 >
+                  Current Order
+                </button>
+                {localOrderVersions.length > 0 && (
                   <button
-                    className={`tab-button ${
-                      localActiveVersionTab === "current" ? "active" : ""
-                    }`}
-                    onClick={() => setLocalActiveVersionTab("current")}
+                    className={`tab-button ${localActiveVersionTab === "history" ? "active" : ""}`}
+                    onClick={() => setLocalActiveVersionTab("history")}
                     style={{
                       padding: "8px 16px",
                       border: "none",
-                      background:
-                        localActiveVersionTab === "current" ? "white" : "none",
-                      borderBottom:
-                        localActiveVersionTab === "current"
-                          ? "2px solid #3b82f6"
-                          : "none",
-                      color:
-                        localActiveVersionTab === "current"
-                          ? "#3b82f6"
-                          : "#64748b",
+                      background: localActiveVersionTab === "history" ? "white" : "none",
+                      borderBottom: localActiveVersionTab === "history" ? "2px solid #3b82f6" : "none",
+                      color: localActiveVersionTab === "history" ? "#3b82f6" : "#64748b",
                     }}
                   >
-                    Current Order
+                    Order History ({localOrderVersions.length})
                   </button>
-                  {localOrderVersions.length > 0 && (
-                    <button
-                      className={`tab-button ${
-                        localActiveVersionTab === "history" ? "active" : ""
-                      }`}
-                      onClick={() => setLocalActiveVersionTab("history")}
-                      style={{
-                        padding: "8px 16px",
-                        border: "none",
-                        background:
-                          localActiveVersionTab === "history"
-                            ? "white"
-                            : "none",
-                        borderBottom:
-                          localActiveVersionTab === "history"
-                            ? "2px solid #3b82f6"
-                            : "none",
-                        color:
-                          localActiveVersionTab === "history"
-                            ? "#3b82f6"
-                            : "#64748b",
-                      }}
-                    >
-                      Order History ({localOrderVersions.length})
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
+            </div>
 
-              {localActiveVersionTab === "current" ? (
-                <div style={{ display: "grid", gap: "24px" }}>
-                  {/* Customer Information */}
-                  <div>
-                    <h3
-                      style={{
-                        margin: "0 0 12px 0",
-                        color: "#1e293b",
-                        fontSize: "18px",
-                      }}
-                    >
-                      Customer Information
-                    </h3>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fit, minmax(200px, 1fr))",
-                        gap: "16px",
-                        padding: "16px",
-                        backgroundColor: "#f8fafc",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      <div>
-                        <label className="form-label">Name</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
-                          {order.customer_name || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="form-label">Email</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
-                          {order.customer_email || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="form-label">Phone</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
-                          {order.customer_phone || "N/A"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order Information */}
-                  <div>
-                    <h3
-                      style={{
-                        margin: "0 0 12px 0",
-                        color: "#1e293b",
-                        fontSize: "18px",
-                      }}
-                    >
-                      Order Information
-                    </h3>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fit, minmax(150px, 1fr))",
-                        gap: "16px",
-                        padding: "16px",
-                        backgroundColor: "#f8fafc",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      <div>
-                        <label className="form-label">Status</label>
-                        <span className={`status-badge status-${order.status}`}>
-                          {order.status}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">Created</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
-                          {new Date(order.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="form-label">Items</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
-                          {currentItems?.length || 0} items
-                        </p>
-                      </div>
-                      <div>
-                        <label className="form-label">Total</label>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#374151",
-                            fontWeight: "600",
-                          }}
-                        >
-                          ₹
-                          {currentItems
-                            ?.reduce(
-                              (sum, item) =>
-                                sum +
-                                parseFloat(item.price || 0) *
-                                  parseInt(item.quantity || 0),
-                              0
-                            )
-                            .toFixed(2) || "0.00"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Order Items */}
-                  {currentItems && currentItems.length > 0 && (
-                    <div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "12px",
-                        }}
-                      >
-                        <h3
-                          style={{
-                            margin: 0,
-                            color: "#1e293b",
-                            fontSize: "18px",
-                          }}
-                        >
-                          Order Items
-                        </h3>
-                        {isEditMode && (
-                          <button
-                            className="btn-primary"
-                            onClick={() => setShowAddItemModal(true)}
-                            style={{ padding: "8px 16px", fontSize: "14px" }}
-                          >
-                            <Plus size={14} />
-                            Add Item
-                          </button>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            backgroundColor: "#f8fafc",
-                            padding: "12px 16px",
-                            borderBottom: "1px solid #e2e8f0",
-                            display: "grid",
-                            gridTemplateColumns: isEditMode
-                              ? "2fr 1fr 1fr 1fr 80px"
-                              : "2fr 1fr 1fr 1fr",
-                            gap: "16px",
-                            fontWeight: "600",
-                            fontSize: "14px",
-                          }}
-                        >
-                          <span>Product</span>
-                          <span>Quantity</span>
-                          <span>Price</span>
-                          <span>Total</span>
-                          {isEditMode && <span>Actions</span>}
-                        </div>
-                        {currentItems.map((item, index) => (
-                          <div
-                            key={index}
-                            style={{
-                              padding: "12px 16px",
-                              borderBottom:
-                                index < currentItems.length - 1
-                                  ? "1px solid #e2e8f0"
-                                  : "none",
-                              display: "grid",
-                              gridTemplateColumns: isEditMode
-                                ? "2fr 1fr 1fr 1fr 80px"
-                                : "2fr 1fr 1fr 1fr",
-                              gap: "16px",
-                              alignItems: "center",
-                            }}
-                          >
-                            <div>
-                              <p
-                                style={{
-                                  margin: "0 0 4px 0",
-                                  fontWeight: "500",
-                                }}
-                              >
-                                {item.product_name || "Unknown Product"}
-                              </p>
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: "12px",
-                                  color: "#64748b",
-                                }}
-                              >
-                                {item.variant_name} • {item.variant_code}
-                              </p>
-                            </div>
-                            <div>
-                              {isEditMode ? (
-                                <input
-                                  type="number"
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    handleQuantityChange(index, e.target.value)
-                                  }
-                                  min="0"
-                                  max={item.available_quantity || 999}
-                                  style={{
-                                    width: "60px",
-                                    padding: "4px 8px",
-                                    border: "1px solid #d1d5db",
-                                    borderRadius: "4px",
-                                  }}
-                                />
-                              ) : (
-                                <span>{item.quantity}</span>
-                              )}
-                            </div>
-                            <span>
-                              ₹{parseFloat(item.price || 0).toFixed(2)}
-                            </span>
-                            <span style={{ fontWeight: "600" }}>
-                              ₹
-                              {(
-                                parseFloat(item.price || 0) *
-                                parseInt(item.quantity || 0)
-                              ).toFixed(2)}
-                            </span>
-                            {isEditMode && (
-                              <button
-                                onClick={() => handleRemoveItem(index)}
-                                style={{
-                                  background: "#ef4444",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "4px",
-                                  padding: "4px 8px",
-                                  cursor: "pointer",
-                                  fontSize: "12px",
-                                }}
-                              >
-                                <X size={12} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {order.note && (
-                    <div>
-                      <h3
-                        style={{
-                          margin: "0 0 12px 0",
-                          color: "#1e293b",
-                          fontSize: "18px",
-                        }}
-                      >
-                        Notes
-                      </h3>
-                      <div
-                        style={{
-                          padding: "16px",
-                          backgroundColor: "#f8fafc",
-                          borderRadius: "8px",
-                          border: "1px solid #e2e8f0",
-                        }}
-                      >
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#374151",
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {order.note}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // Order History Tab
+            {localActiveVersionTab === "current" ? (
+              <div style={{ display: "grid", gap: "24px" }}>
+                {/* Customer Information */}
                 <div>
-                  <h3
-                    style={{
-                      margin: "0 0 16px 0",
-                      color: "#1e293b",
-                      fontSize: "18px",
-                    }}
-                  >
-                    Order History
+                  <h3 style={{ margin: "0 0 12px 0", color: "#1e293b", fontSize: "18px" }}>
+                    Customer Information
                   </h3>
-                  {localOrderVersions.length > 0 ? (
-                    localOrderVersions.map((version, index) => (
-                      <div
-                        key={version.id || index}
-                        style={{
-                          padding: "16px",
-                          backgroundColor: "#f8fafc",
-                          borderRadius: "8px",
-                          border: "1px solid #e2e8f0",
-                          marginBottom: "12px",
-                        }}
-                      >
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: "16px",
+                    padding: "16px",
+                    backgroundColor: "#f8fafc",
+                    borderRadius: "8px",
+                  }}>
+                    <div>
+                      <label className="form-label">Name</label>
+                      <p style={{ margin: 0, color: "#374151" }}>
+                        {order.customer_name || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="form-label">Email</label>
+                      <p style={{ margin: 0, color: "#374151" }}>
+                        {order.customer_email || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="form-label">Phone</label>
+                      <p style={{ margin: 0, color: "#374151" }}>
+                        {order.customer_phone || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Information */}
+                <div>
+                  <h3 style={{ margin: "0 0 12px 0", color: "#1e293b", fontSize: "18px" }}>
+                    Order Information
+                  </h3>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                    gap: "16px",
+                    padding: "16px",
+                    backgroundColor: "#f8fafc",
+                    borderRadius: "8px",
+                  }}>
+                    <div>
+                      <label className="form-label">Status</label>
+                      <span className={`status-badge status-${order.status}`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="form-label">Created</label>
+                      <p style={{ margin: 0, color: "#374151" }}>
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="form-label">Items</label>
+                      <p style={{ margin: 0, color: "#374151" }}>
+                        {currentItems?.length || 0} items
+                      </p>
+                    </div>
+                    <div>
+                      <label className="form-label">Total</label>
+                      <p style={{ margin: 0, color: "#374151", fontWeight: "600" }}>
+                        ₹{currentTotal}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                {currentItems && currentItems.length > 0 && (
+                  <div>
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "12px",
+                    }}>
+                      <h3 style={{ margin: 0, color: "#1e293b", fontSize: "18px" }}>
+                        Order Items
+                      </h3>
+                      {isEditMode && (
+                        <button
+                          className="btn-primary"
+                          onClick={() => setShowAddItemModal(true)}
+                          style={{ padding: "8px 16px", fontSize: "14px" }}
+                        >
+                          <Plus size={14} />
+                          Add Item
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                      <div style={{
+                        backgroundColor: "#f8fafc",
+                        padding: "12px 16px",
+                        borderBottom: "1px solid #e2e8f0",
+                        display: "grid",
+                        gridTemplateColumns: isEditMode ? "2fr 1fr 1fr 1fr 80px" : "2fr 1fr 1fr 1fr",
+                        gap: "16px",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                      }}>
+                        <span>Product</span>
+                        <span>Quantity</span>
+                        <span>Price</span>
+                        <span>Total</span>
+                        {isEditMode && <span>Actions</span>}
+                      </div>
+                      {currentItems.map((item, index) => (
                         <div
+                          key={`${item.variant_id || item.id || index}-${item.variant_code}-${index}`}
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
+                            padding: "12px 16px",
+                            borderBottom: index < currentItems.length - 1 ? "1px solid #e2e8f0" : "none",
+                            display: "grid",
+                            gridTemplateColumns: isEditMode ? "2fr 1fr 1fr 1fr 80px" : "2fr 1fr 1fr 1fr",
+                            gap: "16px",
                             alignItems: "center",
                           }}
                         >
                           <div>
-                            <h4 style={{ margin: "0 0 4px 0" }}>
-                              {version.order_number}
-                            </h4>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: "14px",
-                                color: "#64748b",
-                              }}
-                            >
-                              {new Date(version.created_at).toLocaleString()}
+                            <p style={{ margin: "0 0 4px 0", fontWeight: "500" }}>
+                              {item.product_name || "Unknown Product"}
                             </p>
-                            {version.edit_reason && (
-                              <p
-                                style={{
-                                  margin: "4px 0 0 0",
-                                  fontSize: "12px",
-                                  color: "#64748b",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                Reason: {version.edit_reason}
-                              </p>
+                            <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
+                              {item.variant_name} • {item.variant_code}
+                            </p>
+                          </div>
+                          <div>
+                            {isEditMode ? (
+                              <StableQuantityInput
+                                item={item}
+                                index={index}
+                                currentValue={item.quantity}
+                                onQuantityChange={handleQuantityChange}
+                              />
+                            ) : (
+                              <span>{item.quantity}</span>
                             )}
                           </div>
-                          <button
-                            className="btn-secondary"
-                            onClick={() => handleViewOrder({ id: version.id })}
-                            style={{ padding: "6px 12px", fontSize: "12px" }}
-                          >
-                            <Eye size={12} />
-                            View
-                          </button>
+                          <span>₹{parseFloat(item.price || 0).toFixed(2)}</span>
+                          <span style={{ fontWeight: "600" }}>
+                            ₹{(parseFloat(item.price || 0) * parseInt(item.quantity || 0)).toFixed(2)}
+                          </span>
+                          {isEditMode && (
+                            <StableRemoveButton index={index} onRemove={handleRemoveItem} />
+                          )}
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {order.note && (
+                  <div>
+                    <h3 style={{ margin: "0 0 12px 0", color: "#1e293b", fontSize: "18px" }}>
+                      Notes
+                    </h3>
+                    <div style={{
+                      padding: "16px",
+                      backgroundColor: "#f8fafc",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                    }}>
+                      <p style={{ margin: 0, color: "#374151", whiteSpace: "pre-wrap" }}>
+                        {order.note}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <h3 style={{ margin: "0 0 16px 0", color: "#1e293b", fontSize: "18px" }}>
+                  Order History
+                </h3>
+                {localOrderVersions.length > 0 ? (
+                  localOrderVersions.map((version, index) => (
+                    <div
+                      key={version.id || index}
                       style={{
-                        color: "#64748b",
-                        textAlign: "center",
-                        padding: "24px",
+                        padding: "16px",
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        marginBottom: "12px",
                       }}
                     >
-                      No order history available
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}>
+                        <div>
+                          <h4 style={{ margin: "0 0 4px 0" }}>
+                            {version.order_number}
+                          </h4>
+                          <p style={{ margin: 0, fontSize: "14px", color: "#64748b" }}>
+                            {new Date(version.created_at).toLocaleString()}
+                          </p>
+                          {version.edit_reason && (
+                            <p style={{
+                              margin: "4px 0 0 0",
+                              fontSize: "12px",
+                              color: "#64748b",
+                              fontStyle: "italic",
+                            }}>
+                              Reason: {version.edit_reason}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => handleViewOrder({ id: version.id })}
+                          style={{ padding: "6px 12px", fontSize: "12px" }}
+                        >
+                          <Eye size={12} />
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#64748b", textAlign: "center", padding: "24px" }}>
+                    No order history available
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
-            <div className="modal-actions">
-              {isEditMode ? (
-                <>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => {
-                      setIsEditMode(false);
-                      setEditingItems([]);
-                    }}
-                    disabled={processing}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn-primary"
-                    onClick={handleSaveChanges}
-                    disabled={processing}
-                  >
-                    {processing ? "Saving..." : "Save Changes"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className="btn-secondary" onClick={downloadExcel}>
-                    <FileSpreadsheet size={16} />
-                    Download Excel
-                  </button>
-                  <button className="btn-secondary" onClick={downloadPDF}>
-                    <Download size={16} />
-                    Download PDF
-                  </button>
-                  <button className="btn-primary" onClick={onClose}>
-                    Close
-                  </button>
-                </>
-              )}
-            </div>
+          <div className="modal-actions">
+            {isEditMode ? (
+              <>
+                <button className="btn-secondary" onClick={handleCancelEdit} disabled={processing}>
+                  Cancel
+                </button>
+                <button className="btn-primary" onClick={handleSaveChanges} disabled={processing}>
+                  {processing ? "Saving..." : "Save Changes"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn-secondary" onClick={downloadExcel}>
+                  <FileSpreadsheet size={16} />
+                  Download Excel
+                </button>
+                <button className="btn-secondary" onClick={downloadPDF}>
+                  <Download size={16} />
+                  Download PDF
+                </button>
+                <button className="btn-primary" onClick={onClose}>
+                  Close
+                </button>
+              </>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Add Item Modal */}
-        <AddItemModal
-          isOpen={showAddItemModal}
-          onClose={() => setShowAddItemModal(false)}
-          onAddItem={handleAddNewItem}
-        />
-      </>
-    );
-  };
+      {/* FIXED: Only render AddItemModal when needed */}
+      {showAddItemModal && <AddItemModal {...stableModalProps} />}
+    </>
+  );
+};
   // Customer Detail Modal Component
   const CustomerDetailModal = ({ isOpen, onClose, customer, orders }) => {
     if (!isOpen || !customer) return null;
@@ -3409,11 +3483,30 @@ const handleViewOrder = async (order) => {
         </div>
 
         {/* Order Detail Modal */}
-        <OrderDetailModal
-          isOpen={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
-          order={selectedOrder}
-        />
+       <OrderDetailModal
+       generateAndDownloadPDF={memoizedGenerateAndDownloadPDF}
+  generateAndDownloadExcel={memoizedGenerateAndDownloadExcel}
+  handleViewOrder={memoizedHandleViewOrder}
+  isOpen={showOrderModal}
+  onClose={() => setShowOrderModal(false)}
+  order={selectedOrder}
+  isEditMode={isEditMode}
+  setIsEditMode={setIsEditMode}
+  editingItems={editingItems}
+  setEditingItems={setEditingItems}
+  showAddItemModal={showAddItemModal}
+  setShowAddItemModal={setShowAddItemModal}
+  processing={processing}
+  setProcessing={setProcessing}
+  activeTab={activeTab}
+  setOrders={setOrders}
+  setOrderHistory={setOrderHistory}
+  setSelectedOrder={setSelectedOrder}
+  setModalMessage={setModalMessage}
+  setShowSuccessModal={setShowSuccessModal}
+  setShowErrorModal={setShowErrorModal}
+  //handleViewOrder={handleViewOrder}
+/>
 
         {/* Customer Detail Modal */}
         <CustomerDetailModal

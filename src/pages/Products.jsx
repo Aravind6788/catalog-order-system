@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import "./Products.css";
@@ -41,34 +47,266 @@ const Products = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedVariant, setSelectedVariant] = useState(null);
 
-  // Modal states
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [productToDelete, setProductToDelete] = useState(null);
-  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
-  const [productToDeactivate, setProductToDeactivate] = useState(null);
-  const [showActivateModal, setShowActivateModal] = useState(false);
-  const [productToActivate, setProductToActivate] = useState(null);
-  const [showVariantDeleteModal, setShowVariantDeleteModal] = useState(false);
-  const [variantToDelete, setVariantToDelete] = useState(null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [showVariantActivateModal, setShowVariantActivateModal] =
-    useState(false);
-  const [variantToActivate, setVariantToActivate] = useState(null);
+  // Single modal state
+  const [modalConfig, setModalConfig] = useState(null);
+
+  // Separate notification state with proper structure
+  const [notification, setNotification] = useState({
+    show: false,
+    type: "success", // 'success' or 'error'
+    message: "",
+    title: "",
+  });
 
   // View options
   const [viewMode, setViewMode] = useState("grid");
 
-  // Image states
-  const [productImages, setProductImages] = useState([]);
-  const [variantImages, setVariantImages] = useState({});
+  // Image states - consolidated
+  const [imageData, setImageData] = useState({
+    productImages: {},
+    variantImages: {},
+  });
 
-  // Image Modal Component
-  const ImageGalleryModal = ({ isOpen, images, onClose, title }) => {
+  // Refs to prevent stale closures
+  const notificationTimeoutRef = useRef(null);
+
+  // Optimized notification handlers with proper cleanup
+  const showNotification = useCallback((type, title, message) => {
+    // Clear any existing timeout
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+
+    setNotification({
+      show: true,
+      type,
+      title,
+      message,
+    });
+  }, []);
+
+  const hideNotification = useCallback(() => {
+    setNotification((prev) => ({ ...prev, show: false }));
+
+    // Clear timeout ref
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+      notificationTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Stable API functions - memoized with useCallback and dependencies
+  const confirmActivate = useCallback(
+    async (product) => {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put(
+          `${API_BASE}/products/${product.id}/activate`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        await fetchProducts(); 
+        showNotification(
+          "success",
+          "Success",
+          "Product activated successfully"
+        );
+        // Refetch products to get updated data
+      } catch (error) {
+        console.error("Error activating product:", error);
+        showNotification("error", "Error", "Failed to activate product");
+      }
+    },
+    [showNotification]
+  ); // Only depend on showNotification
+
+  const confirmDeactivate = useCallback(
+    async (product) => {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put(
+          `${API_BASE}/products/${product.id}/deactivate`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        await fetchProducts();
+        showNotification(
+          "success",
+          "Success",
+          "Product deactivated successfully"
+        );
+      } catch (error) {
+        console.error("Error deactivating product:", error);
+        showNotification("error", "Error", "Failed to deactivate product");
+      }
+    },
+    [showNotification]
+  );
+
+  const confirmDelete = useCallback(
+    async (product) => {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`${API_BASE}/products/${product.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        // Update products state directly without refetch for better UX
+        setProducts((prev) => prev.filter((p) => p.id !== product.id));
+        showNotification("success", "Success", "Product permanently deleted");
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        showNotification("error", "Error", "Failed to delete product");
+      }
+    },
+    [showNotification]
+  );
+
+  const confirmVariantActivate = useCallback(
+    async (variant) => {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put(
+          `${API_BASE}/variants/${variant.id}/activate`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        await fetchProducts();
+        showNotification(
+          "success",
+          "Success",
+          "Variant activated successfully"
+        );
+      } catch (error) {
+        console.error("Error activating variant:", error);
+        showNotification("error", "Error", "Failed to activate variant");
+      }
+    },
+    [showNotification]
+  );
+
+  const confirmVariantDelete = useCallback(
+    async (variant) => {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`${API_BASE}/variants/${variant.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        await fetchProducts();
+        showNotification(
+          "success",
+          "Success",
+          "Variant deactivated successfully"
+        );
+      } catch (error) {
+        console.error("Error deactivating variant:", error);
+        showNotification("error", "Error", "Failed to deactivate variant");
+      }
+    },
+    [showNotification]
+  );
+
+  // Memoized modal configurations with stable dependencies
+  const modalConfigs = useMemo(
+    () => ({
+      activateProduct: (data) => ({
+        title: "Activate Product",
+        message: `Are you sure you want to activate "${data?.name}"? It will be available for sale again.`,
+        confirmText: "Activate",
+        confirmClass: "btn-success",
+        icon: Power,
+        iconColor: "#10b981",
+        onConfirm: () => confirmActivate(data),
+      }),
+      deactivateProduct: (data) => ({
+        title: "Deactivate Product",
+        message: `Are you sure you want to deactivate "${data?.name}"? It will be hidden from active listings and all its variants will also be deactivated.`,
+        confirmText: "Deactivate",
+        confirmClass: "btn-warning",
+        icon: PowerOff,
+        iconColor: "#f59e0b",
+        onConfirm: () => confirmDeactivate(data),
+      }),
+      deleteProduct: (data) => ({
+        title: "Permanently Delete Product",
+        message: `Are you sure you want to permanently delete "${data?.name}"? This action cannot be undone and will remove all data including order history.`,
+        confirmText: "Delete Permanently",
+        confirmClass: "btn-danger",
+        icon: AlertTriangle,
+        iconColor: "#f59e0b",
+        onConfirm: () => confirmDelete(data),
+      }),
+      activateVariant: (data) => ({
+        title: "Activate Variant",
+        message: `Are you sure you want to activate the variant "${data?.name}"? It will be available for sale again.`,
+        confirmText: "Activate",
+        confirmClass: "btn-success",
+        icon: Power,
+        iconColor: "#10b981",
+        onConfirm: () => confirmVariantActivate(data),
+      }),
+      deactivateVariant: (data) => ({
+        title: "Deactivate Variant",
+        message: `Are you sure you want to deactivate the variant "${data?.name}"? It will be hidden from active listings but order history will be preserved.`,
+        confirmText: "Deactivate",
+        confirmClass: "btn-warning",
+        icon: PowerOff,
+        iconColor: "#f59e0b",
+        onConfirm: () => confirmVariantDelete(data),
+      }),
+    }),
+    [
+      confirmActivate,
+      confirmDeactivate,
+      confirmDelete,
+      confirmVariantActivate,
+      confirmVariantDelete,
+    ]
+  );
+
+  const openModal = useCallback(
+    (type, data) => {
+      const config = modalConfigs[type]?.(data);
+      if (config) {
+        setModalConfig(config);
+      }
+    },
+    [modalConfigs]
+  );
+
+  const closeModal = useCallback(() => setModalConfig(null), []);
+
+  const handleConfirm = useCallback(() => {
+    if (modalConfig?.onConfirm) {
+      modalConfig.onConfirm();
+    }
+    closeModal();
+  }, [modalConfig, closeModal]);
+
+  // Memoized Image Gallery Modal Component with stable props
+  const ImageGalleryModal = React.memo(({ isOpen, images, onClose, title }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    useEffect(() => {
+      if (isOpen) {
+        setCurrentImageIndex(0);
+      }
+    }, [isOpen, images]);
 
     if (!isOpen || !images || images.length === 0) return null;
 
@@ -137,86 +375,86 @@ const Products = () => {
         </div>
       </div>
     );
-  };
+  });
 
-  // Update the ConfirmModal component to handle different button types
-  const ConfirmModal = ({
-    isOpen,
-    onClose,
-    onConfirm,
-    title,
-    message,
-    confirmText = "Delete",
-    confirmClass = "btn-danger",
-    icon = AlertTriangle,
-    iconColor = "#f59e0b",
-  }) => {
-    if (!isOpen) return null;
+  // Memoized Reusable ConfirmModal component with stable props
+  const ConfirmModal = React.memo(
+    ({
+      isOpen,
+      onClose,
+      onConfirm,
+      title,
+      message,
+      confirmText = "Delete",
+      confirmClass = "btn-danger",
+      icon = AlertTriangle,
+      iconColor = "#f59e0b",
+    }) => {
+      if (!isOpen) return null;
 
-    const IconComponent = icon;
+      const IconComponent = icon;
 
-    return (
-      <div className="modal-overlay">
-        <div className="modal-content modal-small">
-          <div className="modal-header">
-            <h2>{title}</h2>
-            <button className="modal-close" onClick={onClose}>
-              ×
-            </button>
-          </div>
-          <div className="modal-body">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <IconComponent
-                style={{ color: iconColor, width: "24px", height: "24px" }}
-              />
-              <p style={{ margin: 0, color: "#374151" }}>{message}</p>
+      return (
+        <div className="modal-overlay">
+          <div className="modal-content modal-small">
+            <div className="modal-header">
+              <h2>{title}</h2>
+              <button className="modal-close" onClick={onClose}>
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "12px" ,backgroundColor: "white"}}
+              >
+                <IconComponent
+                  style={{ color: iconColor, width: "24px", height: "24px" }}
+                />
+                <p style={{ margin: 0, color: "#374151" }}>{message}</p>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+              <button className={confirmClass} onClick={onConfirm}>
+                {confirmText}
+              </button>
             </div>
           </div>
-          <div className="modal-actions">
-            <button className="btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button className={confirmClass} onClick={onConfirm}>
-              {confirmText}
-            </button>
-          </div>
         </div>
-      </div>
-    );
-  };
+      );
+    }
+  );
 
-  // Success/Error Modal Component
-  const NotificationModal = ({
-    isOpen,
-    onClose,
-    title,
-    message,
-    type = "info",
-  }) => {
-    if (!isOpen) return null;
+  // Optimized NotificationModal with proper memoization
+  const NotificationModal = React.memo(({ notification, onClose }) => {
+    if (!notification.show) return null;
 
     return (
       <div className="modal-overlay">
         <div className="modal-content modal-small">
           <div className="modal-header">
-            <h2>{title}</h2>
+            <h2>{notification.title}</h2>
             <button className="modal-close" onClick={onClose}>
               ×
             </button>
           </div>
           <div className="modal-body">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              {type === "success" && (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px",backgroundColor: "white" }}>
+              {notification.type === "success" && (
                 <Check
                   style={{ color: "#10b981", width: "24px", height: "24px" }}
                 />
               )}
-              {type === "error" && (
+              {notification.type === "error" && (
                 <AlertTriangle
                   style={{ color: "#ef4444", width: "24px", height: "24px" }}
                 />
               )}
-              <p style={{ margin: 0, color: "#374151" }}>{message}</p>
+              <p style={{ margin: 0, color: "#374151" }}>
+                {notification.message}
+              </p>
             </div>
           </div>
           <div className="modal-actions">
@@ -227,10 +465,10 @@ const Products = () => {
         </div>
       </div>
     );
-  };
+  });
 
-  // Enhanced Product Detail Modal Component with Images
-  const ProductDetailModal = ({ isOpen, onClose, product }) => {
+  // Enhanced Product Detail Modal Component with Images - MEMOIZED with proper dependencies
+  const ProductDetailModal = React.memo(({ isOpen, onClose, product }) => {
     const [currentVariant, setCurrentVariant] = useState(null);
     const [variantAttributes, setVariantAttributes] = useState([]);
     const [isLoadingAttributes, setIsLoadingAttributes] = useState(false);
@@ -271,39 +509,45 @@ const Products = () => {
       setCurrentVariant(variant);
       loadVariantAttributes(variant.id);
     };
+
     const handleActivateVariant = (variant, e) => {
-      e?.preventDefault();
-      e?.stopPropagation();
-      setVariantToActivate(variant);
-      setShowVariantActivateModal(true);
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      openModal("activateVariant", variant);
     };
 
     const handleEditVariant = (variant, e) => {
-      e?.preventDefault();
-      e?.stopPropagation();
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       navigate("/add-product-variant", {
         state: {
           editMode: true,
           formType: "variant",
           editData: {
             ...variant,
-            product_id: selectedProduct.product.id,
-            category_id: selectedProduct.product.category_id,
+            product_id: product.product.id,
+            category_id: product.product.category_id,
           },
         },
       });
-      setSelectedProduct(null); // Close detail modal
+      onClose();
     };
+
     const handleDeleteVariant = (variant, e) => {
-      e?.preventDefault();
-      e?.stopPropagation();
-      setVariantToDelete(variant);
-      setShowVariantDeleteModal(true);
-      // Don't close the detail modal here - let user see the action
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      openModal("deactivateVariant", variant);
+      onClose();
     };
 
     const openProductImageGallery = () => {
-      const images = productImages[product.product.id] || [];
+      const images = imageData.productImages[product.product.id] || [];
       if (images.length > 0) {
         setGalleryImages(images);
         setGalleryTitle(`${product.product.name} - Product Images`);
@@ -312,20 +556,12 @@ const Products = () => {
     };
 
     const openVariantImageGallery = (variant) => {
-      const images = variantImages[variant.id] || [];
+      const images = imageData.variantImages[variant.id] || [];
       if (images.length > 0) {
         setGalleryImages(images);
         setGalleryTitle(`${variant.name} - Variant Images`);
         setShowImageGallery(true);
       }
-    };
-
-    const formatPrice = (price) => {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-      }).format(price);
     };
 
     const getStockStatus = (quantity) => {
@@ -340,7 +576,7 @@ const Products = () => {
       ? getStockStatus(currentVariant.quantity || 0)
       : null;
 
-    const productImageList = productImages[product.product.id] || [];
+    const productImageList = imageData.productImages[product.product.id] || [];
 
     return (
       <>
@@ -453,7 +689,7 @@ const Products = () => {
                     <div className="variant-list">
                       {product.variants.map((variant) => {
                         const variantImageList =
-                          variantImages[variant.id] || [];
+                          imageData.variantImages[variant.id] || [];
                         return (
                           <div
                             key={variant.id}
@@ -616,12 +852,13 @@ const Products = () => {
                           </div>
                         )}
                         {/* Variant Images */}
-                        {variantImages[currentVariant.id] &&
-                          variantImages[currentVariant.id].length > 0 && (
+                        {imageData.variantImages[currentVariant.id] &&
+                          imageData.variantImages[currentVariant.id].length >
+                            0 && (
                             <div className="variant-images-section">
                               <h6>Variant Images</h6>
                               <div className="variant-images-preview">
-                                {variantImages[currentVariant.id]
+                                {imageData.variantImages[currentVariant.id]
                                   .slice(0, 4)
                                   .map((image, index) => (
                                     <div
@@ -639,8 +876,8 @@ const Products = () => {
                                       />
                                     </div>
                                   ))}
-                                {variantImages[currentVariant.id].length >
-                                  4 && (
+                                {imageData.variantImages[currentVariant.id]
+                                  .length > 4 && (
                                   <div
                                     className="variant-image-more"
                                     onClick={() =>
@@ -648,8 +885,8 @@ const Products = () => {
                                     }
                                   >
                                     +
-                                    {variantImages[currentVariant.id].length -
-                                      4}
+                                    {imageData.variantImages[currentVariant.id]
+                                      .length - 4}
                                   </div>
                                 )}
                               </div>
@@ -661,7 +898,11 @@ const Products = () => {
                               >
                                 <ImageIcon size={14} />
                                 View All Variant Images (
-                                {variantImages[currentVariant.id].length})
+                                {
+                                  imageData.variantImages[currentVariant.id]
+                                    .length
+                                }
+                                )
                               </button>
                             </div>
                           )}
@@ -798,10 +1039,10 @@ const Products = () => {
         />
       </>
     );
-  };
+  });
 
-  // Load product images - FIXED VERSION
-  const loadProductImages = async (productId) => {
+  // Optimized image loading functions with stable references
+  const loadProductImages = useCallback(async (productId) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return [];
@@ -810,13 +1051,10 @@ const Products = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Handle both array and object formats for images
       let images = [];
       if (response.data.images && Array.isArray(response.data.images)) {
-        // If images is an array of objects with image_url
         images = response.data.images.map((img) => img.image_url || img);
       } else if (response.data.product?.images) {
-        // If images is a comma-separated string
         images = response.data.product.images
           .split(",")
           .filter((img) => img.trim());
@@ -824,7 +1062,6 @@ const Products = () => {
         response.data.images &&
         typeof response.data.images === "string"
       ) {
-        // If images is a comma-separated string at root level
         images = response.data.images.split(",").filter((img) => img.trim());
       }
 
@@ -833,10 +1070,9 @@ const Products = () => {
       console.error(`Error loading images for product ${productId}:`, error);
       return [];
     }
-  };
+  }, []);
 
-  // Load variant images
-  const loadVariantImages = async (variantId) => {
+  const loadVariantImages = useCallback(async (variantId) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return [];
@@ -845,256 +1081,196 @@ const Products = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Extract images from the variant response
       const images = response.data.variant?.images || [];
       return images;
     } catch (error) {
       console.error(`Error loading images for variant ${variantId}:`, error);
       return [];
     }
-  };
-
-  // Load all images for products and their variants
-  const loadAllImages = async (products) => {
-    const productImageMap = {};
-
-    for (const product of products) {
-      // Load product images
-      const productImgs = await loadProductImages(product.id);
-      if (productImgs.length > 0) {
-        productImageMap[product.id] = productImgs;
-      }
-    }
-
-    setProductImages(productImageMap);
-  };
-
-  // Fetch all products on mount
-  useEffect(() => {
-    fetchProducts();
   }, []);
 
-  const fetchProducts = async () => {
+  // Optimized batch image loading with stable reference
+  const loadAllImages = useCallback(
+    async (products) => {
+      try {
+        // Use Promise.all to load all product images concurrently
+        const imagePromises = products.map(async (product) => {
+          const images = await loadProductImages(product.id);
+          return { productId: product.id, images };
+        });
+
+        const imageResults = await Promise.all(imagePromises);
+
+        // Batch update the state once with all images
+        const productImageMap = {};
+        imageResults.forEach(({ productId, images }) => {
+          if (images.length > 0) {
+            productImageMap[productId] = images;
+          }
+        });
+
+        setImageData((prev) => ({
+          ...prev,
+          productImages: productImageMap,
+        }));
+      } catch (error) {
+        console.error("Error loading images:", error);
+      }
+    },
+    [loadProductImages]
+  );
+
+  // Stable fetchProducts function with proper dependency management
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE}/products`);
       const { products } = res.data;
 
-      setProducts(products);
       const uniqueCategories = [
         ...new Set(products.map((p) => p.category_name)),
       ];
+
+      // Batch all state updates together
+      setProducts(products);
       setCategories(uniqueCategories);
 
-      // Load images for all products
+      // Load images after products are set
       await loadAllImages(products);
     } catch (error) {
       console.error("Error fetching products:", error);
-      setModalMessage("Failed to load products");
-      setShowErrorModal(true);
+      showNotification("error", "Error", "Failed to load products");
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadAllImages, showNotification]);
 
-  // Filter products
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All Categories" ||
-      product.category_name === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "All Status" ||
-      product.status === selectedStatus.toLowerCase();
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // Fetch all products on mount
+const didFetch = useRef(false);
 
-  // View product details
-  const handleView = async (product) => {
-    try {
-      const res = await axios.get(`${API_BASE}/products/${product.id}`);
-      setSelectedProduct(res.data);
+useEffect(() => {
+  if (didFetch.current) return;
+  didFetch.current = true;
+  fetchProducts();
+}, [fetchProducts]);
 
-      // Load variant images for this product's variants
-      if (res.data.variants) {
-        const variantImageMap = {};
-        for (const variant of res.data.variants) {
-          const variantImgs = await loadVariantImages(variant.id);
-          if (variantImgs.length > 0) {
-            variantImageMap[variant.id] = variantImgs;
-          }
+  // Memoize filtered products to prevent recalculation on every render
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch = product.name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "All Categories" ||
+        product.category_name === selectedCategory;
+      const matchesStatus =
+        selectedStatus === "All Status" ||
+        product.status === selectedStatus.toLowerCase();
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [products, searchTerm, selectedCategory, selectedStatus]);
+
+  // Optimized view product details with batched updates
+  const handleView = useCallback(
+    async (product) => {
+      try {
+        const res = await axios.get(`${API_BASE}/products/${product.id}`);
+
+        // Load variant images if variants exist
+        let variantImageUpdates = {};
+        if (res.data.variants && res.data.variants.length > 0) {
+          const variantImagePromises = res.data.variants.map(
+            async (variant) => {
+              const images = await loadVariantImages(variant.id);
+              return { variantId: variant.id, images };
+            }
+          );
+
+          const variantImageResults = await Promise.all(variantImagePromises);
+          variantImageResults.forEach(({ variantId, images }) => {
+            if (images.length > 0) {
+              variantImageUpdates[variantId] = images;
+            }
+          });
         }
-        setVariantImages((prev) => ({ ...prev, ...variantImageMap }));
+
+        // Batch state updates using React 18's automatic batching
+        setSelectedProduct(res.data);
+        if (Object.keys(variantImageUpdates).length > 0) {
+          setImageData((prev) => ({
+            ...prev,
+            variantImages: { ...prev.variantImages, ...variantImageUpdates },
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching product details:", error);
+        showNotification("error", "Error", "Failed to load product details");
       }
-    } catch (error) {
-      console.error("Error fetching product details:", error);
-      setModalMessage("Failed to load product details");
-      setShowErrorModal(true);
-    }
-  };
+    },
+    [loadVariantImages, showNotification]
+  );
 
-  // Activate product
-  const handleActivate = (product) => {
-    setProductToActivate(product);
-    setShowActivateModal(true);
-  };
+  // Memoized action handlers with stable references
+  const handleActivate = useCallback(
+    (product) => {
+      openModal("activateProduct", product);
+    },
+    [openModal]
+  );
 
-  // Deactivate product (instead of delete)
-  const handleDeactivate = (product) => {
-    setProductToDeactivate(product);
-    setShowDeactivateModal(true);
-  };
+  const handleDeactivate = useCallback(
+    (product) => {
+      openModal("deactivateProduct", product);
+    },
+    [openModal]
+  );
 
-  // Keep hard delete for admin purposes (optional)
-  const handleDelete = (product) => {
-    setProductToDelete(product);
-    setShowDeleteModal(true);
-  };
+  const handleDelete = useCallback(
+    (product) => {
+      openModal("deleteProduct", product);
+    },
+    [openModal]
+  );
 
-  const confirmActivate = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `${API_BASE}/products/${productToActivate.id}/activate`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setShowActivateModal(false);
-      setProductToActivate(null);
-      setModalMessage("Product activated successfully");
-      setShowSuccessModal(true);
-      fetchProducts();
-    } catch (error) {
-      console.error("Error activating product:", error);
-      setShowActivateModal(false);
-      setModalMessage("Failed to activate product");
-      setShowErrorModal(true);
-    }
-  };
-
-  const confirmDeactivate = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `${API_BASE}/products/${productToDeactivate.id}/deactivate`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setShowDeactivateModal(false);
-      setProductToDeactivate(null);
-      setModalMessage("Product deactivated successfully");
-      setShowSuccessModal(true);
-      fetchProducts();
-    } catch (error) {
-      console.error("Error deactivating product:", error);
-      setShowDeactivateModal(false);
-      setModalMessage("Failed to deactivate product");
-      setShowErrorModal(true);
-    }
-  };
-
-  const confirmDelete = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE}/products/${productToDelete.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+  // Memoized navigation handlers with stable references
+  const handleAddVariant = useCallback(
+    (product) => {
+      navigate("/add-product-variant", {
+        state: {
+          formType: "variant",
+          preSelectedCategory: product.category_id,
+          preSelectedProduct: product.id,
+          categoryName: product.category_name,
+          productName: product.name,
+        },
       });
-      setProducts(products.filter((p) => p.id !== productToDelete.id));
-      setShowDeleteModal(false);
-      setProductToDelete(null);
-      setModalMessage("Product permanently deleted");
-      setShowSuccessModal(true);
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      setShowDeleteModal(false);
-      setModalMessage("Failed to delete product");
-      setShowErrorModal(true);
-    }
-  };
-  // === FIXED: Consolidated confirm handlers ===
-  const confirmVariantActivate = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `${API_BASE}/variants/${variantToActivate.id}/activate`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    },
+    [navigate]
+  );
 
-      // Close modals in correct order
-      setShowVariantActivateModal(false);
-      setVariantToActivate(null);
-      setSelectedProduct(null); // Close detail modal
-
-      setModalMessage("Variant activated successfully");
-      setShowSuccessModal(true);
-      fetchProducts();
-    } catch (error) {
-      console.error("Error activating variant:", error);
-      setShowVariantActivateModal(false);
-      setVariantToActivate(null);
-      setModalMessage("Failed to activate variant");
-      setShowErrorModal(true);
-    }
-  };
-  const confirmVariantDelete = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE}/variants/${variantToDelete.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+  const handleEdit = useCallback(
+    (product) => {
+      navigate("/add-product-variant", {
+        state: {
+          editMode: true,
+          formType: "product",
+          editData: product,
+        },
       });
+    },
+    [navigate]
+  );
 
-      setShowVariantDeleteModal(false);
-      setVariantToDelete(null);
-      setModalMessage("Variant deactivated successfully");
-      setShowSuccessModal(true);
-      fetchProducts();
-    } catch (error) {
-      console.error("Error deactivating variant:", error);
-      setShowVariantDeleteModal(false);
-      setModalMessage("Failed to deactivate variant");
-      setShowErrorModal(true);
-    }
-  };
-
-  // Handle Add New Variant
-  const handleAddVariant = (product) => {
-    navigate("/add-product-variant", {
-      state: {
-        formType: "variant",
-        preSelectedCategory: product.category_id,
-        preSelectedProduct: product.id,
-        categoryName: product.category_name,
-        productName: product.name,
-      },
-    });
-  };
-
-  // Handle Edit
-  const handleEdit = (product) => {
-    navigate("/add-product-variant", {
-      state: {
-        editMode: true,
-        formType: "product",
-        editData: product,
-      },
-    });
-  };
-
-  // Create new product
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     navigate("/add-product-variant", {
       state: {
         formType: "product",
       },
     });
-  };
+  }, [navigate]);
+
+  // Stable modal close handlers
+  const closeProductModal = useCallback(() => setSelectedProduct(null), []);
 
   return (
     <>
@@ -1193,7 +1369,8 @@ const Products = () => {
               }
             >
               {filteredProducts.map((product) => {
-                const productImageList = productImages[product.id] || [];
+                const productImageList =
+                  imageData.productImages[product.id] || [];
 
                 return viewMode === "grid" ? (
                   <div key={product.id} className="product-card">
@@ -1412,84 +1589,32 @@ const Products = () => {
             </div>
           )}
 
-          {/* Modals */}
-          <ConfirmModal
-            isOpen={showActivateModal}
-            onClose={() => setShowActivateModal(false)}
-            onConfirm={confirmActivate}
-            title="Activate Product"
-            message={`Are you sure you want to activate "${productToActivate?.name}"? It will be available for sale again.`}
-            confirmText="Activate"
-            confirmClass="btn-success"
-            icon={Power}
-            iconColor="#10b981"
-          />
+          {/* Single Reusable Confirm Modal */}
+          {modalConfig && (
+            <ConfirmModal
+              isOpen={true}
+              onClose={closeModal}
+              onConfirm={handleConfirm}
+              title={modalConfig.title}
+              message={modalConfig.message}
+              confirmText={modalConfig.confirmText}
+              confirmClass={modalConfig.confirmClass}
+              icon={modalConfig.icon}
+              iconColor={modalConfig.iconColor}
+            />
+          )}
 
-          <ConfirmModal
-            isOpen={showDeactivateModal}
-            onClose={() => setShowDeactivateModal(false)}
-            onConfirm={confirmDeactivate}
-            title="Deactivate Product"
-            message={`Are you sure you want to deactivate "${productToDeactivate?.name}"? It will be hidden from active listings and all its variants will also be deactivated.`}
-            confirmText="Deactivate"
-            confirmClass="btn-warning"
-            icon={PowerOff}
-            iconColor="#f59e0b"
-          />
-
-          <ConfirmModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={confirmDelete}
-            title="Permanently Delete Product"
-            message={`Are you sure you want to permanently delete "${productToDelete?.name}"? This action cannot be undone and will remove all data including order history.`}
-            confirmText="Delete Permanently"
-            confirmClass="btn-danger"
-          />
-
-          <ConfirmModal
-            isOpen={showVariantActivateModal}
-            onClose={() => setShowVariantActivateModal(false)}
-            onConfirm={confirmVariantActivate}
-            title="Activate Variant"
-            message={`Are you sure you want to activate the variant "${variantToActivate?.name}"? It will be available for sale again.`}
-            confirmText="Activate"
-            confirmClass="btn-success"
-            icon={Power}
-            iconColor="#10b981"
-          />
-
-          <ConfirmModal
-            isOpen={showVariantDeleteModal}
-            onClose={() => setShowVariantDeleteModal(false)}
-            onConfirm={confirmVariantDelete}
-            title="Deactivate Variant"
-            message={`Are you sure you want to deactivate the variant "${variantToDelete?.name}"? It will be hidden from active listings but order history will be preserved.`}
-            confirmText="Deactivate"
-            confirmClass="btn-warning"
-            icon={PowerOff}
-            iconColor="#f59e0b"
-          />
-
+          {/* Single Notification Modal */}
           <NotificationModal
-            isOpen={showSuccessModal}
-            onClose={() => setShowSuccessModal(false)}
-            title="Success"
-            message={modalMessage}
-            type="success"
+            key="notification"
+            notification={notification}
+            onClose={hideNotification}
           />
 
-          <NotificationModal
-            isOpen={showErrorModal}
-            onClose={() => setShowErrorModal(false)}
-            title="Error"
-            message={modalMessage}
-            type="error"
-          />
-
+          {/* Product Detail Modal */}
           <ProductDetailModal
             isOpen={!!selectedProduct}
-            onClose={() => setSelectedProduct(null)}
+            onClose={closeProductModal}
             product={selectedProduct}
           />
         </div>
