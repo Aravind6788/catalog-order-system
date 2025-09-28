@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WhatsApp Quick Send</title>
+</head>
+<body>
+  <h2>Send WhatsApp Message (Simple)</h2>
+  <button onclick="sendWhatsApp()">Send WhatsApp Text</button>
+
+  <script>
+    function sendWhatsApp() {
+      let phone = "8610175114"; // Change to recipient's number with country code
+      let message = "Hello, this is a test message from HTML!";
+      let url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+    }
+  </script>
+</body>
+</html>
