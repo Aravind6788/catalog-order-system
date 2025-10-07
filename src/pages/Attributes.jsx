@@ -39,10 +39,11 @@ const Attributes = () => {
   const [newValue, setNewValue] = useState("");
   const [editAttributeName, setEditAttributeName] = useState("");
   const [editValue, setEditValue] = useState("");
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
   // Axios instance
   const axiosInstance = axios.create({
-    baseURL: "http://localhost/GreenLand/api",
+    baseURL: API_BASE_URL,
     headers: {
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     },

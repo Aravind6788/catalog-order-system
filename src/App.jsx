@@ -34,11 +34,11 @@ function App() {
       <Routes>
         {/* ========== PUBLIC ROUTES ========== */}
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<ClientProducts />} />
         <Route path="/unauthorized" element={<div>Unauthorized Access</div>} />
 
         {/* Client Catalog View (Admin Preview) */}
-        <Route path="/catalog" element={<ClientProducts />} />
+        <Route path="/catalogue" element={<ClientProducts />} />
 
         {/* ========== PROTECTED ADMIN ROUTES ========== */}
         <Route

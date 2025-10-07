@@ -10,14 +10,15 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  
   esbuild: {
-    loader: 'jsx',
+    loader: "jsx",
   },
   optimizeDeps: {
     esbuildOptions: {
       loader: {
-        '.js': 'jsx',
-        '.json': 'json',
+        ".js": "jsx",
+        ".json": "json",
       },
     },
   },

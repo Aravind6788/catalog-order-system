@@ -9,11 +9,12 @@ const AddCategory = () => {
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
   // ✅ Fetch categories for parent dropdown
   useEffect(() => {
     axios
-      .get("http://localhost/GreenLand/api/categories")
+      .get(`${API_BASE_URL}/categories`)
       .then((res) => {
         setCategories(res.data);
       })
@@ -43,7 +44,7 @@ const AddCategory = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost/GreenLand/api/categories",
+        `${API_BASE_URL}/categories`,
         {
           name: name.trim(),
           code: code.trim().toUpperCase(),

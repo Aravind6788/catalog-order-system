@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 
 const AddProductVariant = () => {
-  const API_BASE = "http://localhost/GreenLand/api";
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
+    const API_BASE = API_BASE_URL;
   const location = useLocation();
   const navigate = useNavigate();
   const { state } = location || {};

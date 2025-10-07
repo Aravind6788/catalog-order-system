@@ -13,9 +13,9 @@ import {
   DollarSign,
   AlertCircle,
 } from "lucide-react";
-
-const API_BASE = "http://localhost/GreenLand/api";
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
+const API_BASE = API_BASE_URL;
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
   const [dashboardData, setDashboardData] = useState(null);
@@ -138,7 +138,7 @@ const Dashboard = () => {
           `}
         </style>
         <div className="dashboard-layout">
-          <Sidebar />
+          {/* <Sidebar /> */}
           <div className="dashboard-page">
             <div className="loading-container">
               <div className="loading-spinner"></div>
@@ -180,7 +180,7 @@ const Dashboard = () => {
           `}
         </style>
         <div className="dashboard-layout">
-          <Sidebar />
+          {/* <Sidebar /> */}
           <div className="dashboard-page">
             <div className="error-container">
               <AlertCircle size={48} style={{ marginBottom: "16px" }} />
@@ -513,7 +513,7 @@ const Dashboard = () => {
       </style>
 
       <div className="dashboard-layout">
-        <Sidebar />
+        {/* <Sidebar /> */}
         <div className="dashboard-page">
           {/* Header */}
           <div className="page-header">

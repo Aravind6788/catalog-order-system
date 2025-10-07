@@ -27,8 +27,11 @@ import {
   History,
   Trash2,
 } from "lucide-react";
-
-const API_BASE = "http://localhost/GreenLand/api";
+import GFLLogo from "../../img/GFL_Logo.png";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
+  
+const API_BASE = API_BASE_URL;
 
 // Cookie utilities (unchanged)
 const CookieManager = {
@@ -118,6 +121,7 @@ const modalStyle = {
   alignItems: "center",
   justifyContent: "center",
   padding: "1rem",
+  overflowY: "auto",
 };
 
 const cardStyle = {
@@ -151,7 +155,6 @@ const selectStyle = {
   cursor: "pointer",
 };
 
-// Modern Navbar Component - MOVED OUTSIDE
 const ModernNavbar = React.memo(
   ({
     searchTerm,
@@ -175,9 +178,10 @@ const ModernNavbar = React.memo(
         }}
       >
         <a href="#" style={brandStyle}>
-          🌿 Green Formula
+          <img src={GFLLogo} alt="Green Formula Logo" className="brand-logo" />
         </a>
 
+        {/* Search - Full width on mobile */}
         <div
           style={{
             display: "flex",
@@ -186,35 +190,60 @@ const ModernNavbar = React.memo(
             flex: 1,
             justifyContent: "center",
             maxWidth: "500px",
+            width: "100%",
+            order: 3, // Moves to next line on mobile
           }}
+          className="search-wrapper"
         >
-          <div style={{ position: "relative", flex: 1, display: "flex" }}>
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              style={inputStyle}
-              onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
-              onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
-            />
-            <button
-              type="button"
-              style={{
-                ...buttonStyle,
-                marginLeft: "0.5rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <Search size={16} />
-              Search
-            </button>
+          <div
+            style={{
+              position: "relative",
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.5rem",
+            }}
+          >
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                style={{
+                  ...inputStyle,
+                  flex: 1,
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
+                onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
+              />
+              <button
+                type="button"
+                style={{
+                  ...buttonStyle,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  whiteSpace: "nowrap",
+                }}
+                className="search-btn"
+              >
+                <Search size={16} />
+                <span className="btn-text">Search</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        {/* Actions - Stacks vertically on small screens */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+          }}
+        >
           {previousOrders.length > 0 && (
             <button
               style={{
@@ -225,11 +254,13 @@ const ModernNavbar = React.memo(
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",
+                padding: "0.5rem",
               }}
               onClick={() => setShowOrderHistory(true)}
+              className="nav-btn"
             >
               <History size={16} />
-              Orders ({previousOrders.length})
+              <span className="btn-text">Orders ({previousOrders.length})</span>
             </button>
           )}
 
@@ -242,11 +273,15 @@ const ModernNavbar = React.memo(
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
+              padding: "0.5rem",
             }}
             onClick={() => setShowCheckout(true)}
+            className="nav-btn"
           >
             <ShoppingCart size={16} />
-            Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
+            <span className="btn-text">
+              Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
+            </span>
           </button>
         </div>
       </div>
@@ -327,6 +362,7 @@ const PreviousOrdersModal = React.memo(
             display: "flex",
             flexDirection: selectedOrder ? "row" : "column",
           }}
+          className="order-history-modal"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Left Panel - Order List */}
@@ -337,6 +373,7 @@ const PreviousOrdersModal = React.memo(
               display: "flex",
               flexDirection: "column",
             }}
+            className="order-list-panel"
           >
             <div
               style={{
@@ -389,7 +426,7 @@ const PreviousOrdersModal = React.memo(
                     display: "flex",
                     flexDirection: "column",
                     gap: "1rem",
-                    height:"550px"
+                    height: "550px",
                   }}
                 >
                   {previousOrders.map((order) => (
@@ -917,7 +954,6 @@ const PreviousOrdersModal = React.memo(
     );
   }
 );
-// Modern Filter Sidebar - MOVED OUTSIDE
 const ModernFilterSidebar = React.memo(
   ({
     categories,
@@ -926,183 +962,215 @@ const ModernFilterSidebar = React.memo(
     priceRange,
     setPriceRange,
     setSelectedCategory,
+    showFilters,
+    setShowFilters,
   }) => {
     return (
-      <div style={sidebarStyle}>
-        <h5
-          style={{
-            marginBottom: "1.5rem",
-            color: "#2c3e50",
-            fontWeight: "600",
-          }}
-        >
-          Filters
-        </h5>
-{/* Categories */}
-<div
-  style={{
-    marginBottom: "24px",
-    paddingBottom: "20px",
-    borderBottom: "1px solid #e9ecef",
-  }}
->
-  <h6
-    style={{
-      fontWeight: "600",
-      marginBottom: "1rem",
-      color: "#2c3e50",
-    }}
-  >
-    Categories ({categories.length})
-  </h6>
-  <select
-    value={selectedCategory}
-    onChange={handleCategoryChange}
-    style={selectStyle}
-    onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
-    onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
-  >
-    <option value="">All Categories</option>
-    {categories.length === 0 ? (
-      <option disabled>Loading categories...</option>
-    ) : (
-      categories.map((category) => {
-        // Handle different category object structures
-        const categoryId = category.id || category.category_id;
-        const categoryName = category.name || category.category_name || category.title;
-        const productCount = category.product_count || category.count;
-        
-        return (
-          <option key={`category-${categoryId}`} value={categoryId}>
-            {categoryName}
-            {productCount && ` (${productCount})`}
-          </option>
-        );
-      })
-    )}
-  </select>
-
-  <div
-    style={{
-      marginTop: "0.5rem",
-      fontSize: "0.8rem",
-      color: "#6c757d",
-    }}
-  >
-    {categories.length === 0 ? (
-      <p>Loading categories...</p>
-    ) : (
-      <p>Loaded {categories.length} categories</p>
-    )}
-  </div>
-</div>
-
-        {/* Price Range */}
+      <>
+        {/* Mobile overlay */}
+        {showFilters && (
+          <div
+            style={{
+              // position: "fixed",
+              // top: 0,
+              // left: 0,
+              // right: 0,
+              // bottom: 0,
+              // // backgroundColor: "rgba(0,0,0,0.5)",
+              // zIndex: 999,
+            }}
+            // className="mobile-overlay"
+            onClick={() => setShowFilters(false)}
+          />
+        )}
         <div
           style={{
-            marginBottom: "24px",
-            paddingBottom: "20px",
-            borderBottom: "1px solid #e9ecef",
+            ...sidebarStyle,
+            position: "relative",
+            zIndex: 1000,
           }}
+          className={`filter-sidebar ${showFilters ? "active" : ""}`}
         >
-          <h6
+          {/* Close button for mobile */}
+          <button
             style={{
-              fontWeight: "600",
-              marginBottom: "1rem",
+              display: "none",
+              position: "absolute",
+              top: "1rem",
+              right: "1rem",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0.5rem",
+              zIndex: 10,
+            }}
+            className="filter-close-btn"
+            onClick={() => setShowFilters(false)}
+          >
+            <X size={24} />
+          </button>
+
+          <h5
+            style={{
+              marginBottom: "1.5rem",
               color: "#2c3e50",
+              fontWeight: "600",
             }}
           >
-            Price Range
-          </h6>
-          <div style={{ margin: "15px 0" }}>
-            <div style={{ marginBottom: "1rem" }}>
-              <label
-                style={{
-                  fontSize: "0.85rem",
-                  marginBottom: "0.5rem",
-                  display: "block",
-                  color: "black",
-                }}
-              >
-                Min Price: ₹{priceRange.min}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100000"
-                value={priceRange.min}
-                onChange={(e) =>
-                  setPriceRange((prev) => ({
-                    ...prev,
-                    min: parseInt(e.target.value),
-                  }))
-                }
-                style={{
-                  width: "100%",
-                  height: "6px",
-                  borderRadius: "3px",
-                  background: "#e9ecef",
-                  outline: "none",
-                  accentColor: "#2d8659",
-                  color: "black",
-                }}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  fontSize: "0.85rem",
-                  marginBottom: "0.5rem",
-                  display: "block",
-                  color:"black"
-                }}
-              >
-                Max Price: ₹{priceRange.max}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max={priceRange.max}
-                value={priceRange.max}
-                onChange={(e) =>
-                  setPriceRange((prev) => ({
-                    ...prev,
-                    max: parseInt(e.target.value),
-                  }))
-                }
-                style={{
-                  width: "100%",
-                  height: "6px",
-                  borderRadius: "3px",
-                  background: "#e9ecef",
-                  outline: "none",
-                  accentColor: "#2d8659",
-                }}
-              />
+            Filters
+          </h5>
+
+          {/* Categories */}
+          <div
+            style={{
+              marginBottom: "24px",
+              paddingBottom: "20px",
+              borderBottom: "1px solid #e9ecef",
+            }}
+          >
+            <h6
+              style={{
+                fontWeight: "600",
+                marginBottom: "1rem",
+                color: "#2c3e50",
+              }}
+            >
+              Categories ({categories.length})
+            </h6>
+            <select
+              value={selectedCategory}
+              onChange={handleCategoryChange}
+              style={selectStyle}
+              onFocus={(e) => (e.target.style.borderColor = "#2d8659")}
+              onBlur={(e) => (e.target.style.borderColor = "#e9ecef")}
+            >
+              <option value="">All Categories</option>
+              {categories.length === 0 ? (
+                <option disabled>Loading categories...</option>
+              ) : (
+                categories.map((category) => {
+                  const categoryId = category.id || category.category_id;
+                  const categoryName =
+                    category.name || category.category_name || category.title;
+                  const productCount = category.product_count || category.count;
+
+                  return (
+                    <option key={`category-${categoryId}`} value={categoryId}>
+                      {categoryName}
+                      {productCount && ` (${productCount})`}
+                    </option>
+                  );
+                })
+              )}
+            </select>
+          </div>
+
+          {/* Price Range */}
+          <div
+            style={{
+              marginBottom: "24px",
+              paddingBottom: "20px",
+              borderBottom: "1px solid #e9ecef",
+            }}
+          >
+            <h6
+              style={{
+                fontWeight: "600",
+                marginBottom: "1rem",
+                color: "#2c3e50",
+              }}
+            >
+              Price Range
+            </h6>
+            <div style={{ margin: "15px 0" }}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    marginBottom: "0.5rem",
+                    display: "block",
+                    color: "black",
+                  }}
+                >
+                  Min Price: ₹{priceRange.min}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100000"
+                  value={priceRange.min}
+                  onChange={(e) =>
+                    setPriceRange((prev) => ({
+                      ...prev,
+                      min: parseInt(e.target.value),
+                    }))
+                  }
+                  style={{
+                    width: "100%",
+                    height: "6px",
+                    borderRadius: "3px",
+                    background: "#e9ecef",
+                    outline: "none",
+                    accentColor: "#2d8659",
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  style={{
+                    fontSize: "0.85rem",
+                    marginBottom: "0.5rem",
+                    display: "block",
+                    color: "black",
+                  }}
+                >
+                  Max Price: ₹{priceRange.max}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100000"
+                  value={priceRange.max}
+                  onChange={(e) =>
+                    setPriceRange((prev) => ({
+                      ...prev,
+                      max: parseInt(e.target.value),
+                    }))
+                  }
+                  style={{
+                    width: "100%",
+                    height: "6px",
+                    borderRadius: "3px",
+                    background: "#e9ecef",
+                    outline: "none",
+                    accentColor: "#2d8659",
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Clear Filters */}
-        <button
-          style={{
-            width: "100%",
-            padding: "0.75rem",
-            backgroundColor: "transparent",
-            border: "1px solid #2d8659",
-            color: "#2d8659",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onClick={() => {
-            setSelectedCategory("");
-            setPriceRange({ min: 0, max: 10000 });
-          }}
-        >
-          Clear All Filters
-        </button>
-      </div>
+          {/* Clear Filters */}
+          <button
+            style={{
+              width: "100%",
+              padding: "0.75rem",
+              backgroundColor: "transparent",
+              border: "1px solid #2d8659",
+              color: "#2d8659",
+              borderRadius: "8px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onClick={() => {
+              setSelectedCategory("");
+              setPriceRange({ min: 0, max: 100000 });
+            }}
+          >
+            Clear All Filters
+          </button>
+        </div>
+      </>
     );
   }
 );
@@ -1424,8 +1492,9 @@ const ProductDetailModal = React.memo(
             maxHeight: "90vh",
             overflow: "hidden",
             display: "flex",
-            flexDirection: "row",
+            flexDirection: window.innerWidth <= 768 ? "column" : "row",
           }}
+          className="product-detail-modal"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Left Panel - Images */}
@@ -1435,6 +1504,7 @@ const ProductDetailModal = React.memo(
               padding: "1.5rem",
               borderRight: "1px solid #e9ecef",
             }}
+            className="product-detail-images"
           >
             {/* Main Image */}
             <div style={{ marginBottom: "1rem" }}>
@@ -1481,6 +1551,7 @@ const ProductDetailModal = React.memo(
           {/* Right Panel - Details */}
           <div
             style={{ width: "50%", display: "flex", flexDirection: "column" }}
+            className="RPDetails"
           >
             {/* Header */}
             <div
@@ -2222,7 +2293,7 @@ const ClientProducts = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [productsPerPage] = useState(12);
+  const [productsPerPage] = useState(13);
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   // Filters
@@ -2306,25 +2377,29 @@ const ClientProducts = () => {
                 `Error fetching variants for product ${product.id}:`,
                 error
               );
-              return null; // Return null for products with variant fetch errors
+              return null;
             }
           })
         );
 
-        // Filter out null entries (products with 0 variants or fetch errors)
+        // Filter out null entries
         const filteredProducts = productsWithVariants.filter(
           (product) => product !== null
         );
 
         setProducts(filteredProducts);
 
-        // Update pagination based on filtered results
-        setTotalProducts(filteredProducts.length);
-        setTotalPages(Math.ceil(filteredProducts.length / productsPerPage));
-        setCurrentPage(currentPageRes || 1);
+        // Use the total from API response for pagination
+        setTotalProducts(total || filteredProducts.length);
+        setTotalPages(
+          Math.ceil((total || filteredProducts.length) / productsPerPage)
+        );
+        setCurrentPage(currentPageRes || page);
       } catch (error) {
         console.error("Error fetching products:", error);
         setProducts([]);
+        setTotalProducts(0);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
@@ -2586,14 +2661,13 @@ const ClientProducts = () => {
   useEffect(() => {
     initializeSession();
     fetchCategories();
-    fetchProducts(1);
+    // fetchProducts(1);
   }, [initializeSession, fetchCategories, fetchProducts]);
 
   // Page change effect
   useEffect(() => {
-    if (currentPage > 1) {
       fetchProducts(currentPage, searchTerm, selectedCategory, selectedStatus);
-    }
+    
   }, [
     currentPage,
     fetchProducts,
@@ -3079,9 +3153,21 @@ const ClientProducts = () => {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "2rem", alignItems: "flex-start" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "2rem",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+          }}
+        >
           {showFilters && (
-            <div style={{ width: "300px", flexShrink: 0 }}>
+            <div
+              style={{
+                width: window.innerWidth <= 768 ? "100%" : "300px",
+                flexShrink: 0,
+              }}
+            >
               <ModernFilterSidebar
                 categories={categories}
                 selectedCategory={selectedCategory}
@@ -3089,6 +3175,8 @@ const ClientProducts = () => {
                 priceRange={priceRange}
                 setPriceRange={setPriceRange}
                 setSelectedCategory={setSelectedCategory}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
               />
             </div>
           )}
@@ -3120,12 +3208,13 @@ const ClientProducts = () => {
               </div>
             ) : (
               <>
+                
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns:
                       viewMode === "grid"
-                        ? "repeat(auto-fill, minmax(280px, 1fr))"
+                        ? "repeat(auto-fill, minmax(min(280px, 100%), 1fr))"
                         : "1fr",
                     gap: "1.5rem",
                   }}
@@ -3161,7 +3250,6 @@ const ClientProducts = () => {
           orderLoading={orderLoading}
         />
       )}
-
       <style jsx>{`
         @keyframes spin {
           0% {
@@ -3169,6 +3257,176 @@ const ClientProducts = () => {
           }
           100% {
             transform: rotate(360deg);
+          }
+        }
+
+        /* Tablet */
+        @media (max-width: 1024px) {
+          .filter-sidebar {
+            width: 250px !important;
+          }
+            
+        }
+
+        /* Mobile screens - 768px and below */
+        @media (max-width: 768px) {
+        .RPDetails{
+        width:100% !important;
+        }
+          /* Navbar responsive */
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text {
+            display: none;
+          }
+
+          /* Filter sidebar as overlay */
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 85% !important;
+            max-width: 320px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          /* Product Detail Modal */
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 100vh !important;
+            border-radius: 8px !important;
+            margin: 0.5rem !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: 50vh !important;
+            overflow-y: auto !important;
+            padding: 1rem !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 250px !important;
+          }
+
+          /* Order History Modal */
+          .order-history-modal {
+            flex-direction: column !important;
+            max-width: 95vw !important;
+            max-height: 95vh !important;
+            margin: 1rem !important;
+          }
+
+          .order-list-panel {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: none !important;
+          }
+
+          .order-list-panel > div:last-child {
+            max-height: 300px !important;
+            overflow-y: auto !important;
+          }
+
+          /* Touch-friendly sizes */
+          button {
+            min-height: 44px;
+            touch-action: manipulation;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 44px;
+            font-size: 16px !important;
+            touch-action: manipulation;
+          }
+
+          /* Grid adjustments */
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(min(100%, 280px), 1fr)
+            ) !important;
+          }
+
+          /* Reduce padding on mobile */
+          body > div > div:last-child {
+            padding: 1rem 0.5rem !important;
+          }
+        }
+
+        /* Small phones - 480px and below */
+        @media (max-width: 480px) {
+          .search-btn .btn-text {
+            display: none;
+          }
+
+          .filter-sidebar {
+            width: 90% !important;
+          }
+
+          /* Single column on very small screens */
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Reduce font sizes */
+          h1 {
+            font-size: 1.8rem !important;
+          }
+
+          h4 {
+            font-size: 1.2rem !important;
+          }
+
+          h6 {
+            font-size: 0.9rem !important;
+          }
+
+          /* Stack order history columns */
+          .order-history-modal {
+            margin: 0.5rem !important;
+          }
+
+          .order-list-panel > div:last-child {
+            max-height: 200px !important;
+          }
+        }
+
+        /* Prevent zoom on input focus (iOS) */
+        @media (max-width: 768px) {
+          input[type="text"],
+          input[type="email"],
+          input[type="tel"],
+          input[type="number"],
+          select,
+          textarea {
+            font-size: 16px !important;
           }
         }
       `}</style>
