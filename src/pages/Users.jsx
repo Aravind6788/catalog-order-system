@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Search, Plus, Edit2, Trash2, User, Filter } from "lucide-react";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand";
+const API_BASE = API_BASE_URL;
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +23,7 @@ const Users = () => {
   // Fetch users from API
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("http://localhost/GreenLand/api/users");
+      const response = await axios.get(`${API_BASE}/users`);
       setUsers(response.data.users || []);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -82,16 +85,13 @@ const Users = () => {
 
     try {
       if (modalType === "add") {
-        await axios.post("http://localhost/GreenLand/api/users", formData);
+        await axios.post(`${API_BASE}/users`, formData);
       } else if (modalType === "edit") {
         const updateData = { ...formData };
         if (!updateData.password) {
           delete updateData.password; // Don't send empty password
         }
-        await axios.put(
-          `http://localhost/GreenLand/api/users/${currentUser.id}`,
-          updateData
-        );
+        await axios.put(`${API_BASE}/users/${currentUser.id}`, updateData);
       }
 
       fetchUsers(); // Refresh the list
@@ -104,9 +104,7 @@ const Users = () => {
   // Handle delete
   const handleDelete = async () => {
     try {
-      await axios.delete(
-        `http://localhost/GreenLand/api/users/${currentUser.id}`
-      );
+      await axios.delete(`${API_BASE}/users/${currentUser.id}`);
       fetchUsers(); // Refresh the list
       closeModal();
     } catch (error) {

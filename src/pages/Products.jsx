@@ -36,7 +36,10 @@ import {
   PowerOff,
 } from "lucide-react";
 
-const API_BASE = "http://localhost/GreenLand/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
+
+const API_BASE = API_BASE_URL;
 
 const Products = () => {
   const navigate = useNavigate();
@@ -47,6 +50,9 @@ const Products = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12); // You can make this configurable if needed
 
   // Single modal state
   const [modalConfig, setModalConfig] = useState(null);
@@ -105,6 +111,98 @@ const Products = () => {
     };
   }, []);
 
+  // Optimized image loading functions with stable references
+  const loadProductImages = useCallback(async (productId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return [];
+
+      const response = await axios.get(`${API_BASE}/products/${productId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      let images = [];
+      if (response.data.images && Array.isArray(response.data.images)) {
+        images = response.data.images.map((img) => img.image_url || img);
+      } else if (response.data.product?.images) {
+        images = response.data.product.images
+          .split(",")
+          .filter((img) => img.trim());
+      } else if (
+        response.data.images &&
+        typeof response.data.images === "string"
+      ) {
+        images = response.data.images.split(",").filter((img) => img.trim());
+      }
+
+      return images;
+    } catch (error) {
+      console.error(`Error loading images for product ${productId}:`, error);
+      return [];
+    }
+  }, []);
+
+  // Optimized batch image loading with stable reference
+  const loadAllImages = useCallback(
+    async (products) => {
+      try {
+        // Use Promise.all to load all product images concurrently
+        const imagePromises = products.map(async (product) => {
+          const images = await loadProductImages(product.id);
+          return { productId: product.id, images };
+        });
+
+        const imageResults = await Promise.all(imagePromises);
+
+        // Batch update the state once with all images
+        const productImageMap = {};
+        imageResults.forEach(({ productId, images }) => {
+          if (images.length > 0) {
+            productImageMap[productId] = images;
+          }
+        });
+
+        setImageData((prev) => ({
+          ...prev,
+          productImages: productImageMap,
+        }));
+      } catch (error) {
+        console.error("Error loading images:", error);
+      }
+    },
+    [loadProductImages]
+  );
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // ✅ Fetch all products by setting a high limit
+      const res = await axios.get(`${API_BASE}/products`, {
+        params: {
+          page: 1,
+          limit: 1000, // adjust this based on your backend's max limit
+        },
+      });
+
+      const { products } = res.data;
+
+      const uniqueCategories = [
+        ...new Set(products.map((p) => p.category_name)),
+      ];
+
+      setProducts(products);
+      setCategories(uniqueCategories);
+
+      // Load images after products are set
+      await loadAllImages(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      showNotification("error", "Error", "Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadAllImages, showNotification]);
+
   // Stable API functions - memoized with useCallback and dependencies
   const confirmActivate = useCallback(
     async (product) => {
@@ -117,7 +215,7 @@ const Products = () => {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        await fetchProducts(); 
+        await fetchProducts();
         showNotification(
           "success",
           "Success",
@@ -129,7 +227,7 @@ const Products = () => {
         showNotification("error", "Error", "Failed to activate product");
       }
     },
-    [showNotification]
+    [showNotification, fetchProducts]
   ); // Only depend on showNotification
 
   const confirmDeactivate = useCallback(
@@ -154,7 +252,7 @@ const Products = () => {
         showNotification("error", "Error", "Failed to deactivate product");
       }
     },
-    [showNotification]
+    [showNotification, fetchProducts]
   );
 
   const confirmDelete = useCallback(
@@ -172,7 +270,7 @@ const Products = () => {
         showNotification("error", "Error", "Failed to delete product");
       }
     },
-    [showNotification]
+    [showNotification, fetchProducts]
   );
 
   const confirmVariantActivate = useCallback(
@@ -197,7 +295,7 @@ const Products = () => {
         showNotification("error", "Error", "Failed to activate variant");
       }
     },
-    [showNotification]
+    [showNotification, fetchProducts]
   );
 
   const confirmVariantDelete = useCallback(
@@ -218,7 +316,7 @@ const Products = () => {
         showNotification("error", "Error", "Failed to deactivate variant");
       }
     },
-    [showNotification]
+    [showNotification, fetchProducts]
   );
 
   // Memoized modal configurations with stable dependencies
@@ -405,7 +503,12 @@ const Products = () => {
             </div>
             <div className="modal-body">
               <div
-                style={{ display: "flex", alignItems: "center", gap: "12px" ,backgroundColor: "white"}}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  backgroundColor: "white",
+                }}
               >
                 <IconComponent
                   style={{ color: iconColor, width: "24px", height: "24px" }}
@@ -441,7 +544,14 @@ const Products = () => {
             </button>
           </div>
           <div className="modal-body">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px",backgroundColor: "white" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                backgroundColor: "white",
+              }}
+            >
               {notification.type === "success" && (
                 <Check
                   style={{ color: "#10b981", width: "24px", height: "24px" }}
@@ -1041,37 +1151,6 @@ const Products = () => {
     );
   });
 
-  // Optimized image loading functions with stable references
-  const loadProductImages = useCallback(async (productId) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return [];
-
-      const response = await axios.get(`${API_BASE}/products/${productId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      let images = [];
-      if (response.data.images && Array.isArray(response.data.images)) {
-        images = response.data.images.map((img) => img.image_url || img);
-      } else if (response.data.product?.images) {
-        images = response.data.product.images
-          .split(",")
-          .filter((img) => img.trim());
-      } else if (
-        response.data.images &&
-        typeof response.data.images === "string"
-      ) {
-        images = response.data.images.split(",").filter((img) => img.trim());
-      }
-
-      return images;
-    } catch (error) {
-      console.error(`Error loading images for product ${productId}:`, error);
-      return [];
-    }
-  }, []);
-
   const loadVariantImages = useCallback(async (variantId) => {
     try {
       const token = localStorage.getItem("token");
@@ -1090,70 +1169,36 @@ const Products = () => {
   }, []);
 
   // Optimized batch image loading with stable reference
-  const loadAllImages = useCallback(
-    async (products) => {
-      try {
-        // Use Promise.all to load all product images concurrently
-        const imagePromises = products.map(async (product) => {
-          const images = await loadProductImages(product.id);
-          return { productId: product.id, images };
-        });
+  // const loadAllImages = useCallback(
+  //   async (products) => {
+  //     try {
+  //       // Use Promise.all to load all product images concurrently
+  //       const imagePromises = products.map(async (product) => {
+  //         const images = await loadProductImages(product.id);
+  //         return { productId: product.id, images };
+  //       });
 
-        const imageResults = await Promise.all(imagePromises);
+  //       const imageResults = await Promise.all(imagePromises);
 
-        // Batch update the state once with all images
-        const productImageMap = {};
-        imageResults.forEach(({ productId, images }) => {
-          if (images.length > 0) {
-            productImageMap[productId] = images;
-          }
-        });
+  //       // Batch update the state once with all images
+  //       const productImageMap = {};
+  //       imageResults.forEach(({ productId, images }) => {
+  //         if (images.length > 0) {
+  //           productImageMap[productId] = images;
+  //         }
+  //       });
 
-        setImageData((prev) => ({
-          ...prev,
-          productImages: productImageMap,
-        }));
-      } catch (error) {
-        console.error("Error loading images:", error);
-      }
-    },
-    [loadProductImages]
-  );
-
+  //       setImageData((prev) => ({
+  //         ...prev,
+  //         productImages: productImageMap,
+  //       }));
+  //     } catch (error) {
+  //       console.error("Error loading images:", error);
+  //     }
+  //   },
+  //   [loadProductImages]
+  // );
   // Stable fetchProducts function with proper dependency management
-  const fetchProducts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API_BASE}/products`);
-      const { products } = res.data;
-
-      const uniqueCategories = [
-        ...new Set(products.map((p) => p.category_name)),
-      ];
-
-      // Batch all state updates together
-      setProducts(products);
-      setCategories(uniqueCategories);
-
-      // Load images after products are set
-      await loadAllImages(products);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      showNotification("error", "Error", "Failed to load products");
-    } finally {
-      setLoading(false);
-    }
-  }, [loadAllImages, showNotification]);
-
-  // Fetch all products on mount
-const didFetch = useRef(false);
-
-useEffect(() => {
-  if (didFetch.current) return;
-  didFetch.current = true;
-  fetchProducts();
-}, [fetchProducts]);
-
   // Memoize filtered products to prevent recalculation on every render
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -1169,6 +1214,45 @@ useEffect(() => {
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [products, searchTerm, selectedCategory, selectedStatus]);
+
+  // Add pagination logic
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredProducts.slice(startIndex, endIndex);
+  }, [filteredProducts, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredProducts.length / itemsPerPage);
+  }, [filteredProducts.length, itemsPerPage]);
+
+  // Fetch all products on mount
+  const didFetch = useRef(false);
+
+  useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
+    fetchProducts();
+  }, [fetchProducts]);
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, selectedStatus]);
+  // Memoize filtered products to prevent recalculation on every render
+  // const filteredProducts = useMemo(() => {
+  //   return products.filter((product) => {
+  //     const matchesSearch = product.name
+  //       .toLowerCase()
+  //       .includes(searchTerm.toLowerCase());
+  //     const matchesCategory =
+  //       selectedCategory === "All Categories" ||
+  //       product.category_name === selectedCategory;
+  //     const matchesStatus =
+  //       selectedStatus === "All Status" ||
+  //       product.status === selectedStatus.toLowerCase();
+  //     return matchesSearch && matchesCategory && matchesStatus;
+  //   });
+  // }, [products, searchTerm, selectedCategory, selectedStatus]);
 
   // Optimized view product details with batched updates
   const handleView = useCallback(
@@ -1268,7 +1352,21 @@ useEffect(() => {
       },
     });
   }, [navigate]);
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+    // Scroll to top of products list
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [totalPages]);
   // Stable modal close handlers
   const closeProductModal = useCallback(() => setSelectedProduct(null), []);
 
@@ -1368,7 +1466,7 @@ useEffect(() => {
                 viewMode === "grid" ? "products-grid" : "products-list"
               }
             >
-              {filteredProducts.map((product) => {
+              {paginatedProducts.map((product) => {
                 const productImageList =
                   imageData.productImages[product.id] || [];
 
@@ -1588,7 +1686,67 @@ useEffect(() => {
               })}
             </div>
           )}
-
+          {/* Pagination Controls */}
+          {!loading && filteredProducts.length > 0 && totalPages > 1 && (
+            <div className="pagination-container">
+              <div className="pagination-info">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                {Math.min(currentPage * itemsPerPage, filteredProducts.length)}{" "}
+                of {filteredProducts.length} products
+              </div>
+              <div className="pagination-controls">
+                <button
+                  className="pagination-btn"
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </button>
+                <div className="pagination-pages">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            className={`pagination-page ${
+                              currentPage === page ? "active" : ""
+                            }`}
+                            onClick={() => handlePageChange(page)}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return (
+                          <span key={page} className="pagination-ellipsis">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+                  )}
+                </div>
+                <button
+                  className="pagination-btn"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
           {/* Single Reusable Confirm Modal */}
           {modalConfig && (
             <ConfirmModal

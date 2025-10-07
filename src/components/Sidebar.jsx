@@ -14,7 +14,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import "./Sidebar.css";
-
+import GFLLogo from "../img/GFL_Logo.png";
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
@@ -54,10 +54,11 @@ const Sidebar = () => {
     <aside className="sidebar">
       {/* Logo / Branding */}
       <div className="sidebar-header">
-        <Leaf className="logo-icon" size={24} />
+        {/* <Leaf className="logo-icon" size={24} /> */}
         <div>
-          <h1 className="brand-name">Green Formula</h1>
-          <p className="brand-subtitle">Landscapers</p>
+          {/* <h1 className="brand-name">Green Formula</h1>
+          <p className="brand-subtitle">Landscapers</p> */}
+          <img src={GFLLogo} alt="Green Formula Logo" className="brand-logo" />
         </div>
       </div>
 

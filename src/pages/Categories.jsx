@@ -11,7 +11,8 @@ import {
   FolderOpen,
   File,
 } from "lucide-react";
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
 const Categories = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
@@ -36,9 +37,7 @@ const Categories = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        "http://localhost/GreenLand/api/categories"
-      );
+      const response = await axios.get(`${API_BASE_URL}/categories`);
       setCategories(response.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -211,10 +210,10 @@ const Categories = () => {
       };
 
       if (modalMode === "create") {
-        await axios.post("http://localhost/GreenLand/api/categories", payload);
+        await axios.post(`${API_BASE_URL}/categories`, payload);
       } else {
         await axios.put(
-          `http://localhost/GreenLand/api/categories/${selectedCategory.id}`,
+          `${API_BASE_URL}/categories/${selectedCategory.id}`,
           payload
         );
       }
@@ -234,9 +233,7 @@ const Categories = () => {
   const handleDelete = async () => {
     try {
       setFormLoading(true);
-      await axios.delete(
-        `http://localhost/GreenLand/api/categories/${selectedCategory.id}`
-      );
+      await axios.delete(`${API_BASE_URL}/categories/${selectedCategory.id}`);
       await fetchCategories(); // Refresh the categories list
       closeModal();
     } catch (error) {

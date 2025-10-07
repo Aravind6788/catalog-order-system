@@ -3,7 +3,8 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import "./CreateCategory.css";
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
 const CreateCategory = () => {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState("");
@@ -17,7 +18,7 @@ const CreateCategory = () => {
   // Fetch categories for parent dropdown
   useEffect(() => {
     axios
-      .get("http://localhost/GreenLand/api/categories")
+      .get(`${API_BASE_URL}/categories`)
       .then((res) => setCategories(res.data))
       .catch(() => setError("Failed to load categories"));
   }, []);
@@ -77,7 +78,7 @@ const CreateCategory = () => {
     setLoading(true);
 
     try {
-      await axios.post("http://localhost/GreenLand/api/categories", {
+      await axios.post(`${API_BASE_URL}/categories`, {
         name: name.trim(),
         code: code.trim().toUpperCase(),
         parent_id: parentId || null,

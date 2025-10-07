@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-
-const API_BASE = "http://localhost/GreenLand/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
+const API_BASE = API_BASE_URL;
 
 const AddVariant = () => {
   const { id } = useParams(); // product id
