@@ -172,36 +172,138 @@ const Products = () => {
     },
     [loadProductImages]
   );
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/categories`);
+      console.log("Raw categories response:", res.data);
+
+      // Since your backend returns a tree structure directly, we need to flatten it
+      const flattenCategories = (categories, level = 0) => {
+        let flattened = [];
+        categories.forEach((category) => {
+          // Add prefix for subcategories to show hierarchy
+          const displayName =
+            level > 0
+              ? `${"└─".repeat(level)} ${category.name}`
+              : category.name;
+
+          flattened.push({
+            id: category.id,
+            name: displayName,
+            original_name: category.name,
+            code: category.code,
+            parent_id: category.parent_id,
+            level: level,
+          });
+
+          // If this category has children, recursively add them
+          if (category.children && category.children.length > 0) {
+            flattened = flattened.concat(
+              flattenCategories(category.children, level + 1)
+            );
+          }
+        });
+        return flattened;
+      };
+
+      const flattenedCategories = flattenCategories(res.data);
+      console.log("Flattened categories:", flattenedCategories);
+      setCategories(flattenedCategories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setCategories([]);
+    }
+  }, []);
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
 
-      // ✅ Fetch all products by setting a high limit
-      const res = await axios.get(`${API_BASE}/products`, {
-        params: {
-          page: 1,
-          limit: 1000, // adjust this based on your backend's max limit
-        },
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: 1,
+        limit: 1000, // Fetch all products
       });
 
-      const { products } = res.data;
+      // Add filters if they exist
+      if (searchTerm) params.append("search", searchTerm);
+      if (selectedCategory && selectedCategory !== "All Categories") {
+        // Find the category ID from the flattened categories
+        const category = categories.find(
+          (cat) =>
+            cat.name === selectedCategory ||
+            cat.original_name === selectedCategory
+        );
+        if (category) {
+          params.append("category", category.id);
+        }
+      }
+      if (selectedStatus && selectedStatus !== "All Status") {
+        params.append("status", selectedStatus.toLowerCase());
+      }
 
-      const uniqueCategories = [
-        ...new Set(products.map((p) => p.category_name)),
-      ];
+      const res = await axios.get(`${API_BASE}/products?${params}`);
+      const { products: productsData } = res.data;
 
-      setProducts(products);
-      setCategories(uniqueCategories);
+      // Fetch variants for each product
+      const productsWithVariants = await Promise.all(
+        productsData.map(async (product) => {
+          try {
+            const variantsRes = await axios.get(
+              `${API_BASE}/products/${product.id}/variants`
+            );
+            const variants = variantsRes.data.variants || [];
+
+            // Fetch attributes for each variant
+            const variantsWithAttributes = await Promise.all(
+              variants.map(async (variant) => {
+                try {
+                  const attributesRes = await axios.get(
+                    `${API_BASE}/variants/${variant.id}/attributes`
+                  );
+                  return {
+                    ...variant,
+                    attributes: attributesRes.data.attributes || [],
+                  };
+                } catch (error) {
+                  console.error(
+                    `Error fetching attributes for variant ${variant.id}:`,
+                    error
+                  );
+                  return { ...variant, attributes: [] };
+                }
+              })
+            );
+
+            return { ...product, variants: variantsWithAttributes };
+          } catch (error) {
+            console.error(
+              `Error fetching variants for product ${product.id}:`,
+              error
+            );
+            return { ...product, variants: [] };
+          }
+        })
+      );
+
+      setProducts(productsWithVariants);
 
       // Load images after products are set
-      await loadAllImages(products);
+      await loadAllImages(productsWithVariants);
     } catch (error) {
       console.error("Error fetching products:", error);
       showNotification("error", "Error", "Failed to load products");
+      setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [loadAllImages, showNotification]);
+  }, [
+    searchTerm,
+    selectedCategory,
+    selectedStatus,
+    categories,
+    loadAllImages,
+    showNotification,
+  ]);
 
   // Stable API functions - memoized with useCallback and dependencies
   const confirmActivate = useCallback(
@@ -1226,14 +1328,33 @@ const Products = () => {
     return Math.ceil(filteredProducts.length / itemsPerPage);
   }, [filteredProducts.length, itemsPerPage]);
 
-  // Fetch all products on mount
   const didFetch = useRef(false);
+  const categoriesLoaded = useRef(false);
 
+  // First effect: Load categories only ONCE on mount
   useEffect(() => {
     if (didFetch.current) return;
     didFetch.current = true;
+    fetchCategories();
+  }, [fetchCategories]);
+
+  // Second effect: Load products ONCE after categories are loaded
+  useEffect(() => {
+    if (categories.length > 0 && !categoriesLoaded.current) {
+      categoriesLoaded.current = true;
+      fetchProducts();
+    }
+  }, [categories]); // Only depend on categories, not fetchProducts
+
+  // Third effect: Refetch when filters change (only after initial load)
+  useEffect(() => {
+    // Skip if categories haven't loaded yet
+    if (!categoriesLoaded.current) return;
+
+    // Fetch products when filters change
     fetchProducts();
-  }, [fetchProducts]);
+  }, [searchTerm, selectedCategory, selectedStatus]); // Remove fetchProducts from deps
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -1373,7 +1494,7 @@ const Products = () => {
   return (
     <>
       <div className="products-layout">
-        <Sidebar />
+        {/* <Sidebar /> */}
         <div className="categories-page">
           {/* Header */}
           <div className="page-header">
@@ -1409,11 +1530,24 @@ const Products = () => {
               className="category-dropdown"
             >
               <option value="All Categories">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
+              {categories.length === 0 ? (
+                <option disabled>Loading categories...</option>
+              ) : (
+                categories.map((category) => {
+                  const categoryId = category.id || category.category_id;
+                  // Display name shows hierarchy with └─ prefix
+                  const displayName =
+                    category.name || category.category_name || category.title;
+                  // Value uses original_name without prefix for filtering
+                  const filterValue = category.original_name || displayName;
+
+                  return (
+                    <option key={`category-${categoryId}`} value={filterValue}>
+                      {displayName}
+                    </option>
+                  );
+                })
+              )}
             </select>
 
             <select

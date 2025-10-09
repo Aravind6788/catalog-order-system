@@ -10,16 +10,15 @@ import {
   Users,
   FileText,
   LogOut,
-  Leaf,
   MessageSquarePlus,
 } from "lucide-react";
 import "./Sidebar.css";
 import GFLLogo from "../img/GFL_Logo.png";
-const Sidebar = () => {
+
+const Sidebar = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
 
-  // Map role_id to role name, consistent with ProtectedRoute
   const roleMap = {
     1: "ADMIN",
     2: "CATALOG_MANAGER",
@@ -51,41 +50,56 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="sidebar">
-      {/* Logo / Branding */}
-      <div className="sidebar-header">
-        {/* <Leaf className="logo-icon" size={24} /> */}
-        <div>
-          {/* <h1 className="brand-name">Green Formula</h1>
-          <p className="brand-subtitle">Landscapers</p> */}
-          <img src={GFLLogo} alt="Green Formula Logo" className="brand-logo" />
+    <>
+      <aside
+        className={`sidebar ${isOpen ? "sidebar-open" : "sidebar-closed"}`}
+      >
+        {/* Header with Logo only */}
+        <div className="sidebar-header">
+          <div className="brand-info">
+            <img
+              src={GFLLogo}
+              alt="Green Formula Logo"
+              className="brand-logo"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Menu */}
-      <nav className="nav flex-column">
-        {menus[role]?.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`nav-link ${isActive ? "active" : ""}`}
-            >
-              <Icon className="icon" size={18} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+        {/* Navigation */}
+        <nav className="nav">
+          {menus[role]?.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`nav-link ${isActive ? "active" : ""}`}
+                title={!isOpen ? item.label : ""}
+              >
+                <Icon className="icon" size={18} />
+                {isOpen && <span className="nav-label">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
 
-      {/* Logout Button */}
-      <button onClick={logout} className="btn btn-logout mt-auto">
-        <LogOut size={16} className="icon" />
-        Logout
-      </button>
-    </aside>
+        {/* Logout Button */}
+        <button
+          onClick={logout}
+          className="btn-logout"
+          title={!isOpen ? "Logout" : ""}
+        >
+          <LogOut size={16} className="icon" />
+          {isOpen && <span>Logout</span>}
+        </button>
+      </aside>
+
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsOpen(false)} />
+      )}
+    </>
   );
 };
 
