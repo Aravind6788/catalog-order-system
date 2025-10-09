@@ -592,7 +592,7 @@ const Dashboard = () => {
                   {recentOrders.map((order, index) => (
                     <li key={order.id || index}>
                       <div className="order-info">
-                        <p>{order.name}</p> 
+                        <p>{order.name}</p>
                         <p className="text-muted">{order.date}</p>
                       </div>
                       <div className="order-meta">
@@ -630,7 +630,7 @@ const Dashboard = () => {
                           <p className="text-muted">{product.sales} sales</p>
                         </div>
                         <div className="product-meta">
-                          <p>${product.revenue}</p>
+                          <p>₹{product.revenue}</p>
                         </div>
                       </li>
                     ))}

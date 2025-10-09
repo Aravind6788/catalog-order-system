@@ -752,7 +752,7 @@ const AuditLog = () => {
       </style>
 
       <div className="products-layout">
-        <Sidebar />
+        {/* <Sidebar /> */}
         <div className="categories-page">
           {/* Header */}
           <div className="page-header">

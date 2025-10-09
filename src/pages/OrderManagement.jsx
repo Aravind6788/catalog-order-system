@@ -3110,7 +3110,7 @@ const handleViewOrder = async (order) => {
       </style>
 
       <div className="products-layout">
-        <Sidebar />
+        {/* <Sidebar /> */}
         <div className="categories-page">
           {/* Header */}
           <div className="page-header">

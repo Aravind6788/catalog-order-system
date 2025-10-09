@@ -30,7 +30,7 @@ import {
 import GFLLogo from "../../img/GFL_Logo.png";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
-  
+
 const API_BASE = API_BASE_URL;
 
 // Cookie utilities (unchanged)
@@ -72,6 +72,22 @@ const containerStyle = {
   backgroundColor: "#f8f9fa",
   minHeight: "100vh",
 };
+// const modalStyle = {
+//   position: "fixed",
+//   top: 0,
+//   left: 0,
+//   right: 0,
+//   bottom: 0,
+//   backgroundColor: "rgba(0,0,0,0.5)",
+//   zIndex: 1050,
+//   display: "flex",
+//   alignItems: "center",
+//   justifyContent: "center",
+//   padding: "1rem",
+//   overflowY: "auto",
+// };
+
+
 
 const navbarStyle = {
   backgroundColor: "white",
@@ -255,6 +271,7 @@ const ModernNavbar = React.memo(
                 alignItems: "center",
                 gap: "0.5rem",
                 padding: "0.5rem",
+                justifyContent:"center"
               }}
               onClick={() => setShowOrderHistory(true)}
               className="nav-btn"
@@ -274,6 +291,7 @@ const ModernNavbar = React.memo(
               alignItems: "center",
               gap: "0.5rem",
               padding: "0.5rem",
+              justifyContent:"center"
             }}
             onClick={() => setShowCheckout(true)}
             className="nav-btn"
@@ -572,7 +590,8 @@ const PreviousOrdersModal = React.memo(
           {/* Right Panel - Order Details */}
           {selectedOrder && (
             <div
-              style={{ width: "50%", display: "flex", flexDirection: "column" }}
+              style={{ width: "100%", display: "flex", flexDirection: "column" }}
+              className="selectedOrderDetail"
             >
               <div
                 style={{
@@ -970,15 +989,17 @@ const ModernFilterSidebar = React.memo(
         {/* Mobile overlay */}
         {showFilters && (
           <div
-            style={{
-              // position: "fixed",
-              // top: 0,
-              // left: 0,
-              // right: 0,
-              // bottom: 0,
-              // // backgroundColor: "rgba(0,0,0,0.5)",
-              // zIndex: 999,
-            }}
+            style={
+              {
+                // position: "fixed",
+                // top: 0,
+                // left: 0,
+                // right: 0,
+                // bottom: 0,
+                // // backgroundColor: "rgba(0,0,0,0.5)",
+                // zIndex: 999,
+              }
+            }
             // className="mobile-overlay"
             onClick={() => setShowFilters(false)}
           />
@@ -1401,10 +1422,8 @@ const ProductCard = React.memo(({ product, onViewDetails }) => {
     </div>
   );
 });
-
-// NEW COMPONENT - Product Detail Modal
 const ProductDetailModal = React.memo(
-  ({ product, isOpen, onClose, addToCart }) => {
+  ({ product, isOpen, onClose, addToCart, imageData }) => {
     const [selectedVariant, setSelectedVariant] = useState(
       product?.variants && product.variants.length > 0
         ? product.variants[0]
@@ -1413,6 +1432,8 @@ const ProductDetailModal = React.memo(
     const [quantity, setQuantity] = useState(1);
     const [isAdding, setIsAdding] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [showImagePreview, setShowImagePreview] = useState(false);
+    const [allImages, setAllImages] = useState([]);
 
     const debouncedAddToCart = useMemo(
       () =>
@@ -1432,10 +1453,69 @@ const ProductDetailModal = React.memo(
     useEffect(() => {
       if (product?.variants && product.variants.length > 0) {
         setSelectedVariant(product.variants[0]);
+        updateAllImages(product.variants[0]);
       }
       setQuantity(1);
       setSelectedImageIndex(0);
     }, [product]);
+
+    // Update images when variant changes
+    useEffect(() => {
+      if (selectedVariant) {
+        updateAllImages(selectedVariant);
+        setSelectedImageIndex(0);
+      }
+    }, [selectedVariant]);
+  const updateAllImages = (variant) => {
+    console.log("=== IMAGE DEBUG ===");
+    console.log("Selected Product:", product);
+    console.log("Selected Variant:", variant);
+    console.log("Primary Image:", variant?.primary_image);
+    console.log("Secondary Images:", variant?.secondary_images);
+    console.log("ImageData State:", imageData);
+
+    const images = [];
+
+    if (variant?.primary_image) {
+      images.push(variant.primary_image);
+    }
+
+    // FIRST: Try to get from imageData state (loaded from API)
+    const storedImages = imageData?.variantImages?.[variant?.id];
+    if (storedImages && storedImages.length > 0) {
+      // Filter out primary image to avoid duplicates
+      const secondaryOnly = storedImages.filter(
+        (img) => img !== variant?.primary_image
+      );
+      images.push(...secondaryOnly);
+      console.log("Using stored images from imageData:", storedImages);
+    }
+    // SECOND: Fall back to variant.secondary_images
+    else if (
+      Array.isArray(variant?.secondary_images) &&
+      variant.secondary_images.length > 0
+    ) {
+      images.push(...variant.secondary_images);
+      console.log(
+        "Using secondary_images from variant:",
+        variant.secondary_images
+      );
+    } else if (variant?.secondary_image) {
+      images.push(variant.secondary_image);
+      console.log("Using single secondary_image:", variant.secondary_image);
+    }
+
+    if (images.length === 0) {
+      images.push(
+        `https://via.placeholder.com/500x400/2d8659/ffffff?text=${encodeURIComponent(
+          product.name
+        )}`
+      );
+    }
+
+    console.log("Final All Images Array:", images);
+    setAllImages(images);
+  };
 
     const handleAddToCart = useCallback(() => {
       if (isAdding) return;
@@ -1450,7 +1530,6 @@ const ProductDetailModal = React.memo(
       setIsAdding(true);
       debouncedAddToCart(product, selectedVariant, quantity);
 
-      // Show success feedback
       setTimeout(() => {
         setIsAdding(false);
       }, 1000);
@@ -1458,232 +1537,301 @@ const ProductDetailModal = React.memo(
 
     if (!isOpen || !product) return null;
 
-    // Get all images from selected variant or fallback
-    const getProductImages = () => {
-      const images = [];
-      if (selectedVariant && selectedVariant.primary_image) {
-        images.push(selectedVariant.primary_image);
-      }
-      // Add secondary images if available
-      if (selectedVariant && selectedVariant.secondary_images) {
-        images.push(...selectedVariant.secondary_images);
-      }
-      // Fallback placeholder
-      if (images.length === 0) {
-        images.push(
-          `https://via.placeholder.com/500x400/2d8659/ffffff?text=${encodeURIComponent(
-            product.name
-          )}`
-        );
-      }
-      return images;
-    };
-
-    const productImages = getProductImages();
-
     return (
-      <div style={modalStyle} onClick={onClose}>
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            maxWidth: "1200px",
-            width: "100%",
-            maxHeight: "90vh",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: window.innerWidth <= 768 ? "column" : "row",
-          }}
-          className="product-detail-modal"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Left Panel - Images */}
+      <>
+        <div style={modalStyle} onClick={onClose}>
           <div
             style={{
-              width: "50%",
-              padding: "1.5rem",
-              borderRight: "1px solid #e9ecef",
+              backgroundColor: "white",
+              borderRadius: "12px",
+              maxWidth: "1200px",
+              width: "100%",
+              maxHeight: "100vh",
+              display: "flex",
+              flexDirection: window.innerWidth <= 768 ? "column" : "row",
             }}
-            className="product-detail-images"
+            className="product-detail-modal"
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Main Image */}
-            <div style={{ marginBottom: "1rem" }}>
-              <img
-                src={productImages[selectedImageIndex]}
-                alt={`${product.name} - View ${selectedImageIndex + 1}`}
-                style={{
-                  width: "100%",
-                  height: "615px",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                  border: "1px solid #e9ecef",
-                }}
-              />
-            </div>
-
-            {/* Image Thumbnails */}
-            {productImages.length > 1 && (
-              <div style={{ display: "flex", gap: "0.5rem", overflow: "auto" }}>
-                {productImages.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image}
-                    alt={`${product.name} - Thumbnail ${index + 1}`}
-                    style={{
-                      width: "60px",
-                      height: "60px",
-                      objectFit: "cover",
-                      borderRadius: "4px",
-                      border:
-                        selectedImageIndex === index
-                          ? "2px solid #2d8659"
-                          : "1px solid #e9ecef",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                    }}
-                    onClick={() => setSelectedImageIndex(index)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right Panel - Details */}
-          <div
-            style={{ width: "50%", display: "flex", flexDirection: "column" }}
-            className="RPDetails"
-          >
-            {/* Header */}
+            {/* Left Panel - Images */}
             <div
               style={{
+                width: "50%",
                 padding: "1.5rem",
-                borderBottom: "1px solid #e9ecef",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                borderRight: "1px solid #e9ecef",
               }}
+              className="product-detail-images"
             >
-              <h4 style={{ margin: 0, color: "#2c3e50" }}>{product.name}</h4>
-              <button
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                  color: "#6c757d",
-                }}
-                onClick={onClose}
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div style={{ padding: "1.5rem", overflow: "auto", flex: 1 }}>
-              {/* Category */}
-              {product.category_name && (
-                <p
+              {/* Main Image with Preview Button */}
+              <div style={{ marginBottom: "1rem", position: "relative" }}>
+                <img
+                  src={allImages[selectedImageIndex]}
+                  alt={`${product.name} - View ${selectedImageIndex + 1}`}
                   style={{
-                    color: "#6c757d",
+                    width: "100%",
+                    height: "615px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                    border: "1px solid #e9ecef",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setShowImagePreview(true)}
+                />
+                {/* View Full Screen Button - Always show for better UX */}
+                <button
+                  style={{
+                    position: "absolute",
+                    bottom: "1rem",
+                    right: "1rem",
+                    backgroundColor: "rgba(45,134,89,0.95)",
+                    borderColor: "#2d8659",
+                    color: "white",
+                    borderRadius: "8px",
+                    transition: "all 0.2s ease",
+                    border: "1px solid #2d8659",
+                    padding: "0.75rem 1.25rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
                     fontSize: "0.9rem",
-                    marginBottom: "1rem",
+                    fontWeight: "600",
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
+                    backdropFilter: "blur(4px)",
+                    zIndex: 10,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowImagePreview(true);
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#2d8659";
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      "rgba(45,134,89,0.95)";
+                    e.currentTarget.style.transform = "scale(1)";
                   }}
                 >
-                  Category: {product.category_name}
-                </p>
-              )}
-
-              {/* Description */}
-              <div style={{ marginBottom: "1.5rem" }}>
-                <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
-                  Description
-                </h6>
-                <p style={{ color: "#6c757d", lineHeight: "1.5", margin: 0 }}>
-                  {product.description ||
-                    product.short_description ||
-                    product.details ||
-                    "No description available"}
-                </p>
+                  <Search size={18} />
+                  {allImages.length > 1
+                    ? `View All (${allImages.length})`
+                    : "View Full Screen"}
+                </button>
               </div>
 
-              {/* Variant Selection */}
-              <div style={{ marginBottom: "1.5rem" }}>
-                <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
-                  Select Variant ({product.variants.length} available)
-                </h6>
-                {product.variants.length === 0 ? (
-                  <p style={{ color: "#dc3545", fontStyle: "italic" }}>
-                    No variants available - Contact us for custom quote
-                  </p>
-                ) : (
-                  <select
+              {/* Image Thumbnails */}
+              {allImages.length > 1 && (
+                <div
+                  style={{ display: "flex", gap: "0.5rem", overflow: "auto" }}
+                >
+                  {allImages.map((image, index) => (
+                    <img
+                      key={index}
+                      src={image}
+                      alt={`${product.name} - Thumbnail ${index + 1}`}
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        objectFit: "cover",
+                        borderRadius: "4px",
+                        border:
+                          selectedImageIndex === index
+                            ? "2px solid #2d8659"
+                            : "1px solid #e9ecef",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        opacity: selectedImageIndex === index ? 1 : 0.7,
+                        transition: "all 0.2s",
+                      }}
+                      onClick={() => setSelectedImageIndex(index)}
+                      onMouseEnter={(e) => (e.target.style.opacity = 1)}
+                      onMouseLeave={(e) =>
+                        (e.target.style.opacity =
+                          selectedImageIndex === index ? 1 : 0.7)
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right Panel - Details */}
+            <div
+              style={{ width: "50%", display: "flex", flexDirection: "column" }}
+              className="RPDetails"
+            >
+              {/* Header */}
+              <div
+                style={{
+                  padding: "1.5rem",
+                  borderBottom: "1px solid #e9ecef",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <h4 style={{ margin: 0, color: "#2c3e50" }}>{product.name}</h4>
+                <button
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: "1.5rem",
+                    cursor: "pointer",
+                    color: "#6c757d",
+                  }}
+                  onClick={onClose}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div style={{ padding: "1.5rem", overflow: "auto", flex: 1 }}>
+                {/* Category */}
+                {product.category_name && (
+                  <p
                     style={{
-                      ...selectStyle,
-                      borderColor: "#2d8659",
-                    }}
-                    value={selectedVariant?.id || ""}
-                    onChange={(e) => {
-                      const variant = product.variants.find(
-                        (v) => v.id === parseInt(e.target.value)
-                      );
-                      setSelectedVariant(variant);
-                      setSelectedImageIndex(0); // Reset image selection when variant changes
+                      color: "#6c757d",
+                      fontSize: "0.9rem",
+                      marginBottom: "1rem",
                     }}
                   >
-                    {product.variants.map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.name} - ₹{parseFloat(variant.price).toFixed(2)}
-                        {variant.quantity && ` (Stock: ${variant.quantity})`}
-                      </option>
-                    ))}
-                  </select>
+                    Category: {product.category_name}
+                  </p>
                 )}
-              </div>
 
-              {/* Selected Variant Details */}
-              {selectedVariant && (
+                {/* Description */}
                 <div style={{ marginBottom: "1.5rem" }}>
                   <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
-                    Selected Variant Details
+                    Description
                   </h6>
-                  <div
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      padding: "1rem",
-                      borderRadius: "8px",
-                      border: "1px solid #e9ecef",
-                    }}
-                  >
-                    <div
+                  <p style={{ color: "#6c757d", lineHeight: "1.5", margin: 0 }}>
+                    {product.description ||
+                      product.short_description ||
+                      product.details ||
+                      "No description available"}
+                  </p>
+                </div>
+
+                {/* Variant Selection */}
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
+                    Select Variant ({product.variants.length} available)
+                  </h6>
+                  {product.variants.length === 0 ? (
+                    <p style={{ color: "#dc3545", fontStyle: "italic" }}>
+                      No variants available - Contact us for custom quote
+                    </p>
+                  ) : (
+                    <select
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "0.5rem",
-                        marginBottom: "1rem",
+                        ...selectStyle,
+                        borderColor: "#2d8659",
+                      }}
+                      value={selectedVariant?.id || ""}
+                      onChange={(e) => {
+                        const variant = product.variants.find(
+                          (v) => v.id === parseInt(e.target.value)
+                        );
+                        setSelectedVariant(variant);
                       }}
                     >
-                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                        <strong>Name:</strong> {selectedVariant.name}
-                      </p>
-                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                        <strong>Code:</strong> {selectedVariant.code}
-                      </p>
-                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                        <strong>Price:</strong>{" "}
-                        <span style={{ color: "#2d8659", fontWeight: "600" }}>
-                          ₹{parseFloat(selectedVariant.price).toFixed(2)}
-                        </span>
-                      </p>
-                      <p style={{ margin: 0, fontSize: "0.9rem" }}>
-                        <strong>Stock:</strong>{" "}
-                        {selectedVariant.quantity || "N/A"}
-                      </p>
-                    </div>
+                      {product.variants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {variant.name} - ₹
+                          {parseFloat(variant.price).toFixed(2)}
+                          {variant.quantity && ` (Stock: ${variant.quantity})`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
 
-                    {/* Variant Attributes */}
-                    {selectedVariant.attributes &&
-                      selectedVariant.attributes.length > 0 && (
-                        <div>
+                {/* Selected Variant Details */}
+                {selectedVariant && (
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <h6 style={{ marginBottom: "0.5rem", color: "#2c3e50" }}>
+                      Selected Variant Details
+                    </h6>
+                    <div
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        padding: "1rem",
+                        borderRadius: "8px",
+                        border: "1px solid #e9ecef",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "0.5rem",
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                          <strong>Name:</strong> {selectedVariant.name}
+                        </p>
+                        <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                          <strong>Code:</strong> {selectedVariant.code}
+                        </p>
+                        <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                          <strong>Price:</strong>{" "}
+                          <span style={{ color: "#2d8659", fontWeight: "600" }}>
+                            ₹{parseFloat(selectedVariant.price).toFixed(2)}
+                          </span>
+                        </p>
+                        <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                          <strong>Stock:</strong>{" "}
+                          {selectedVariant.quantity || "N/A"}
+                        </p>
+                      </div>
+
+                      {/* Variant Attributes */}
+                      {selectedVariant.attributes &&
+                        selectedVariant.attributes.length > 0 && (
+                          <div>
+                            <h6
+                              style={{
+                                margin: "0 0 0.5rem 0",
+                                fontSize: "0.85rem",
+                                color: "#2c3e50",
+                              }}
+                            >
+                              Attributes:
+                            </h6>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "0.25rem",
+                              }}
+                            >
+                              {selectedVariant.attributes.map((attr, index) => (
+                                <span
+                                  key={`modal-${selectedVariant.id}-${attr.attribute_id}-${attr.value_id}-${index}`}
+                                  style={{
+                                    backgroundColor: "#2d8659",
+                                    color: "white",
+                                    padding: "0.2rem 0.5rem",
+                                    borderRadius: "12px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: "500",
+                                  }}
+                                  title={`${attr.attribute_name}: ${attr.value_name}`}
+                                >
+                                  {attr.attribute_name}: {attr.value_name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Variant Description */}
+                      {selectedVariant.description && (
+                        <div style={{ marginTop: "1rem" }}>
                           <h6
                             style={{
                               margin: "0 0 0.5rem 0",
@@ -1691,175 +1839,166 @@ const ProductDetailModal = React.memo(
                               color: "#2c3e50",
                             }}
                           >
-                            Attributes:
+                            Variant Description:
                           </h6>
-                          <div
+                          <p
                             style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "0.25rem",
+                              margin: 0,
+                              fontSize: "0.85rem",
+                              color: "#6c757d",
                             }}
                           >
-                            {selectedVariant.attributes.map((attr, index) => (
-                              <span
-                                key={`modal-${selectedVariant.id}-${attr.attribute_id}-${attr.value_id}-${index}`}
-                                style={{
-                                  backgroundColor: "#2d8659",
-                                  color: "white",
-                                  padding: "0.2rem 0.5rem",
-                                  borderRadius: "12px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: "500",
-                                }}
-                                title={`${attr.attribute_name}: ${attr.value_name}`}
-                              >
-                                {attr.attribute_name}: {attr.value_name}
-                              </span>
-                            ))}
-                          </div>
+                            {selectedVariant.description}
+                          </p>
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                    {/* Variant Description */}
-                    {selectedVariant.description && (
-                      <div style={{ marginTop: "1rem" }}>
-                        <h6
+              {/* Footer - Add to Cart */}
+              {product.variants.length > 0 &&
+                selectedVariant &&
+                parseInt(selectedVariant.quantity) > 0 && (
+                  <div
+                    style={{
+                      padding: "1.5rem",
+                      borderTop: "1px solid #e9ecef",
+                      backgroundColor: "#f8f9fa",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "1rem",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <div>
+                        <label
                           style={{
-                            margin: "0 0 0.5rem 0",
                             fontSize: "0.85rem",
-                            color: "#2c3e50",
+                            fontWeight: "600",
+                            display: "block",
+                            marginBottom: "0.3rem",
                           }}
                         >
-                          Variant Description:
-                        </h6>
+                          Quantity:
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={parseInt(selectedVariant.quantity)}
+                          value={quantity}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Allow empty string while typing
+                            if (value === "") {
+                              setQuantity("");
+                            } else {
+                              const numValue = parseInt(value);
+                              // Only set if it's a valid number >= 1
+                              if (!isNaN(numValue) && numValue >= 1) {
+                                setQuantity(numValue);
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // When user leaves the field, ensure it has a valid value
+                            const value = e.target.value;
+                            if (
+                              value === "" ||
+                              isNaN(parseInt(value)) ||
+                              parseInt(value) < 1
+                            ) {
+                              setQuantity(1);
+                            }
+                          }}
+                          style={{
+                            width: "80px",
+                            padding: "0.5rem",
+                            border: "1px solid #2d8659",
+                            borderRadius: "6px",
+                            fontSize: "0.9rem",
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label
+                          style={{
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            display: "block",
+                            marginBottom: "0.3rem",
+                          }}
+                        >
+                          Total:
+                        </label>
                         <p
                           style={{
                             margin: 0,
-                            fontSize: "0.85rem",
-                            color: "#6c757d",
+                            fontSize: "1.2rem",
+                            fontWeight: "600",
+                            color: "#2d8659",
                           }}
                         >
-                          {selectedVariant.description}
+                          ₹
+                          {(
+                            parseFloat(selectedVariant.price) * quantity
+                          ).toFixed(2)}
                         </p>
                       </div>
-                    )}
+                    </div>
+
+                    <button
+                      style={{
+                        ...buttonStyle,
+                        width: "100%",
+                        padding: "1rem",
+                        fontSize: "1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.5rem",
+                        opacity: isAdding ? 0.6 : 1,
+                        cursor: isAdding ? "not-allowed" : "pointer",
+                        backgroundColor: isAdding ? "#28a745" : "#2d8659",
+                      }}
+                      onClick={handleAddToCart}
+                      disabled={isAdding}
+                    >
+                      {isAdding ? (
+                        <>
+                          <Check size={16} />
+                          Added to Cart!
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart size={16} />
+                          Add to Cart
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
-              )}
+                )}
             </div>
-
-            {/* Footer - Add to Cart */}
-            {product.variants.length > 0 &&
-              selectedVariant &&
-              parseInt(selectedVariant.quantity) > 0 && (
-                <div
-                  style={{
-                    padding: "1.5rem",
-                    borderTop: "1px solid #e9ecef",
-                    backgroundColor: "#f8f9fa",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "1rem",
-                      alignItems: "center",
-                      marginBottom: "1rem",
-                    }}
-                  >
-                    <div>
-                      <label
-                        style={{
-                          fontSize: "0.85rem",
-                          fontWeight: "600",
-                          display: "block",
-                          marginBottom: "0.3rem",
-                        }}
-                      >
-                        Quantity:
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max={parseInt(selectedVariant.quantity)}
-                        value={quantity}
-                        onChange={(e) =>
-                          setQuantity(parseInt(e.target.value) || 1)
-                        }
-                        style={{
-                          width: "80px",
-                          padding: "0.5rem",
-                          border: "1px solid #2d8659",
-                          borderRadius: "6px",
-                          fontSize: "0.9rem",
-                          outline: "none",
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label
-                        style={{
-                          fontSize: "0.85rem",
-                          fontWeight: "600",
-                          display: "block",
-                          marginBottom: "0.3rem",
-                        }}
-                      >
-                        Total:
-                      </label>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "1.2rem",
-                          fontWeight: "600",
-                          color: "#2d8659",
-                        }}
-                      >
-                        ₹
-                        {(parseFloat(selectedVariant.price) * quantity).toFixed(
-                          2
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    style={{
-                      ...buttonStyle,
-                      width: "100%",
-                      padding: "1rem",
-                      fontSize: "1rem",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.5rem",
-                      opacity: isAdding ? 0.6 : 1,
-                      cursor: isAdding ? "not-allowed" : "pointer",
-                      backgroundColor: isAdding ? "#28a745" : "#2d8659",
-                    }}
-                    onClick={handleAddToCart}
-                    disabled={isAdding}
-                  >
-                    {isAdding ? (
-                      <>
-                        <Check size={16} />
-                        Added to Cart!
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart size={16} />
-                        Add to Cart
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
           </div>
         </div>
-      </div>
+
+        {/* Image Preview Modal */}
+        <ImagePreviewModal
+          images={allImages}
+          isOpen={showImagePreview}
+          onClose={() => setShowImagePreview(false)}
+          initialIndex={selectedImageIndex}
+        />
+      </>
     );
   }
-); // <-- ADD THIS LINE
+);
 // Pagination component - MOVED OUTSIDE
 const Pagination = React.memo(({ currentPage, totalPages, setCurrentPage }) => {
   const getPageNumbers = () => {
@@ -2276,7 +2415,214 @@ const CartModal = React.memo(
     );
   }
 );
+// Fixed Image Preview Modal Component
+const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
+  useEffect(() => {
+    setCurrentIndex(initialIndex);
+  }, [initialIndex, isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isOpen) return;
+      
+      if (e.key === "ArrowLeft") {
+        setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      }
+      if (e.key === "ArrowRight") {
+        setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+      }
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, images, onClose]);
+
+  if (!isOpen || !images || images.length === 0) return null;
+
+  const handlePrevious = () => {
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  return (
+    <div 
+      style={{
+        ...modalStyle,
+        backgroundColor: "rgba(0,0,0,0.9)",
+        zIndex: 2000,
+      }} 
+      onClick={onClose}
+    >
+      <div
+        style={{
+          position: "relative",
+          maxWidth: "90vw",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
+        <button
+          style={{
+            position: "absolute",
+            top: "-40px",
+            right: "0",
+            background: "rgba(255,255,255,0.1)",
+            border: "none",
+            color: "white",
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.2s",
+          }}
+          onClick={onClose}
+          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.2)"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+        >
+          <X size={24} />
+        </button>
+
+        {/* Image Counter */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-40px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            color: "white",
+            fontSize: "1rem",
+            fontWeight: "500",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            padding: "0.5rem 1rem",
+            borderRadius: "20px",
+          }}
+        >
+          {currentIndex + 1} / {images.length}
+        </div>
+
+        {/* Main Image */}
+        <img
+          src={images[currentIndex]}
+          alt={`Preview ${currentIndex + 1}`}
+          style={{
+            maxWidth: "100%",
+            maxHeight: "80vh",
+            objectFit: "contain",
+            borderRadius: "8px",
+          }}
+        />
+
+        {/* Navigation Buttons */}
+        {images.length > 1 && (
+          <>
+            <button
+              style={{
+                position: "absolute",
+                left: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(45,134,89,0.9)",
+                border: "none",
+                color: "white",
+                width: "50px",
+                height: "50px",
+                borderRadius: "50%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onClick={handlePrevious}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#2d8659"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(45,134,89,0.9)"}
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <button
+              style={{
+                position: "absolute",
+                right: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(45,134,89,0.9)",
+                border: "none",
+                color: "white",
+                width: "50px",
+                height: "50px",
+                borderRadius: "50%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s",
+              }}
+              onClick={handleNext}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#2d8659"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(45,134,89,0.9)"}
+            >
+              <ChevronRight size={24} />
+            </button>
+          </>
+        )}
+
+        {/* Thumbnail Strip */}
+        {images.length > 1 && (
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              marginTop: "1rem",
+              padding: "1rem",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              borderRadius: "8px",
+              maxWidth: "90vw",
+            }}
+          >
+            {images.map((image, index) => (
+              <img
+                key={index}
+                src={image}
+                alt={`Thumbnail ${index + 1}`}
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  objectFit: "cover",
+                  borderRadius: "4px",
+                  border: currentIndex === index ? "3px solid #2d8659" : "2px solid transparent",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  opacity: currentIndex === index ? 1 : 0.6,
+                  transition: "all 0.2s",
+                }}
+                onClick={() => setCurrentIndex(index)}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = currentIndex === index ? 1 : 0.6}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 // MAIN COMPONENT - ClientProducts
 const ClientProducts = () => {
   const [products, setProducts] = useState([]);
@@ -2293,11 +2639,11 @@ const ClientProducts = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [productsPerPage] = useState(13);
+  const [productsPerPage] = useState(12);
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   // Filters
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({ min: 0, max: 100000 });
   const [selectedStatus, setSelectedStatus] = useState("");
 
@@ -2314,13 +2660,76 @@ const ClientProducts = () => {
   const [previousOrders, setPreviousOrders] = useState([]);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
+  // Image data state for variants
+  const [imageData, setImageData] = useState({
+    productImages: {},
+    variantImages: {},
+  });
 
   // Wishlist
   const [wishlist, setWishlist] = useState(new Set());
+  // Load variant images
+  const loadVariantImages = useCallback(async (variantId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const response = await axios.get(`${API_BASE}/variants/${variantId}`, {
+        headers
+      });
+
+      const images = response.data.variant?.images || [];
+      return images;
+    } catch (error) {
+      console.error(`Error loading images for variant ${variantId}:`, error);
+      return [];
+    }
+  }, []);
+
+  // Batch load all variant images
+  const loadAllVariantImages = useCallback(
+    async (products) => {
+      try {
+        const variantImagePromises = [];
+        
+        products.forEach((product) => {
+          if (product.variants && product.variants.length > 0) {
+            product.variants.forEach((variant) => {
+              variantImagePromises.push(
+                loadVariantImages(variant.id).then((images) => ({
+                  variantId: variant.id,
+                  images,
+                }))
+              );
+            });
+          }
+        });
+
+        const variantImageResults = await Promise.all(variantImagePromises);
+
+        // Batch update state with all variant images
+        const variantImageMap = {};
+        variantImageResults.forEach(({ variantId, images }) => {
+          if (images.length > 0) {
+            variantImageMap[variantId] = images;
+          }
+        });
+
+        setImageData((prev) => ({
+          ...prev,
+          variantImages: variantImageMap,
+        }));
+      } catch (error) {
+        console.error("Error loading variant images:", error);
+      }
+    },
+    [loadVariantImages]
+  );
   const fetchProducts = useCallback(
     async (page = 1, search = "", category = "", status = "") => {
       try {
         setLoading(true);
+
         const params = new URLSearchParams({
           page: page.toString(),
           limit: productsPerPage.toString(),
@@ -2337,6 +2746,7 @@ const ClientProducts = () => {
           page: currentPageRes,
         } = res.data;
 
+        // Fetch variants (and images + attributes) for each product
         const productsWithVariants = await Promise.all(
           productsData.map(async (product) => {
             try {
@@ -2346,9 +2756,7 @@ const ClientProducts = () => {
               const variants = variantsRes.data.variants || [];
 
               // Skip products with no variants
-              if (variants.length === 0) {
-                return null;
-              }
+              if (variants.length === 0) return null;
 
               // Fetch attributes for each variant
               const variantsWithAttributes = await Promise.all(
@@ -2357,16 +2765,31 @@ const ClientProducts = () => {
                     const attributesRes = await axios.get(
                       `${API_BASE}/variants/${variant.id}/attributes`
                     );
+
+                    // 🔹 Ensure secondary_images always exists as an array
+                    const secondaryImages = Array.isArray(
+                      variant.secondary_images
+                    )
+                      ? variant.secondary_images
+                      : variant.secondary_images
+                      ? [variant.secondary_images]
+                      : [];
+
                     return {
                       ...variant,
                       attributes: attributesRes.data.attributes || [],
+                      secondary_images: secondaryImages,
                     };
                   } catch (error) {
                     console.error(
                       `Error fetching attributes for variant ${variant.id}:`,
                       error
                     );
-                    return { ...variant, attributes: [] };
+                    return {
+                      ...variant,
+                      attributes: [],
+                      secondary_images: variant.secondary_images || [],
+                    };
                   }
                 })
               );
@@ -2389,7 +2812,9 @@ const ClientProducts = () => {
 
         setProducts(filteredProducts);
 
-        // Use the total from API response for pagination
+        // Load variant images after setting products
+        await loadAllVariantImages(filteredProducts);
+        // Pagination metadata
         setTotalProducts(total || filteredProducts.length);
         setTotalPages(
           Math.ceil((total || filteredProducts.length) / productsPerPage)
@@ -2404,8 +2829,9 @@ const ClientProducts = () => {
         setLoading(false);
       }
     },
-    [productsPerPage]
+    [productsPerPage, loadAllVariantImages]
   );
+
   // Stable debounced search function
   const debouncedSearch = useMemo(
     () =>
@@ -2666,8 +3092,7 @@ const ClientProducts = () => {
 
   // Page change effect
   useEffect(() => {
-      fetchProducts(currentPage, searchTerm, selectedCategory, selectedStatus);
-    
+    fetchProducts(currentPage, searchTerm, selectedCategory, selectedStatus);
   }, [
     currentPage,
     fetchProducts,
@@ -3037,6 +3462,7 @@ const ClientProducts = () => {
           isOpen={showProductDetail}
           onClose={handleCloseProductDetail}
           addToCart={addToCart}
+          imageData={imageData}
         />
       )}
       <ModernNavbar
@@ -3047,7 +3473,6 @@ const ClientProducts = () => {
         setShowOrderHistory={setShowOrderHistory}
         setShowCheckout={setShowCheckout}
       />
-
       <div
         style={{
           backgroundImage: "linear-gradient(135deg, #2d8659 0%, #4a9b6e 100%)",
@@ -3071,7 +3496,6 @@ const ClientProducts = () => {
           </p>
         </div>
       </div>
-
       <div style={{ maxWidth: "90%", margin: "0 auto", padding: "2rem 1rem" }}>
         <div
           style={{
@@ -3100,7 +3524,7 @@ const ClientProducts = () => {
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <select
+            {/* <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{
@@ -3114,13 +3538,14 @@ const ClientProducts = () => {
               <option value="name">Name A-Z</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
-            </select>
+            </select> */}
 
             <div
               style={{
                 display: "flex",
                 border: "1px solid #e9ecef",
                 borderRadius: "8px",
+                dispaly:"none"
               }}
             >
               <button
@@ -3208,7 +3633,6 @@ const ClientProducts = () => {
               </div>
             ) : (
               <>
-                
                 <div
                   style={{
                     display: "grid",
@@ -3237,7 +3661,6 @@ const ClientProducts = () => {
           </div>
         </div>
       </div>
-
       {showCheckout && (
         <CartModal
           cart={cart}
@@ -3260,20 +3683,111 @@ const ClientProducts = () => {
           }
         }
 
-        /* Tablet */
-        @media (max-width: 1024px) {
+        /* Large Desktop - 1440px and above */
+        @media (min-width: 1440px) {
           .filter-sidebar {
-            width: 250px !important;
+            width: 320px !important;
           }
-            
         }
 
-        /* Mobile screens - 768px and below */
-        @media (max-width: 768px) {
-        .RPDetails{
-        width:100% !important;
+        /* Desktop - 1200px to 1439px */
+        @media (max-width: 1439px) and (min-width: 1200px) {
+          .filter-sidebar {
+            width: 280px !important;
+          }
         }
-          /* Navbar responsive */
+
+        /* Laptop - 1024px to 1199px */
+        @media (max-width: 1199px) and (min-width: 1024px) {
+          .filter-sidebar {
+            width: 250px !important;
+            padding: 18px !important;
+          }
+
+          [style*="maxWidth: '1200px'"] {
+            max-width: 95% !important;
+          }
+        }
+
+        /* Tablet Landscape - 900px to 1023px */
+        @media (max-width: 1023px) and (min-width: 900px) {
+          .filter-sidebar {
+            width: 220px !important;
+            padding: 16px !important;
+          }
+
+          .product-detail-modal {
+            max-width: 95vw !important;
+          }
+
+          .order-history-modal {
+            max-width: 95vw !important;
+          }
+        }
+
+        /* Tablet Portrait - 768px to 899px */
+        @media (max-width: 899px) and (min-width: 768px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            max-width: 400px !important;
+          }
+
+          .nav-btn .btn-text {
+            font-size: 0.85rem;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 65% !important;
+            max-width: 300px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-width: 90vw !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(240px, 1fr)
+            ) !important;
+          }
+        }
+
+        /* Mobile Landscape - 640px to 767px */
+        @media (max-width: 767px) and (min-width: 640px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
           .search-wrapper {
             order: 3 !important;
             width: 100% !important;
@@ -3282,16 +3796,16 @@ const ClientProducts = () => {
           }
 
           .nav-btn .btn-text {
-            display: none;
+            display: inline;
+            font-size: 0.8rem;
           }
 
-          /* Filter sidebar as overlay */
           .filter-sidebar {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             bottom: 0 !important;
-            width: 85% !important;
+            width: 75% !important;
             max-width: 320px !important;
             transform: translateX(-100%);
             transition: transform 0.3s ease;
@@ -3310,10 +3824,91 @@ const ClientProducts = () => {
             display: block !important;
           }
 
-          /* Product Detail Modal */
           .product-detail-modal {
             flex-direction: column !important;
-            max-height: 100vh !important;
+            max-width: 95vw !important;
+            margin: 0.75rem !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            padding: 1rem !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(220px, 1fr)
+            ) !important;
+          }
+
+          button {
+            min-height: 42px;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 42px;
+            font-size: 15px !important;
+          }
+        }
+
+        /* Mobile Portrait - 480px to 639px */
+        @media (max-width: 639px) and (min-width: 480px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text {
+            display: none;
+          }
+
+          .search-btn .btn-text {
+            display: inline;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 80% !important;
+            max-width: 300px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 95vh !important;
             border-radius: 8px !important;
             margin: 0.5rem !important;
           }
@@ -3322,37 +3917,40 @@ const ClientProducts = () => {
             width: 100% !important;
             border-right: none !important;
             border-bottom: 1px solid #e9ecef !important;
-            max-height: 50vh !important;
-            overflow-y: auto !important;
-            padding: 1rem !important;
+            max-height: 45vh !important;
+            padding: 0.875rem !important;
           }
 
           .product-detail-images > div:first-child img {
             height: auto !important;
-            max-height: 250px !important;
+            max-height: 375px !important;
           }
 
-          /* Order History Modal */
           .order-history-modal {
             flex-direction: column !important;
             max-width: 95vw !important;
             max-height: 95vh !important;
-            margin: 1rem !important;
+            margin: 0.75rem !important;
           }
 
           .order-list-panel {
             width: 100% !important;
             border-right: none !important;
             border-bottom: 1px solid #e9ecef !important;
-            max-height: none !important;
           }
 
           .order-list-panel > div:last-child {
-            max-height: 300px !important;
+            max-height: 280px !important;
             overflow-y: auto !important;
           }
 
-          /* Touch-friendly sizes */
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(200px, 1fr)
+            ) !important;
+          }
+
           button {
             min-height: 44px;
             touch-action: manipulation;
@@ -3366,55 +3964,291 @@ const ClientProducts = () => {
             touch-action: manipulation;
           }
 
-          /* Grid adjustments */
-          [style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(
-              auto-fill,
-              minmax(min(100%, 280px), 1fr)
-            ) !important;
+          h1 {
+            font-size: 2rem !important;
           }
 
-          /* Reduce padding on mobile */
-          body > div > div:last-child {
-            padding: 1rem 0.5rem !important;
+          h4 {
+            font-size: 1.3rem !important;
+          }
+
+          h6 {
+            font-size: 0.95rem !important;
           }
         }
 
-        /* Small phones - 480px and below */
-        @media (max-width: 480px) {
+        /* Small Mobile - 400px to 479px */
+        @media (max-width: 479px) and (min-width: 400px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text,
           .search-btn .btn-text {
             display: none;
           }
 
           .filter-sidebar {
-            width: 90% !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 85% !important;
+            max-width: 280px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            padding: 16px !important;
           }
 
-          /* Single column on very small screens */
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 117vh !important;
+            border-radius: 6px !important;
+            /* margin: 0.25rem !important; */
+            margin-top: 192px;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: 51vh !important;
+            padding: 0.75rem !important;
+            min-height:500px !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
+          .order-history-modal {
+            flex-direction: column !important;
+            max-width: 96vw !important;
+            max-height: 96vh !important;
+            margin: 0.5rem !important;
+          }
+
+          .order-list-panel {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+          }
+
+          .order-list-panel > div:last-child {
+            max-height: 240px !important;
+            overflow-y: auto !important;
+          }
+
           [style*="gridTemplateColumns"] {
             grid-template-columns: 1fr !important;
           }
 
-          /* Reduce font sizes */
+          button {
+            min-height: 44px;
+            touch-action: manipulation;
+            font-size: 0.875rem !important;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 44px;
+            font-size: 16px !important;
+            touch-action: manipulation;
+            padding: 0.625rem 0.875rem !important;
+          }
+
           h1 {
-            font-size: 1.8rem !important;
+            font-size: 1.75rem !important;
           }
 
           h4 {
-            font-size: 1.2rem !important;
+            font-size: 1.15rem !important;
+          }
+
+          h5 {
+            font-size: 1rem !important;
           }
 
           h6 {
-            font-size: 0.9rem !important;
+            font-size: 0.875rem !important;
           }
 
-          /* Stack order history columns */
+          p {
+            font-size: 0.875rem !important;
+          }
+
+          .brand-logo {
+            max-width: 120px !important;
+          }
+        }
+
+        /* Extra Small Mobile - 360px to 399px */
+        @media (max-width: 399px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text,
+          .search-btn .btn-text {
+            display: none;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 90% !important;
+            max-width: 260px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            padding: 14px !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 98vh !important;
+            border-radius: 4px !important;
+            margin: 0.25rem !important;
+            max-width: calc(100vw - 0.5rem) !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: 38vh !important;
+            padding: 0.625rem !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
           .order-history-modal {
-            margin: 0.5rem !important;
+            flex-direction: column !important;
+            max-width: calc(100vw - 0.5rem) !important;
+            max-height: 97vh !important;
+            margin: 0.25rem !important;
+          }
+
+          .order-list-panel {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
           }
 
           .order-list-panel > div:last-child {
-            max-height: 200px !important;
+            max-height: 220px !important;
+            overflow-y: auto !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          button {
+            min-height: 44px;
+            touch-action: manipulation;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 44px;
+            font-size: 16px !important;
+            touch-action: manipulation;
+            padding: 0.5rem 0.75rem !important;
+          }
+
+          h1 {
+            font-size: 1.5rem !important;
+            padding: 0 0.5rem !important;
+          }
+
+          h4 {
+            font-size: 1.05rem !important;
+          }
+
+          h5 {
+            font-size: 0.95rem !important;
+          }
+
+          h6 {
+            font-size: 0.825rem !important;
+          }
+
+          p {
+            font-size: 0.8125rem !important;
+          }
+
+          .brand-logo {
+            max-width: 100px !important;
+          }
+
+          [style*="padding: '1.5rem'"] {
+            padding: 1rem !important;
+          }
+
+          [style*="padding: '2rem'"] {
+            padding: 1.25rem !important;
+          }
+
+          [style*="gap: '1rem'"] {
+            gap: 0.75rem !important;
+          }
+
+          [style*="gap: '1.5rem'"] {
+            gap: 1rem !important;
+          }
+
+          [style*="maxWidth: '90%'"] {
+            max-width: 95% !important;
           }
         }
 
@@ -3429,7 +4263,29 @@ const ClientProducts = () => {
             font-size: 16px !important;
           }
         }
-      `}</style>
+
+        /* Ensure touch targets are adequate on all mobile devices */
+        @media (max-width: 767px) {
+          button,
+          a,
+          input[type="button"],
+          input[type="submit"] {
+            min-height: 44px;
+            min-width: 44px;
+          }
+        }
+
+        /* Horizontal scroll prevention */
+        @media (max-width: 767px) {
+          body {
+            overflow-x: hidden !important;
+          }
+
+          * {
+            max-width: 100%;
+          }
+        }
+      `}</style>{" "}
     </div>
   );
 };
