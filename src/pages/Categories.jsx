@@ -430,7 +430,7 @@ const Categories = () => {
                   readOnly
                 />
               </div>
-
+{modalMode === "create" &&
               <div className="form-group">
                 <label className="form-label">Parent Category</label>
                 <select
@@ -457,7 +457,7 @@ const Categories = () => {
                     ))}
                 </select>
               </div>
-
+                  }
               {formError && <div className="error-message">{formError}</div>}
 
               <div className="modal-actions">

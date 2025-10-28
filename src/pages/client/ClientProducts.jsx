@@ -1118,7 +1118,7 @@ const ModernFilterSidebar = React.memo(
                 <input
                   type="range"
                   min="0"
-                  max="100000"
+                  max="10000"
                   value={priceRange.min}
                   onChange={(e) =>
                     setPriceRange((prev) => ({
@@ -1150,7 +1150,7 @@ const ModernFilterSidebar = React.memo(
                 <input
                   type="range"
                   min="0"
-                  max="100000"
+                  max="10000"
                   value={priceRange.max}
                   onChange={(e) =>
                     setPriceRange((prev) => ({
@@ -2673,9 +2673,9 @@ const ClientProducts = () => {
     try {
       const token = localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
+
       const response = await axios.get(`${API_BASE}/variants/${variantId}`, {
-        headers
+        headers,
       });
 
       const images = response.data.variant?.images || [];
@@ -2691,7 +2691,7 @@ const ClientProducts = () => {
     async (products) => {
       try {
         const variantImagePromises = [];
-        
+
         products.forEach((product) => {
           if (product.variants && product.variants.length > 0) {
             product.variants.forEach((variant) => {
@@ -3082,24 +3082,30 @@ const ClientProducts = () => {
       setCategories([]);
     }
   }, []);
+const didFetch = useRef(false);
+const isInitialMount = useRef(true);
 
-  // Initialize on component mount
-  useEffect(() => {
-    initializeSession();
-    fetchCategories();
-    // fetchProducts(1);
-  }, [initializeSession, fetchCategories, fetchProducts]);
+// Effect 1: Initial mount only
+useEffect(() => {
+  if (didFetch.current) return;
+  didFetch.current = true;
 
-  // Page change effect
-  useEffect(() => {
-    fetchProducts(currentPage, searchTerm, selectedCategory, selectedStatus);
-  }, [
-    currentPage,
-    fetchProducts,
-    searchTerm,
-    selectedCategory,
-    selectedStatus,
-  ]);
+  const initialize = async () => {
+    await initializeSession();
+    await fetchCategories();
+    await fetchProducts(1, "", "", "");
+    isInitialMount.current = false;
+  };
+
+  initialize();
+}, [initializeSession, fetchCategories, fetchProducts]);
+
+// Effect 2: Handle filter/search changes (skip initial mount)
+useEffect(() => {
+  if (isInitialMount.current) return;
+
+  fetchProducts(currentPage, searchTerm, selectedCategory, selectedStatus);
+}, [currentPage, searchTerm, selectedCategory, selectedStatus, fetchProducts]);
 
   // Debounced cart save
   useEffect(() => {
@@ -3545,7 +3551,7 @@ const ClientProducts = () => {
                 display: "flex",
                 border: "1px solid #e9ecef",
                 borderRadius: "8px",
-                dispaly:"none"
+                dispaly: "none",
               }}
             >
               <button
@@ -3622,7 +3628,7 @@ const ClientProducts = () => {
                 />
                 <p>Loading products...</p>
               </div>
-            ) : sortedAndFilteredProducts.length === 0 ? (
+            ) : products.length === 0 ? (
               <div style={{ textAlign: "center", padding: "3rem" }}>
                 <Package
                   size={64}
@@ -3630,6 +3636,15 @@ const ClientProducts = () => {
                 />
                 <h3>No products found</h3>
                 <p>Try adjusting your search or filters</p>
+              </div>
+            ) : sortedAndFilteredProducts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem" }}>
+                <Package
+                  size={64}
+                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
+                />
+                <h3>No products match your filters</h3>
+                <p>Try adjusting your price range or search criteria</p>
               </div>
             ) : (
               <>
@@ -3651,11 +3666,13 @@ const ClientProducts = () => {
                     />
                   ))}
                 </div>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    setCurrentPage={setCurrentPage}
+                  />
+                )}
               </>
             )}
           </div>
@@ -4034,7 +4051,7 @@ const ClientProducts = () => {
             border-bottom: 1px solid #e9ecef !important;
             max-height: 51vh !important;
             padding: 0.75rem !important;
-            min-height:500px !important;
+            min-height: 500px !important;
           }
 
           .product-detail-images > div:first-child img {
