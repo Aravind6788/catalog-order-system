@@ -40,11 +40,11 @@
 
 .brand-logo {
     height: 72px;
-    width: 146px;
+    width: 186px;
     object-fit: cover;
     transition: opacity 0.3s 
 ease;
-    background: wheat;
+    /* background: wheat; */
 }
 
 .sidebar-closed .brand-logo {
