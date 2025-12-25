@@ -1440,7 +1440,7 @@ const ProductDetailModal = React.memo(
         debounce((product, variant, qty) => {
           addToCart(product, variant, qty);
           setIsAdding(false);
-        }, 300),
+        }, 4000),
       [addToCart]
     );
 
@@ -1517,23 +1517,41 @@ const ProductDetailModal = React.memo(
     setAllImages(images);
   };
 
-    const handleAddToCart = useCallback(() => {
-      if (isAdding) return;
-      if (!product || product.variants.length === 0) {
-        alert(
-          "This product requires a custom quote. Please contact us for pricing."
-        );
-        return;
-      }
-      if (!selectedVariant) return;
+const handleAddToCart = useCallback(() => {
+  if (isAdding) return;
 
-      setIsAdding(true);
-      debouncedAddToCart(product, selectedVariant, quantity);
+  if (!product || !product.variants || product.variants.length === 0) {
+    alert(
+      "This product requires a custom quote. Please contact us for pricing."
+    );
+    return;
+  }
 
-      setTimeout(() => {
-        setIsAdding(false);
-      }, 1000);
-    }, [product, selectedVariant, quantity, isAdding, debouncedAddToCart]);
+  if (!selectedVariant) {
+    alert("Please select a variant");
+    return;
+  }
+
+  if (!quantity || quantity <= 0) {
+    alert("Please enter a valid quantity");
+    return;
+  }
+
+  setIsAdding(true);
+
+  try {
+    debouncedAddToCart(product, selectedVariant, quantity);
+
+    // Show success feedback
+    setTimeout(() => {
+      setIsAdding(false);
+    }, 2000);
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    setIsAdding(false);
+    alert("Failed to add item to cart. Please try again.");
+  }
+}, [product, selectedVariant, quantity, isAdding, debouncedAddToCart]);
 
     if (!isOpen || !product) return null;
 
@@ -2144,9 +2162,18 @@ const CartModal = React.memo(
               type="number"
               min="1"
               value={item.quantity}
-              onChange={(e) =>
-                updateCartQuantity(index, parseInt(e.target.value) || 1)
-              }
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                if (!isNaN(value) && value > 0) {
+                  updateCartQuantity(index, value);
+                }
+              }}
+              onBlur={(e) => {
+                const value = parseInt(e.target.value);
+                if (isNaN(value) || value < 1) {
+                  updateCartQuantity(index, 1);
+                }
+              }}
               style={{
                 width: "60px",
                 padding: "0.25rem",
@@ -2658,6 +2685,8 @@ const ClientProducts = () => {
     phone: "",
   });
   const [previousOrders, setPreviousOrders] = useState([]);
+  // const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
   // Image data state for variants
@@ -2669,22 +2698,25 @@ const ClientProducts = () => {
   // Wishlist
   const [wishlist, setWishlist] = useState(new Set());
   // Load variant images
-  const loadVariantImages = useCallback(async (variantId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+ const loadVariantImages = useCallback(async (variantId) => {
+   try {
+     const token = localStorage.getItem("token");
+     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.get(`${API_BASE}/variants/${variantId}`, {
-        headers,
-      });
+     const response = await axios.get(`${API_BASE}/variants/${variantId}`, {
+       headers,
+     });
 
-      const images = response.data.variant?.images || [];
-      return images;
-    } catch (error) {
-      console.error(`Error loading images for variant ${variantId}:`, error);
-      return [];
-    }
-  }, []);
+     // Backend now returns images as array of objects with {id, image_url, is_primary}
+     const imageObjects = response.data.variant?.images || [];
+     // Extract just the URLs for display
+     const images = imageObjects.map((img) => img.image_url || img);
+     return images;
+   } catch (error) {
+     console.error(`Error loading images for variant ${variantId}:`, error);
+     return [];
+   }
+ }, []);
 
   // Batch load all variant images
   const loadAllVariantImages = useCallback(
@@ -2725,113 +2757,124 @@ const ClientProducts = () => {
     },
     [loadVariantImages]
   );
-  const fetchProducts = useCallback(
-    async (page = 1, search = "", category = "", status = "") => {
-      try {
-        setLoading(true);
+const fetchProducts = useCallback(async () => {
+  try {
+    setLoading(true);
 
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: productsPerPage.toString(),
-        });
+    // Build query parameters with proper pagination
+    const params = new URLSearchParams({
+      page: currentPage,
+      limit: productsPerPage,
+    });
 
-        if (search) params.append("search", search);
-        if (category) params.append("category", category);
-        if (status) params.append("status", status);
+    // Add filters if they exist
+    if (searchTerm) params.append("search", searchTerm);
+    if (selectedCategory && selectedCategory !== "") {
+      params.append("category", selectedCategory);
+    }
+    if (selectedStatus) params.append("status", selectedStatus.toLowerCase());
 
-        const res = await axios.get(`${API_BASE}/products?${params}`);
-        const {
-          products: productsData,
-          total,
-          page: currentPageRes,
-        } = res.data;
+    const res = await axios.get(`${API_BASE}/products?${params}`);
+    const { products: productsData, total, total_pages } = res.data;
 
-        // Fetch variants (and images + attributes) for each product
-        const productsWithVariants = await Promise.all(
-          productsData.map(async (product) => {
-            try {
-              const variantsRes = await axios.get(
-                `${API_BASE}/products/${product.id}/variants`
-              );
-              const variants = variantsRes.data.variants || [];
+    // Set total pages and total products from API response
+    setTotalPages(total_pages || 1);
+    setTotalProducts(total || 0);
 
-              // Skip products with no variants
-              if (variants.length === 0) return null;
+    // Fetch variants (and images + attributes) for each product
+    const productsWithVariants = await Promise.all(
+      productsData.map(async (product) => {
+        try {
+          const variantsRes = await axios.get(
+            `${API_BASE}/products/${product.id}/variants`
+          );
+          const variants = variantsRes.data.variants || [];
 
-              // Fetch attributes for each variant
-              const variantsWithAttributes = await Promise.all(
-                variants.map(async (variant) => {
-                  try {
-                    const attributesRes = await axios.get(
-                      `${API_BASE}/variants/${variant.id}/attributes`
-                    );
+          // Skip products with no variants
+          if (variants.length === 0) return null;
 
-                    // 🔹 Ensure secondary_images always exists as an array
-                    const secondaryImages = Array.isArray(
-                      variant.secondary_images
-                    )
-                      ? variant.secondary_images
-                      : variant.secondary_images
-                      ? [variant.secondary_images]
-                      : [];
+          // Fetch attributes for each variant
+          const variantsWithAttributes = await Promise.all(
+            variants.map(async (variant) => {
+              try {
+                const attributesRes = await axios.get(
+                  `${API_BASE}/variants/${variant.id}/attributes`
+                );
 
-                    return {
-                      ...variant,
-                      attributes: attributesRes.data.attributes || [],
-                      secondary_images: secondaryImages,
-                    };
-                  } catch (error) {
-                    console.error(
-                      `Error fetching attributes for variant ${variant.id}:`,
-                      error
-                    );
-                    return {
-                      ...variant,
-                      attributes: [],
-                      secondary_images: variant.secondary_images || [],
-                    };
-                  }
-                })
-              );
+                const secondaryImages = Array.isArray(
+                  variant.secondary_images
+                )
+                  ? variant.secondary_images
+                  : variant.secondary_images
+                  ? [variant.secondary_images]
+                  : [];
 
-              return { ...product, variants: variantsWithAttributes };
-            } catch (error) {
-              console.error(
-                `Error fetching variants for product ${product.id}:`,
-                error
-              );
-              return null;
-            }
-          })
-        );
+                return {
+                  ...variant,
+                  attributes: attributesRes.data.attributes || [],
+                  secondary_images: secondaryImages,
+                };
+              } catch (error) {
+                console.error(
+                  `Error fetching attributes for variant ${variant.id}:`,
+                  error
+                );
+                return {
+                  ...variant,
+                  attributes: [],
+                  secondary_images: variant.secondary_images || [],
+                };
+              }
+            })
+          );
 
-        // Filter out null entries
-        const filteredProducts = productsWithVariants.filter(
-          (product) => product !== null
-        );
+          return { ...product, variants: variantsWithAttributes };
+        } catch (error) {
+          console.error(
+            `Error fetching variants for product ${product.id}:`,
+            error
+          );
+          return null;
+        }
+      })
+    );
 
-        setProducts(filteredProducts);
+    // Filter out null products (those without variants)
+    const validProducts = productsWithVariants.filter((p) => p !== null);
 
-        // Load variant images after setting products
-        await loadAllVariantImages(filteredProducts);
-        // Pagination metadata
-        setTotalProducts(total || filteredProducts.length);
-        setTotalPages(
-          Math.ceil((total || filteredProducts.length) / productsPerPage)
-        );
-        setCurrentPage(currentPageRes || page);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setProducts([]);
-        setTotalProducts(0);
-        setTotalPages(1);
-      } finally {
-        setLoading(false);
+    // APPLY PRICE FILTER HERE - before setting products
+    const filteredByPrice = validProducts.filter((product) => {
+      if (product.variants && product.variants.length > 0) {
+        const firstVariant = product.variants[0];
+        const price = parseFloat(firstVariant.price) || 0;
+        const minPrice = parseFloat(priceRange.min) || 0;
+        const maxPrice = parseFloat(priceRange.max) || Infinity;
+        return price >= minPrice && price <= maxPrice;
       }
-    },
-    [productsPerPage, loadAllVariantImages]
-  );
+      return true;
+    });
 
+    setProducts(filteredByPrice);
+
+    // Load variant images after setting products
+    await loadAllVariantImages(filteredByPrice);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    setProducts([]);
+    setTotalPages(1);
+    setTotalProducts(0);
+  } finally {
+    setLoading(false);
+  }
+}, [
+  currentPage,
+  searchTerm,
+  selectedCategory,
+  selectedStatus,
+  productsPerPage,
+  priceRange,
+  loadAllVariantImages,
+]);
   // Stable debounced search function
   const debouncedSearch = useMemo(
     () =>
@@ -3082,30 +3125,36 @@ const ClientProducts = () => {
       setCategories([]);
     }
   }, []);
-const didFetch = useRef(false);
-const isInitialMount = useRef(true);
+  const didFetch = useRef(false);
+  const isInitialMount = useRef(true);
 
-// Effect 1: Initial mount only
-useEffect(() => {
-  if (didFetch.current) return;
-  didFetch.current = true;
+  // Effect 1: Initial mount only
+  useEffect(() => {
+    if (didFetch.current) return;
+    didFetch.current = true;
 
-  const initialize = async () => {
-    await initializeSession();
-    await fetchCategories();
-    await fetchProducts(1, "", "", "");
-    isInitialMount.current = false;
-  };
+    const initialize = async () => {
+      await initializeSession();
+      await fetchCategories();
+      await fetchProducts(1, "", "", "");
+      isInitialMount.current = false;
+    };
 
-  initialize();
-}, [initializeSession, fetchCategories, fetchProducts]);
+    initialize();
+  }, [initializeSession, fetchCategories, fetchProducts]);
 
-// Effect 2: Handle filter/search changes (skip initial mount)
-useEffect(() => {
-  if (isInitialMount.current) return;
+  // Effect 2: Handle filter/search changes AND page changes
+  useEffect(() => {
+    if (isInitialMount.current) return;
 
-  fetchProducts(currentPage, searchTerm, selectedCategory, selectedStatus);
-}, [currentPage, searchTerm, selectedCategory, selectedStatus, fetchProducts]);
+    fetchProducts();
+  }, [
+    currentPage,
+    searchTerm,
+    selectedCategory,
+    selectedStatus,
+    fetchProducts,
+  ]);
 
   // Debounced cart save
   useEffect(() => {
@@ -3133,75 +3182,75 @@ useEffect(() => {
     }
   }, [loadPreviousOrders]);
   // Sort and filter products
-  const sortedAndFilteredProducts = useMemo(() => {
-    return [...products]
-      .sort((a, b) => {
-        const aFirstVariant =
-          a.variants && a.variants.length > 0 ? a.variants[0] : null;
-        const bFirstVariant =
-          b.variants && b.variants.length > 0 ? b.variants[0] : null;
+  // Simplify this - sorting only, no filtering (pagination handled by backend)
+ const sortedAndFilteredProducts = useMemo(() => {
+   return [...products].sort((a, b) => {
+     const aFirstVariant =
+       a.variants && a.variants.length > 0 ? a.variants[0] : null;
+     const bFirstVariant =
+       b.variants && b.variants.length > 0 ? b.variants[0] : null;
 
-        switch (sortBy) {
-          case "price-low":
-            const aPrice = aFirstVariant
-              ? parseFloat(aFirstVariant.price) || 0
-              : 0;
-            const bPrice = bFirstVariant
-              ? parseFloat(bFirstVariant.price) || 0
-              : 0;
-            return aPrice - bPrice;
-          case "price-high":
-            const aPrice2 = aFirstVariant
-              ? parseFloat(aFirstVariant.price) || 0
-              : 0;
-            const bPrice2 = bFirstVariant
-              ? parseFloat(bFirstVariant.price) || 0
-              : 0;
-            return bPrice2 - aPrice2;
-          case "name":
-            return a.name.localeCompare(b.name);
-          case "newest":
-          default:
-            return new Date(b.created_at) - new Date(a.created_at);
-        }
-      })
-      .filter((product) => {
-        if (product.variants && product.variants.length > 0) {
-          const firstVariant = product.variants[0];
-          const price = parseFloat(firstVariant.price) || 0;
-          const minPrice = parseFloat(priceRange.min) || 0;
-          const maxPrice = parseFloat(priceRange.max) || Infinity;
-          return price >= minPrice && price <= maxPrice;
-        }
-        return true;
-      });
-  }, [products, sortBy, priceRange]);
+     switch (sortBy) {
+       case "price-low":
+         const aPrice = aFirstVariant
+           ? parseFloat(aFirstVariant.price) || 0
+           : 0;
+         const bPrice = bFirstVariant
+           ? parseFloat(bFirstVariant.price) || 0
+           : 0;
+         return aPrice - bPrice;
+       case "price-high":
+         const aPrice2 = aFirstVariant
+           ? parseFloat(aFirstVariant.price) || 0
+           : 0;
+         const bPrice2 = bFirstVariant
+           ? parseFloat(bFirstVariant.price) || 0
+           : 0;
+         return bPrice2 - aPrice2;
+       case "name":
+         return a.name.localeCompare(b.name);
+       case "newest":
+       default:
+         return new Date(b.created_at) - new Date(a.created_at);
+     }
+   });
+ }, [products, sortBy]);
 
   // Add to cart function
   // REPLACE your existing addToCart function with this improved version:
-
-  const addToCart = useCallback((product, selectedVariant, quantity) => {
+const addToCart = useCallback((product, selectedVariant, quantity) => {
     console.log("=== ADD TO CART DEBUG ===");
     console.log("Product:", product);
     console.log("Selected Variant:", selectedVariant);
     console.log("Quantity:", quantity);
 
+    // Validate inputs
+    if (!product || !selectedVariant) {
+      console.error("Missing product or variant data");
+      alert("Unable to add item to cart. Please try again.");
+      return;
+    }
+
+    if (!quantity || quantity <= 0) {
+      console.error("Invalid quantity");
+      alert("Please select a valid quantity.");
+      return;
+    }
+
     const cartItem = {
-      variantId: selectedVariant?.id || null,
+      variantId: selectedVariant.id,
       productId: product.id,
       productName: product.name,
-      variantName: selectedVariant?.name || "Default",
-      variantCode: selectedVariant?.code || "DEFAULT", // Add variant code separately
-      price: selectedVariant?.price || 0,
-      quantity: quantity,
+      variantName: selectedVariant.name || "Default",
+      variantCode: selectedVariant.code || "DEFAULT",
+      price: parseFloat(selectedVariant.price) || 0,
+      quantity: parseInt(quantity),
       image:
-        selectedVariant?.primary_image ||
+        selectedVariant.primary_image ||
         `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
           product.name
         )}`,
-      sku: `${product.sku_prefix || "PROD"}-${
-        selectedVariant?.code || "DEFAULT"
-      }`,
+      sku: `${product.sku_prefix || "PROD"}-${selectedVariant.code || "DEFAULT"}`,
     };
 
     console.log("Cart Item being added:", cartItem);
@@ -3213,16 +3262,23 @@ useEffect(() => {
           item.productId === cartItem.productId
       );
 
+      let newCart;
       if (existingIndex >= 0) {
-        const newCart = [...prevCart];
-        newCart[existingIndex].quantity += quantity;
+        newCart = [...prevCart];
+        newCart[existingIndex].quantity += cartItem.quantity;
         console.log("Updated existing cart item:", newCart[existingIndex]);
-        return newCart;
       } else {
+        newCart = [...prevCart, cartItem];
         console.log("Added new cart item:", cartItem);
-        return [...prevCart, cartItem];
       }
+      
+      // Show success feedback
+      console.log("Cart updated successfully. New cart:", newCart);
+      return newCart;
     });
+
+    // Optional: Show a brief success message
+    console.log(`Added ${quantity} × ${product.name} (${selectedVariant.name}) to cart`);
   }, []);
 
   // Remove from cart
@@ -3260,80 +3316,143 @@ useEffect(() => {
   // REPLACE your existing submitOrder function with this fixed version:
   // REPLACE your existing submitOrder function with this fixed version:
 
-  const submitOrder = async () => {
-    if (cart.length === 0) return;
-    if (!customerData.email && !customerData.phone) {
-      alert("Please provide either email or phone number");
-      return;
-    }
+const submitOrder = async () => {
+  if (cart.length === 0) {
+    alert("Your cart is empty");
+    return;
+  }
 
-    setOrderLoading(true);
-    try {
-      // Transform cart items to match backend expectations
-      const transformedItems = cart.map((item) => ({
-        variant_id: item.variantId,
-        product_name: item.productName,
-        variant_name: item.variantName,
-        variant_code:
-          item.variantCode ||
-          (item.sku ? item.sku.split("-").pop() : "DEFAULT"), // Use variantCode if available
-        quantity: item.quantity,
-        price: item.price,
-      }));
+  if (!customerData.email && !customerData.phone) {
+    alert("Please provide either email or phone number");
+    return;
+  }
 
-      console.log("=== CART DEBUG - SUBMIT ORDER ===");
-      console.log("Original cart:", cart);
-      console.log("Transformed items:", transformedItems);
-      console.log("Customer data:", customerData);
+  setOrderLoading(true);
 
-      const orderData = {
-        customer: customerData,
-        items: transformedItems, // Use transformed items instead of raw cart
-        session_id: sessionId,
-        ip_address: clientIP,
-        total_amount: cart.reduce(
-          (sum, item) => sum + parseFloat(item.price) * item.quantity,
-          0
-        ),
-      };
-
-      console.log("Final order data being sent:", orderData);
-
-      const response = await axios.post(`${API_BASE}/orders`, orderData);
-
-      console.log("Order response:", response.data);
-
-      if (response.data.success) {
-        // Save customer data to cookies after successful order
-        const customerJson = encodeURIComponent(JSON.stringify(customerData));
-        CookieManager.setCookie("greenland_customer", customerJson);
-
-        // If email is provided, save it separately for easier access
-        if (customerData.email) {
-          CookieManager.setCookie(
-            "greenland_customer_email",
-            customerData.email
-          );
-        }
-
-        // Clear cart and close checkout modal
-        setCart([]);
-        setShowCheckout(false);
-        CookieManager.setCookie("greenland_cart", "", -1);
-        loadPreviousOrders(customerData.email, customerData.phone);
-
-        // Show order confirmation modal instead of alert
-        setOrderNumber(response.data.order_number);
-        setShowOrderConfirmation(true);
+  try {
+    // Validate and transform cart items
+    const transformedItems = cart.map((item, index) => {
+      // Validate required fields
+      if (!item.variantId) {
+        throw new Error(`Item ${index + 1}: Missing variant_id`);
       }
-    } catch (error) {
-      console.error("Error submitting order:", error);
-      console.error("Error response:", error.response?.data);
-      alert("Error submitting order. Please try again.");
-    } finally {
-      setOrderLoading(false);
+
+      if (!item.productName) {
+        throw new Error(`Item ${index + 1}: Missing product name`);
+      }
+
+      const quantity = parseInt(item.quantity);
+      const price = parseFloat(item.price);
+
+      if (isNaN(quantity) || quantity <= 0) {
+        throw new Error(
+          `Item ${index + 1}: Invalid quantity (${item.quantity})`
+        );
+      }
+
+      if (isNaN(price) || price < 0) {
+        throw new Error(`Item ${index + 1}: Invalid price (${item.price})`);
+      }
+
+      return {
+        variant_id: parseInt(item.variantId),
+        product_name: String(item.productName),
+        variant_name: String(item.variantName || "Default"),
+        variant_code: String(item.variantCode || "DEFAULT"),
+        quantity: quantity,
+        price: price,
+      };
+    });
+
+    console.log("=== ORDER SUBMISSION DEBUG ===");
+    console.log("Original cart:", cart);
+    console.log("Transformed items:", transformedItems);
+    console.log("Customer data:", customerData);
+
+    const totalAmount = transformedItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    const orderData = {
+      customer: {
+        name: String(customerData.name || ""),
+        email: String(customerData.email || ""),
+        phone: String(customerData.phone || ""),
+      },
+      items: transformedItems,
+      session_id: sessionId || "",
+      ip_address: clientIP || "unknown",
+      total_amount: totalAmount.toFixed(2),
+    };
+
+    console.log(
+      "Final order data being sent:",
+      JSON.stringify(orderData, null, 2)
+    );
+
+    const response = await axios.post(`${API_BASE}/orders`, orderData, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("Order response:", response.data);
+
+    if (response.data.success) {
+      // Save customer data to cookies after successful order
+      const customerJson = encodeURIComponent(JSON.stringify(customerData));
+      CookieManager.setCookie("greenland_customer", customerJson);
+
+      // If email is provided, save it separately for easier access
+      if (customerData.email) {
+        CookieManager.setCookie("greenland_customer_email", customerData.email);
+      }
+
+      // Clear cart from server first
+      if (sessionId) {
+        try {
+          await axios.delete(`${API_BASE}/cart/${sessionId}`);
+        } catch (error) {
+          console.error("Error clearing server cart:", error);
+        }
+      }
+
+      // Clear cart and close checkout modal
+      setCart([]);
+      setShowCheckout(false);
+      CookieManager.setCookie("greenland_cart", "", -1);
+
+      // Reload previous orders
+      await loadPreviousOrders(customerData.email, customerData.phone);
+
+      // Show order confirmation modal
+      setOrderNumber(response.data.order_number);
+      setShowOrderConfirmation(true);
+    } else {
+      throw new Error(response.data.message || "Order submission failed");
     }
-  };
+  } catch (error) {
+    console.error("=== ORDER SUBMISSION ERROR ===");
+    console.error("Error:", error);
+    console.error("Error response:", error.response?.data);
+
+    let errorMessage = "Error submitting order. Please try again.";
+
+    if (error.message && !error.response) {
+      // Validation error from our code
+      errorMessage = error.message;
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.response?.data?.details) {
+      errorMessage = error.response.data.details;
+    }
+
+    alert(errorMessage);
+  } finally {
+    setOrderLoading(false);
+  }
+};
   // 2. ADD THIS NEW COMPONENT OUTSIDE YOUR MAIN COMPONENT (alongside other modal components)
   const OrderConfirmationModal = React.memo(
     ({ isOpen, orderNumber, onClose }) => {
@@ -3658,7 +3777,8 @@ useEffect(() => {
                     gap: "1.5rem",
                   }}
                 >
-                  {sortedAndFilteredProducts.map((product) => (
+                  {/* CHANGE THIS LINE - use products instead of sortedAndFilteredProducts */}
+                  {products.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}

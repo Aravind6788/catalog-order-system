@@ -1262,7 +1262,10 @@ const Products = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const images = response.data.variant?.images || [];
+      // Backend now returns images as array of objects with {id, image_url, is_primary}
+      const imageObjects = response.data.variant?.images || [];
+      // Extract just the URLs for display
+      const images = imageObjects.map((img) => img.image_url || img);
       return images;
     } catch (error) {
       console.error(`Error loading images for variant ${variantId}:`, error);
