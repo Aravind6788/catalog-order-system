@@ -17,7 +17,7 @@ import {
 const AddProductVariant = () => {
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
-    const API_BASE = API_BASE_URL;
+  const API_BASE = API_BASE_URL;
   const location = useLocation();
   const navigate = useNavigate();
   const { state } = location || {};
@@ -251,18 +251,19 @@ const AddProductVariant = () => {
         const token = localStorage && localStorage.getItem("token");
         if (token) {
           // Fetch variant details including images
+          // Fetch existing variant images and attributes
           const response = await fetch(`${API_BASE}/variants/${editData.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await response.json();
 
           if (data.variant && data.variant.images) {
-            const imageUrls = data.variant.images.filter((url) => url); // Filter out empty strings
+            // Images now come with proper IDs from the backend
             setUploadedImages(
-              imageUrls.map((url, index) => ({
-                id: `temp_${index}`, // Temporary ID since we don't have actual image IDs from this endpoint
-                url: url,
-                is_primary: index === 0 ? 1 : 0, // Assume first image is primary
+              data.variant.images.map((img) => ({
+                id: img.id,
+                url: img.image_url,
+                is_primary: img.is_primary,
               }))
             );
           }
@@ -652,8 +653,8 @@ const AddProductVariant = () => {
     try {
       const token = localStorage && localStorage.getItem("token");
 
-      // For variant images loaded from the variant details endpoint, we might not have actual image IDs
-      if (imageId && !imageId.toString().startsWith("temp_")) {
+      // Only make server request for actual database IDs
+      if (imageId) {
         const endpoint =
           formType === "variant"
             ? `${API_BASE}/variant-images/${imageId}`
@@ -670,17 +671,12 @@ const AddProductVariant = () => {
         }
       }
 
-      // Remove from local state regardless
+      // Remove from local state
       setUploadedImages(uploadedImages.filter((_, i) => i !== index));
       showMessage("Image removed successfully", "success");
     } catch (err) {
       console.error("Failed to remove image", err);
-      // Still remove from local state even if server request failed
-      setUploadedImages(uploadedImages.filter((_, i) => i !== index));
-      showMessage(
-        "Image removed locally (server removal may have failed)",
-        "error"
-      );
+      showMessage("Failed to remove image", "error");
     }
   };
 
@@ -689,8 +685,8 @@ const AddProductVariant = () => {
     try {
       const token = localStorage && localStorage.getItem("token");
 
-      // Skip server request for temporary IDs
-      if (imageId && !imageId.toString().startsWith("temp_")) {
+      // Make server request with actual image ID
+      if (imageId) {
         const endpoint =
           formType === "variant"
             ? `${API_BASE}/variant-images/${imageId}/primary`
@@ -707,7 +703,7 @@ const AddProductVariant = () => {
         }
       }
 
-      // Update local state regardless
+      // Update local state
       setUploadedImages(
         uploadedImages.map((img) => ({
           ...img,
@@ -1568,7 +1564,6 @@ const AddProductVariant = () => {
             )}
 
             <form onSubmit={handleSubmit}>
-              {/* Name Field */}
               <div className="form-group">
                 <label className="form-label">
                   {formType === "product" ? "Product" : "Variant"} Name
