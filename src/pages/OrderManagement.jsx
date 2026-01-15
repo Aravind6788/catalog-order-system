@@ -480,99 +480,111 @@ const memoizedHandleViewOrder = useCallback(async (order) => {
 
       const doc = new jsPDF();
 
-      // Nature Color Palette
+      // Professional Color Palette
       const colors = {
-        forestGreen: [34, 139, 34], // Primary green
-        leafGreen: [107, 142, 35], // Secondary green
-        earthBrown: [139, 69, 19], // Accent brown
-        cream: [253, 245, 230], // Background cream
-        darkGreen: [0, 100, 0], // Dark text green
-        lightGreen: [144, 238, 144], // Light accent
-        sage: [158, 171, 141], // Muted green
-        bark: [101, 67, 33], // Dark brown
+        primary: [34, 139, 34], // Forest green
+        secondary: [51, 51, 51], // Charcoal gray
+        accent: [0, 168, 107], // Success green
+        lightGray: [248, 249, 250], // Background
+        mediumGray: [206, 212, 218], // Borders
+        darkGray: [73, 80, 87], // Text
+        white: [255, 255, 255],
+        textPrimary: [33, 37, 41],
       };
 
-      // Add subtle background texture
-      doc.setFillColor(...colors.cream);
-      doc.rect(0, 0, 210, 297, "F"); // A4 page background
+      // Page background
+      doc.setFillColor(...colors.white);
+      doc.rect(0, 0, 210, 297, "F");
 
-      // Header with nature-inspired design
-      doc.setFillColor(...colors.forestGreen);
-      doc.roundedRect(10, 10, 190, 35, 3, 3, "F");
+      // Header section
+      doc.setFillColor(...colors.primary);
+      doc.rect(0, 0, 210, 50, "F");
 
-      // Add decorative leaf border elements
-      doc.setFillColor(...colors.leafGreen);
-      // Left leaf accent
-      doc.circle(15, 27.5, 3, "F");
-      doc.ellipse(18, 27.5, 4, 2, "F");
-      // Right leaf accent
-      doc.circle(195, 27.5, 3, "F");
-      doc.ellipse(192, 27.5, 4, 2, "F");
-
-      // Company Header with enhanced styling
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
+      // Company name
+      doc.setTextColor(...colors.white);
+      doc.setFontSize(26);
       doc.setFont("helvetica", "bold");
-      doc.text("GreenLand", 30, 25);
+      doc.text("Green Formula Landscapers", 20, 22);
 
+      // Tagline
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text("Naturally Sustainable Solutions", 30, 32);
-      doc.text("123 Forest Avenue, Green Valley, GV 12345", 30, 37);
-      doc.text("(555) 123-LEAF |hello@greenland.eco", 30, 42);
+      doc.text("Naturally Sustainable Solutions", 20, 30);
 
-      // Invoice Title with nature accent
-      doc.setFillColor(...colors.earthBrown);
-      doc.roundedRect(130, 55, 65, 20, 2, 2, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("INVOICE", 145, 62);
-      doc.setFontSize(12);
-      doc.text(`#${order.order_number}`, 145, 70);
-
-      // Invoice Details with styled box
-      doc.setFillColor(...colors.sage);
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(130, 78, 65, 25, 2, 2, "F");
-      doc.setDrawColor(...colors.sage);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(130, 78, 65, 25, 2, 2, "S");
-
-      doc.setTextColor(...colors.darkGreen);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("Date:", 135, 85);
-      doc.text("Status:", 135, 92);
-
-      doc.setFont("helvetica", "normal");
-      doc.text(new Date(order.created_at).toLocaleDateString(), 155, 85);
-      doc.text(order.status.toUpperCase(), 155, 92);
-
-      // Bill To Section with leaf decoration
-      doc.setFillColor(...colors.lightGreen);
-      // doc.roundedRect(15, 110, 90, 35, 3, 3, 'F');
-
-      // Leaf decoration
-      doc.setFillColor(...colors.forestGreen);
-      doc.circle(20, 115, 1.5, "F");
-      doc.ellipse(22, 115, 2, 1, "F");
-
-      doc.setTextColor(...colors.darkGreen);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Bill To", 25, 118);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.text(order.customer_name || "Valued Customer", 20, 127);
+      // Contact information
       doc.setFontSize(9);
-      doc.text(`${order.customer_email || "N/A"}`, 20, 134);
-      doc.text(`${order.customer_phone || "N/A"}`, 20, 140);
+      doc.text(
+        " 233/2, Sriperumbudur Main Road, Chennai, TAMIL NADU 601301",
+        20,
+        38
+      );
+      doc.text("80153 55447 | greenformulalandscapers@gmail.com", 20, 44);
 
-      // Items Table with nature styling
-      const tableData = order.items.map((item, index) => [
-        ` ${item.product_name || "Unknown Product"}`,
+      // Invoice label box
+      doc.setFillColor(...colors.accent);
+      doc.rect(150, 15, 45, 20, "F");
+
+      doc.setTextColor(...colors.white);
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("INVOICE", 172.5, 22, { align: "center" });
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(`#${order.order_number}`, 172.5, 30, { align: "center" });
+
+      // Invoice metadata section
+      doc.setFillColor(...colors.lightGray);
+      doc.rect(152, 62, 47, 30, "F");
+      doc.setDrawColor(...colors.mediumGray);
+      doc.setLineWidth(0.3);
+      doc.rect(152, 62, 47, 30, "S");
+
+      doc.setTextColor(...colors.textPrimary);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("Invoice Date:", 154, 68);
+      doc.text("Status:", 154, 76);
+      doc.text("Due Date:", 154, 84);
+
+      doc.setFont("helvetica", "normal");
+      const invoiceDate = new Date(order.created_at).toLocaleDateString(
+        "en-US",
+        {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }
+      );
+      doc.text(invoiceDate, 195, 68, { align: "right" });
+      doc.text(order.status.toUpperCase(), 191, 76, { align: "right" });
+      doc.text("Upon Receipt", 191, 84, { align: "right" });
+
+      // Bill To section
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...colors.secondary);
+      doc.text("BILL TO", 20, 68);
+
+      // Separator line
+      doc.setDrawColor(...colors.primary);
+      doc.setLineWidth(1);
+      doc.line(20, 70, 50, 70);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...colors.textPrimary);
+      doc.text(order.customer_name || "Valued Customer", 20, 78);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.darkGray);
+      doc.text(order.customer_email || "N/A", 20, 85);
+      doc.text(order.customer_phone || "N/A", 20, 91);
+
+      // Items table
+      const tableData = order.items.map((item) => [
+        item.product_name || "Unknown Product",
         item.variant_name || "Standard",
         item.variant_code || "N/A",
         item.quantity || 0,
@@ -583,169 +595,175 @@ const memoizedHandleViewOrder = useCallback(async (order) => {
       ]);
 
       autoTable(doc, {
-        startY: 155,
-        head: [["Product", "Variant", "Code", "Qty", "Price", "Total"]],
+        startY: 105,
+        head: [["Product", "Variant", "Code", "Qty", "Unit Price", "Amount"]],
         body: tableData,
-        theme: "plain",
+        theme: "striped",
         headStyles: {
-          fillColor: colors.forestGreen,
-          textColor: [255, 255, 255],
+          fillColor: colors.secondary,
+          textColor: colors.white,
           fontStyle: "bold",
-          fontSize: 11,
-          cellPadding: { top: 8, right: 5, bottom: 8, left: 5 },
+          fontSize: 10,
+          halign: "left",
+          cellPadding: { top: 8, right: 6, bottom: 8, left: 6 },
         },
         bodyStyles: {
-          textColor: colors.darkGreen,
-          fontSize: 10,
-          cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
+          textColor: colors.textPrimary,
+          fontSize: 9,
+          cellPadding: { top: 7, right: 6, bottom: 7, left: 6 },
         },
         alternateRowStyles: {
-          fillColor: colors.cream,
-        },
-        styles: {
-          fontSize: 10,
-          cellPadding: 6,
-          overflow: "linebreak",
-          halign: "left",
-          lineColor: colors.sage,
-          lineWidth: 0.3,
+          fillColor: colors.lightGray,
         },
         columnStyles: {
-          0: { cellWidth: 60 }, // Product name
-          1: { cellWidth: 30 }, // Variant
-          2: { cellWidth: 25, halign: "center" }, // Code
-          3: { cellWidth: 20, halign: "center" }, // Quantity
-          4: { cellWidth: 25, halign: "right" }, // Price
-          5: { cellWidth: 30, halign: "right", fontStyle: "bold" }, // Total
+          0: { cellWidth: 55, fontStyle: "bold", overflow: "linebreak" },
+          1: { cellWidth: 40, overflow: "linebreak" },
+          2: { cellWidth: 22, halign: "center" },
+          3: { cellWidth: 18, halign: "center" },
+          4: { cellWidth: 28, halign: "right" },
+          5: { cellWidth: 30, halign: "right", fontStyle: "bold" },
         },
-        margin: { left: 15, right: 15 },
+        margin: { left: 10, right: 20 },
+        styles: {
+          lineColor: colors.mediumGray,
+          lineWidth: 0.2,
+          overflow: "linebreak",
+          cellWidth: "wrap",
+        },
       });
 
-      // Total Section with enhanced styling
+      // Summary section
       let currentY = doc.lastAutoTable.finalY + 15;
+      const summaryX = 130;
+      const summaryWidth = 60;
 
-      // Total box with nature styling
-      doc.setFillColor(...colors.earthBrown);
-      doc.roundedRect(120, currentY - 5, 75, 18, 3, 3, "F");
-
-      // Decorative elements
-      doc.setFillColor(...colors.leafGreen);
-      doc.circle(125, currentY + 4, 2, "F");
-      doc.ellipse(128, currentY + 4, 3, 1.5, "F");
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text(" TOTAL:", 135, currentY + 2);
-      doc.setFontSize(18);
+      // Subtotal
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...colors.darkGray);
+      doc.text("Subtotal:", summaryX, currentY);
       doc.text(
-        `$${parseFloat(order.total_amount || 0).toFixed(2)}`,
-        135,
-        currentY + 9
+        `${parseFloat(order.total_amount || 0).toFixed(2)}`,
+        summaryX + summaryWidth,
+        currentY,
+        { align: "right" }
       );
 
-      // Payment Status
-      currentY += 25;
-      doc.setFillColor(...colors.lightGreen);
-      doc.roundedRect(15, currentY, 180, 12, 2, 2, "F");
-      doc.setTextColor(...colors.darkGreen);
+
+      // Total section
+      currentY += 10;
+      doc.setDrawColor(...colors.mediumGray);
+      doc.setLineWidth(0.5);
+      doc.line(summaryX, currentY - 3, summaryX + summaryWidth, currentY - 3);
+
+      doc.setFillColor(...colors.primary);
+      doc.rect(summaryX, currentY, summaryWidth, 14, "F");
+
+      doc.setTextColor(...colors.white);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("TOTAL:", summaryX + 3, currentY + 9);
+      doc.setFontSize(14);
+      doc.text(
+        `${parseFloat(order.total_amount || 0).toFixed(2)}`,
+        summaryX + summaryWidth - 3,
+        currentY + 9,
+        { align: "right" }
+      );
+
+      // Payment notice
+      currentY += 22;
+      doc.setFillColor(...colors.accent);
+      doc.rect(20, currentY, 170, 12, "F");
+
+      doc.setTextColor(...colors.white);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("PAYMENT REQUIRED: 100% Advance Payment", 105, currentY + 7.5, {
+        align: "center",
+      });
+      // Replace the entire Terms & Conditions section with this:
+
+      // Terms & Conditions section (replace starting from line 224)
+      currentY += 22;
+
+      doc.setFillColor(...colors.secondary);
+      doc.rect(20, currentY, 170, 10, "F");
+
+      doc.setTextColor(...colors.white);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
-      doc.text(" Payment Required: 100% Advance Payment", 20, currentY + 7);
+      doc.text("Terms & Conditions", 25, currentY + 6.5);
 
-      // Terms & Conditions with nature styling
-      currentY += 25;
+      currentY += 16;
 
-      // Check if we need a new page
-      if (currentY > 220) {
-        doc.addPage();
-        doc.setFillColor(...colors.cream);
-        doc.rect(0, 0, 210, 297, "F");
-        currentY = 20;
-      }
-
-      // Terms header with leaf decoration
-      doc.setFillColor(...colors.forestGreen);
-      doc.roundedRect(15, currentY, 180, 15, 2, 2, "F");
-
-      doc.setFillColor(...colors.leafGreen);
-      doc.circle(22, currentY + 7.5, 2, "F");
-      doc.ellipse(25, currentY + 7.5, 3, 1.5, "F");
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(" Terms & Conditions", 30, currentY + 9);
-
-      currentY += 20;
-      doc.setTextColor(...colors.darkGreen);
-      doc.setFontSize(9);
+      // Add text and clickable link on the same line
+      doc.setTextColor(...colors.textPrimary);
+      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
+      const introText = "For complete terms and conditions, please visit: ";
+      doc.text(introText, 25, currentY);
 
-      const terms = [
-        "Payment: 100% advance payment required for sustainable processing",
-        "Shipping: Eco-friendly packaging, charges apply based on location",
-        "Delivery: Estimated timelines, weather delays possible",
-        "Risk Transfer: Responsibility transfers upon eco-friendly dispatch",
-        "Returns: Defective items only, supporting our green initiative",
-      ];
+      // Calculate position for link (right after the intro text)
+      const introTextWidth = doc.getTextWidth(introText);
 
-      terms.forEach((term, index) => {
-        // Alternate background for readability
-        if (index % 2 === 0) {
-          doc.setFillColor(...colors.cream);
-          const termLines = doc.splitTextToSize(term, 165);
-          doc.rect(15, currentY - 2, 180, termLines.length * 4 + 2, "F");
+      // Create clickable hyperlink on the same line
+      doc.setTextColor(0, 0, 255); // Blue color for link
+      doc.setFont("helvetica", "bold");
+      doc.textWithLink(
+        "https://greenformulalandscapers.com/",
+        25 + introTextWidth,
+        currentY,
+        {
+          url: "https://greenformulalandscapers.com/",
         }
+      );
 
-        const termLines = doc.splitTextToSize(term, 165);
-        doc.text(termLines, 20, currentY + 2);
-        currentY += termLines.length * 4 + 6;
+      // Add underline to make it look more like a link
+      doc.setDrawColor(0, 0, 255);
+      doc.setLineWidth(0.3);
+      const linkWidth = doc.getTextWidth(
+        "https://greenformulalandscapers.com/"
+      );
+      doc.line(
+        25 + introTextWidth,
+        currentY + 1,
+        25 + introTextWidth + linkWidth,
+        currentY + 1
+      );
 
-        // Check if we need a new page
-        if (currentY > 270) {
-          doc.addPage();
-          doc.setFillColor(...colors.cream);
-          doc.rect(0, 0, 210, 297, "F");
-          currentY = 20;
-        }
-      });
+      currentY += 10;
 
-      // Footer with nature theme
-      currentY = Math.max(currentY, 270);
-      doc.setFillColor(...colors.sage);
-      doc.rect(0, currentY, 210, 27, "F");
+      // Continue with Footer section...
+      const footerY = 275;
+      doc.setDrawColor(...colors.mediumGray);
+      doc.setLineWidth(0.3);
+      doc.line(20, footerY, 190, footerY);
 
-      // Decorative footer elements
-      doc.setFillColor(...colors.forestGreen);
-      for (let i = 0; i < 8; i++) {
-        const x = 25 + i * 20;
-        doc.circle(x, currentY + 8, 1, "F");
-        doc.ellipse(x + 2, currentY + 8, 2, 1, "F");
-      }
-
-      doc.setTextColor(...colors.darkGreen);
-      doc.setFontSize(12);
+      doc.setTextColor(...colors.darkGray);
+      doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       doc.text(
-        " Thank you for choosing sustainable solutions! ",
+        "Thank you for choosing sustainable solutions!",
         105,
-        currentY + 12,
-        { align: "center" }
+        footerY + 8,
+        {
+          align: "center",
+        }
       );
 
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.text(
-        "Together we grow a greener future - GreenLand Eco Solutions",
+        "Together we grow a greener future - Green Formula Landscapers",
         105,
-        currentY + 20,
+        footerY + 14,
         { align: "center" }
       );
 
-      // Save with nature-themed filename
+      // Save PDF
       const filename = `GreenLand-Invoice-${order.order_number}-${
-        order.customer_name?.replace(/\s+/g, "_") || "EcoCustomer"
+        order.customer_name?.replace(/\s+/g, "_") || "Customer"
       }.pdf`;
       doc.save(filename);
 
