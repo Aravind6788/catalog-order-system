@@ -1435,20 +1435,20 @@ const ProductDetailModal = React.memo(
     const [showImagePreview, setShowImagePreview] = useState(false);
     const [allImages, setAllImages] = useState([]);
 
-    const debouncedAddToCart = useMemo(
-      () =>
-        debounce((product, variant, qty) => {
-          addToCart(product, variant, qty);
-          setIsAdding(false);
-        }, 4000),
-      [addToCart]
-    );
+    // const debouncedAddToCart = useMemo(
+    //   () =>
+    //     debounce((product, variant, qty) => {
+    //       addToCart(product, variant, qty);
+    //       setIsAdding(false);
+    //     }, 4000),
+    //   [addToCart]
+    // );
 
-    useEffect(() => {
-      return () => {
-        debouncedAddToCart.cancel();
-      };
-    }, [debouncedAddToCart]);
+    // useEffect(() => {
+    //   return () => {
+    //     debouncedAddToCart.cancel();
+    //   };
+    // }, [debouncedAddToCart]);
 
     useEffect(() => {
       if (product?.variants && product.variants.length > 0) {
@@ -1532,7 +1532,9 @@ const handleAddToCart = useCallback(() => {
     return;
   }
 
-  if (!quantity || quantity <= 0) {
+  // Validate quantity
+  const validQuantity = parseInt(quantity);
+  if (!validQuantity || validQuantity <= 0 || isNaN(validQuantity)) {
     alert("Please enter a valid quantity");
     return;
   }
@@ -1540,7 +1542,8 @@ const handleAddToCart = useCallback(() => {
   setIsAdding(true);
 
   try {
-    debouncedAddToCart(product, selectedVariant, quantity);
+    // Call addToCart DIRECTLY - not debounced
+    addToCart(product, selectedVariant, validQuantity);
 
     // Show success feedback
     setTimeout(() => {
@@ -1551,7 +1554,7 @@ const handleAddToCart = useCallback(() => {
     setIsAdding(false);
     alert("Failed to add item to cart. Please try again.");
   }
-}, [product, selectedVariant, quantity, isAdding, debouncedAddToCart]);
+}, [product, selectedVariant, quantity, isAdding, addToCart]);
 
     if (!isOpen || !product) return null;
 
@@ -1914,7 +1917,7 @@ const handleAddToCart = useCallback(() => {
                             const value = e.target.value;
                             // Allow empty string while typing
                             if (value === "") {
-                              setQuantity("");
+                              setQuantity(1); // Set to 1 immediately instead of empty string
                             } else {
                               const numValue = parseInt(value);
                               // Only set if it's a valid number >= 1
@@ -1926,12 +1929,11 @@ const handleAddToCart = useCallback(() => {
                           onBlur={(e) => {
                             // When user leaves the field, ensure it has a valid value
                             const value = e.target.value;
-                            if (
-                              value === "" ||
-                              isNaN(parseInt(value)) ||
-                              parseInt(value) < 1
-                            ) {
+                            const parsed = parseInt(value);
+                            if (value === "" || isNaN(parsed) || parsed < 1) {
                               setQuantity(1);
+                            } else {
+                              setQuantity(parsed); // Ensure it's stored as a number
                             }
                           }}
                           style={{
@@ -2698,25 +2700,25 @@ const ClientProducts = () => {
   // Wishlist
   const [wishlist, setWishlist] = useState(new Set());
   // Load variant images
- const loadVariantImages = useCallback(async (variantId) => {
-   try {
-     const token = localStorage.getItem("token");
-     const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const loadVariantImages = useCallback(async (variantId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-     const response = await axios.get(`${API_BASE}/variants/${variantId}`, {
-       headers,
-     });
+      const response = await axios.get(`${API_BASE}/variants/${variantId}`, {
+        headers,
+      });
 
-     // Backend now returns images as array of objects with {id, image_url, is_primary}
-     const imageObjects = response.data.variant?.images || [];
-     // Extract just the URLs for display
-     const images = imageObjects.map((img) => img.image_url || img);
-     return images;
-   } catch (error) {
-     console.error(`Error loading images for variant ${variantId}:`, error);
-     return [];
-   }
- }, []);
+      // Backend now returns images as array of objects with {id, image_url, is_primary}
+      const imageObjects = response.data.variant?.images || [];
+      // Extract just the URLs for display
+      const images = imageObjects.map((img) => img.image_url || img);
+      return images;
+    } catch (error) {
+      console.error(`Error loading images for variant ${variantId}:`, error);
+      return [];
+    }
+  }, []);
 
   // Batch load all variant images
   const loadAllVariantImages = useCallback(
@@ -2757,124 +2759,124 @@ const ClientProducts = () => {
     },
     [loadVariantImages]
   );
-const fetchProducts = useCallback(async () => {
-  try {
-    setLoading(true);
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    // Build query parameters with proper pagination
-    const params = new URLSearchParams({
-      page: currentPage,
-      limit: productsPerPage,
-    });
+      // Build query parameters with proper pagination
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: productsPerPage,
+      });
 
-    // Add filters if they exist
-    if (searchTerm) params.append("search", searchTerm);
-    if (selectedCategory && selectedCategory !== "") {
-      params.append("category", selectedCategory);
-    }
-    if (selectedStatus) params.append("status", selectedStatus.toLowerCase());
-
-    const res = await axios.get(`${API_BASE}/products?${params}`);
-    const { products: productsData, total, total_pages } = res.data;
-
-    // Set total pages and total products from API response
-    setTotalPages(total_pages || 1);
-    setTotalProducts(total || 0);
-
-    // Fetch variants (and images + attributes) for each product
-    const productsWithVariants = await Promise.all(
-      productsData.map(async (product) => {
-        try {
-          const variantsRes = await axios.get(
-            `${API_BASE}/products/${product.id}/variants`
-          );
-          const variants = variantsRes.data.variants || [];
-
-          // Skip products with no variants
-          if (variants.length === 0) return null;
-
-          // Fetch attributes for each variant
-          const variantsWithAttributes = await Promise.all(
-            variants.map(async (variant) => {
-              try {
-                const attributesRes = await axios.get(
-                  `${API_BASE}/variants/${variant.id}/attributes`
-                );
-
-                const secondaryImages = Array.isArray(
-                  variant.secondary_images
-                )
-                  ? variant.secondary_images
-                  : variant.secondary_images
-                  ? [variant.secondary_images]
-                  : [];
-
-                return {
-                  ...variant,
-                  attributes: attributesRes.data.attributes || [],
-                  secondary_images: secondaryImages,
-                };
-              } catch (error) {
-                console.error(
-                  `Error fetching attributes for variant ${variant.id}:`,
-                  error
-                );
-                return {
-                  ...variant,
-                  attributes: [],
-                  secondary_images: variant.secondary_images || [],
-                };
-              }
-            })
-          );
-
-          return { ...product, variants: variantsWithAttributes };
-        } catch (error) {
-          console.error(
-            `Error fetching variants for product ${product.id}:`,
-            error
-          );
-          return null;
-        }
-      })
-    );
-
-    // Filter out null products (those without variants)
-    const validProducts = productsWithVariants.filter((p) => p !== null);
-
-    // APPLY PRICE FILTER HERE - before setting products
-    const filteredByPrice = validProducts.filter((product) => {
-      if (product.variants && product.variants.length > 0) {
-        const firstVariant = product.variants[0];
-        const price = parseFloat(firstVariant.price) || 0;
-        const minPrice = parseFloat(priceRange.min) || 0;
-        const maxPrice = parseFloat(priceRange.max) || Infinity;
-        return price >= minPrice && price <= maxPrice;
+      // Add filters if they exist
+      if (searchTerm) params.append("search", searchTerm);
+      if (selectedCategory && selectedCategory !== "") {
+        params.append("category", selectedCategory);
       }
-      return true;
-    });
+      if (selectedStatus) params.append("status", selectedStatus.toLowerCase());
 
-    setProducts(filteredByPrice);
+      const res = await axios.get(`${API_BASE}/products?${params}`);
+      const { products: productsData, total, total_pages } = res.data;
 
-    // Load variant images after setting products
-    await loadAllVariantImages(filteredByPrice);
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    setProducts([]);
-    setTotalPages(1);
-    setTotalProducts(0);
-  } finally {
-    setLoading(false);
-  }
-}, [
-  currentPage,
-  searchTerm,
-  selectedCategory,
-  selectedStatus,
-  productsPerPage,
-  priceRange,
-  loadAllVariantImages,
-]);
+      // Set total pages and total products from API response
+      setTotalPages(total_pages || 1);
+      setTotalProducts(total || 0);
+
+      // Fetch variants (and images + attributes) for each product
+      const productsWithVariants = await Promise.all(
+        productsData.map(async (product) => {
+          try {
+            const variantsRes = await axios.get(
+              `${API_BASE}/products/${product.id}/variants`
+            );
+            const variants = variantsRes.data.variants || [];
+
+            // Skip products with no variants
+            if (variants.length === 0) return null;
+
+            // Fetch attributes for each variant
+            const variantsWithAttributes = await Promise.all(
+              variants.map(async (variant) => {
+                try {
+                  const attributesRes = await axios.get(
+                    `${API_BASE}/variants/${variant.id}/attributes`
+                  );
+
+                  const secondaryImages = Array.isArray(
+                    variant.secondary_images
+                  )
+                    ? variant.secondary_images
+                    : variant.secondary_images
+                    ? [variant.secondary_images]
+                    : [];
+
+                  return {
+                    ...variant,
+                    attributes: attributesRes.data.attributes || [],
+                    secondary_images: secondaryImages,
+                  };
+                } catch (error) {
+                  console.error(
+                    `Error fetching attributes for variant ${variant.id}:`,
+                    error
+                  );
+                  return {
+                    ...variant,
+                    attributes: [],
+                    secondary_images: variant.secondary_images || [],
+                  };
+                }
+              })
+            );
+
+            return { ...product, variants: variantsWithAttributes };
+          } catch (error) {
+            console.error(
+              `Error fetching variants for product ${product.id}:`,
+              error
+            );
+            return null;
+          }
+        })
+      );
+
+      // Filter out null products (those without variants)
+      const validProducts = productsWithVariants.filter((p) => p !== null);
+
+      // APPLY PRICE FILTER HERE - before setting products
+      const filteredByPrice = validProducts.filter((product) => {
+        if (product.variants && product.variants.length > 0) {
+          const firstVariant = product.variants[0];
+          const price = parseFloat(firstVariant.price) || 0;
+          const minPrice = parseFloat(priceRange.min) || 0;
+          const maxPrice = parseFloat(priceRange.max) || Infinity;
+          return price >= minPrice && price <= maxPrice;
+        }
+        return true;
+      });
+
+      setProducts(filteredByPrice);
+
+      // Load variant images after setting products
+      await loadAllVariantImages(filteredByPrice);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProducts([]);
+      setTotalPages(1);
+      setTotalProducts(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    currentPage,
+    searchTerm,
+    selectedCategory,
+    selectedStatus,
+    productsPerPage,
+    priceRange,
+    loadAllVariantImages,
+  ]);
   // Stable debounced search function
   const debouncedSearch = useMemo(
     () =>
@@ -3058,11 +3060,45 @@ const fetchProducts = useCallback(async () => {
         loadPreviousOrders(savedEmail, "");
       }
     }
+    // PRIORITIZE localStorage for faster loading
+    try {
+      const localCart = localStorage.getItem("greenland_cart");
+      if (localCart) {
+        const cartData = JSON.parse(localCart);
+        if (Array.isArray(cartData) && cartData.length > 0) {
+          console.log("Loading cart from localStorage:", cartData);
+          setCart(cartData);
+          // Sync to server in background
+          if (existingSessionId) {
+            const payload = {
+              session_id: existingSessionId,
+              cart: cartData,
+              ip_address: ip,
+              customer: customerData,
+              timestamp: new Date().toISOString(),
+            };
+            axios.post(`${API_BASE}/cart/save`, payload).catch((error) => {
+              console.error("Error syncing cart to server:", error);
+            });
+          }
+          return; // Exit early - we have the cart
+        }
+      }
+    } catch (error) {
+      console.error("Error loading cart from localStorage:", error);
+    }
 
+    // Fallback to server if localStorage is empty
     try {
       const response = await axios.get(`${API_BASE}/cart/${existingSessionId}`);
-      if (response.data.cart) {
+      if (response.data.cart && response.data.cart.length > 0) {
+        console.log("Loading cart from server:", response.data.cart);
         setCart(response.data.cart);
+        // Save to localStorage for next time
+        localStorage.setItem(
+          "greenland_cart",
+          JSON.stringify(response.data.cart)
+        );
       }
       if (response.data.customer) {
         setCustomerData((prevData) => ({
@@ -3072,11 +3108,15 @@ const fetchProducts = useCallback(async () => {
       }
     } catch (error) {
       console.error("Error loading cart from server:", error);
+
+      // Final fallback to cookie
       const savedCart = CookieManager.getCookie("greenland_cart");
       if (savedCart) {
         try {
           const cartData = JSON.parse(decodeURIComponent(savedCart));
+          console.log("Loading cart from cookie:", cartData);
           setCart(cartData);
+          localStorage.setItem("greenland_cart", JSON.stringify(cartData));
         } catch (error) {
           console.error("Error parsing cart cookie:", error);
         }
@@ -3157,15 +3197,62 @@ const fetchProducts = useCallback(async () => {
   ]);
 
   // Debounced cart save
+  // useEffect(() => {
+  //   if (cart.length === 0) return;
+
+  //   const timeoutId = setTimeout(() => {
+  //     saveCartToServer(cart);
+  //   }, 500);
+
+  //   return () => clearTimeout(timeoutId);
+  // }, [cart, saveCartToServer]);
+  // Save cart when page visibility changes or before unload
   useEffect(() => {
-    if (cart.length === 0) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && cart.length > 0) {
+        try {
+          const cartJson = JSON.stringify(cart);
+          localStorage.setItem("greenland_cart", cartJson);
+          CookieManager.setCookie(
+            "greenland_cart",
+            encodeURIComponent(cartJson)
+          );
+        } catch (error) {
+          console.error("Error saving cart on visibility change:", error);
+        }
+      }
+    };
 
-    const timeoutId = setTimeout(() => {
-      saveCartToServer(cart);
-    }, 500);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    return () => clearTimeout(timeoutId);
-  }, [cart, saveCartToServer]);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [cart]);
+
+  // Handle page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (cart.length > 0) {
+        try {
+          const cartJson = JSON.stringify(cart);
+          localStorage.setItem("greenland_cart", cartJson);
+          CookieManager.setCookie(
+            "greenland_cart",
+            encodeURIComponent(cartJson)
+          );
+        } catch (error) {
+          console.error("Error saving cart on page unload:", error);
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [cart]);
 
   // Cleanup debounced functions on unmount
   useEffect(() => {
@@ -3183,109 +3270,168 @@ const fetchProducts = useCallback(async () => {
   }, [loadPreviousOrders]);
   // Sort and filter products
   // Simplify this - sorting only, no filtering (pagination handled by backend)
- const sortedAndFilteredProducts = useMemo(() => {
-   return [...products].sort((a, b) => {
-     const aFirstVariant =
-       a.variants && a.variants.length > 0 ? a.variants[0] : null;
-     const bFirstVariant =
-       b.variants && b.variants.length > 0 ? b.variants[0] : null;
+  const sortedAndFilteredProducts = useMemo(() => {
+    return [...products].sort((a, b) => {
+      const aFirstVariant =
+        a.variants && a.variants.length > 0 ? a.variants[0] : null;
+      const bFirstVariant =
+        b.variants && b.variants.length > 0 ? b.variants[0] : null;
 
-     switch (sortBy) {
-       case "price-low":
-         const aPrice = aFirstVariant
-           ? parseFloat(aFirstVariant.price) || 0
-           : 0;
-         const bPrice = bFirstVariant
-           ? parseFloat(bFirstVariant.price) || 0
-           : 0;
-         return aPrice - bPrice;
-       case "price-high":
-         const aPrice2 = aFirstVariant
-           ? parseFloat(aFirstVariant.price) || 0
-           : 0;
-         const bPrice2 = bFirstVariant
-           ? parseFloat(bFirstVariant.price) || 0
-           : 0;
-         return bPrice2 - aPrice2;
-       case "name":
-         return a.name.localeCompare(b.name);
-       case "newest":
-       default:
-         return new Date(b.created_at) - new Date(a.created_at);
-     }
-   });
- }, [products, sortBy]);
-
-  // Add to cart function
-  // REPLACE your existing addToCart function with this improved version:
-const addToCart = useCallback((product, selectedVariant, quantity) => {
-    console.log("=== ADD TO CART DEBUG ===");
-    console.log("Product:", product);
-    console.log("Selected Variant:", selectedVariant);
-    console.log("Quantity:", quantity);
-
-    // Validate inputs
-    if (!product || !selectedVariant) {
-      console.error("Missing product or variant data");
-      alert("Unable to add item to cart. Please try again.");
-      return;
-    }
-
-    if (!quantity || quantity <= 0) {
-      console.error("Invalid quantity");
-      alert("Please select a valid quantity.");
-      return;
-    }
-
-    const cartItem = {
-      variantId: selectedVariant.id,
-      productId: product.id,
-      productName: product.name,
-      variantName: selectedVariant.name || "Default",
-      variantCode: selectedVariant.code || "DEFAULT",
-      price: parseFloat(selectedVariant.price) || 0,
-      quantity: parseInt(quantity),
-      image:
-        selectedVariant.primary_image ||
-        `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
-          product.name
-        )}`,
-      sku: `${product.sku_prefix || "PROD"}-${selectedVariant.code || "DEFAULT"}`,
-    };
-
-    console.log("Cart Item being added:", cartItem);
-
-    setCart((prevCart) => {
-      const existingIndex = prevCart.findIndex(
-        (item) =>
-          item.variantId === cartItem.variantId &&
-          item.productId === cartItem.productId
-      );
-
-      let newCart;
-      if (existingIndex >= 0) {
-        newCart = [...prevCart];
-        newCart[existingIndex].quantity += cartItem.quantity;
-        console.log("Updated existing cart item:", newCart[existingIndex]);
-      } else {
-        newCart = [...prevCart, cartItem];
-        console.log("Added new cart item:", cartItem);
+      switch (sortBy) {
+        case "price-low":
+          const aPrice = aFirstVariant
+            ? parseFloat(aFirstVariant.price) || 0
+            : 0;
+          const bPrice = bFirstVariant
+            ? parseFloat(bFirstVariant.price) || 0
+            : 0;
+          return aPrice - bPrice;
+        case "price-high":
+          const aPrice2 = aFirstVariant
+            ? parseFloat(aFirstVariant.price) || 0
+            : 0;
+          const bPrice2 = bFirstVariant
+            ? parseFloat(bFirstVariant.price) || 0
+            : 0;
+          return bPrice2 - aPrice2;
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "newest":
+        default:
+          return new Date(b.created_at) - new Date(a.created_at);
       }
-      
-      // Show success feedback
-      console.log("Cart updated successfully. New cart:", newCart);
-      return newCart;
     });
+  }, [products, sortBy]);
+  const addToCart = useCallback(
+    (product, selectedVariant, quantity) => {
+      console.log("=== ADD TO CART DEBUG ===");
+      console.log("Product:", product);
+      console.log("Selected Variant:", selectedVariant);
+      console.log("Quantity:", quantity);
 
-    // Optional: Show a brief success message
-    console.log(`Added ${quantity} × ${product.name} (${selectedVariant.name}) to cart`);
-  }, []);
+      // Validate inputs
+      if (!product || !selectedVariant) {
+        console.error("Missing product or variant data");
+        alert("Unable to add item to cart. Please try again.");
+        return;
+      }
 
-  // Remove from cart
-  const removeFromCart = useCallback((index) => {
-    setCart((prevCart) => prevCart.filter((_, i) => i !== index));
-  }, []);
+      if (!quantity || quantity <= 0) {
+        console.error("Invalid quantity");
+        alert("Please select a valid quantity.");
+        return;
+      }
 
+      const cartItem = {
+        variantId: selectedVariant.id,
+        productId: product.id,
+        productName: product.name,
+        variantName: selectedVariant.name || "Default",
+        variantCode: selectedVariant.code || "DEFAULT",
+        price: parseFloat(selectedVariant.price) || 0,
+        quantity: parseInt(quantity),
+        image:
+          selectedVariant.primary_image ||
+          `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
+            product.name
+          )}`,
+        sku: `${product.sku_prefix || "PROD"}-${
+          selectedVariant.code || "DEFAULT"
+        }`,
+      };
+
+      console.log("Cart Item being added:", cartItem);
+
+      setCart((prevCart) => {
+        const existingIndex = prevCart.findIndex(
+          (item) =>
+            item.variantId === cartItem.variantId &&
+            item.productId === cartItem.productId
+        );
+
+        let newCart;
+        if (existingIndex >= 0) {
+          newCart = [...prevCart];
+          newCart[existingIndex].quantity += cartItem.quantity;
+          console.log("Updated existing cart item:", newCart[existingIndex]);
+        } else {
+          newCart = [...prevCart, cartItem];
+          console.log("Added new cart item:", cartItem);
+        }
+
+        // IMMEDIATELY save to localStorage, cookie, and server
+        try {
+          const cartJson = JSON.stringify(newCart);
+          localStorage.setItem("greenland_cart", cartJson);
+          CookieManager.setCookie(
+            "greenland_cart",
+            encodeURIComponent(cartJson)
+          );
+
+          // Save to server immediately (not debounced)
+          if (sessionId) {
+            const payload = {
+              session_id: sessionId,
+              cart: newCart,
+              ip_address: clientIP,
+              customer: customerData,
+              timestamp: new Date().toISOString(),
+            };
+
+            axios.post(`${API_BASE}/cart/save`, payload).catch((error) => {
+              console.error("Error saving cart to server:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error saving cart:", error);
+        }
+
+        return newCart;
+      });
+
+      // Show success feedback
+      // alert(
+      //   `✓ Added ${quantity} × ${product.name} (${selectedVariant.name}) to cart`
+      // );
+    },
+    [sessionId, clientIP, customerData]
+  );
+  const removeFromCart = useCallback(
+    (index) => {
+      setCart((prevCart) => {
+        const newCart = prevCart.filter((_, i) => i !== index);
+
+        // Immediately save after removal
+        try {
+          const cartJson = JSON.stringify(newCart);
+          localStorage.setItem("greenland_cart", cartJson);
+          CookieManager.setCookie(
+            "greenland_cart",
+            encodeURIComponent(cartJson)
+          );
+
+          if (sessionId) {
+            const payload = {
+              session_id: sessionId,
+              cart: newCart,
+              ip_address: clientIP,
+              customer: customerData,
+              timestamp: new Date().toISOString(),
+            };
+
+            axios.post(`${API_BASE}/cart/save`, payload).catch((error) => {
+              console.error("Error saving cart after removal:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error saving cart:", error);
+        }
+
+        return newCart;
+      });
+    },
+    [sessionId, clientIP, customerData]
+  );
   // Update cart quantity
   const updateCartQuantity = useCallback(
     (index, newQuantity) => {
@@ -3297,12 +3443,38 @@ const addToCart = useCallback((product, selectedVariant, quantity) => {
       setCart((prevCart) => {
         const newCart = [...prevCart];
         newCart[index].quantity = newQuantity;
+
+        // Immediately save after quantity update
+        try {
+          const cartJson = JSON.stringify(newCart);
+          localStorage.setItem("greenland_cart", cartJson);
+          CookieManager.setCookie(
+            "greenland_cart",
+            encodeURIComponent(cartJson)
+          );
+
+          if (sessionId) {
+            const payload = {
+              session_id: sessionId,
+              cart: newCart,
+              ip_address: clientIP,
+              customer: customerData,
+              timestamp: new Date().toISOString(),
+            };
+
+            axios.post(`${API_BASE}/cart/save`, payload).catch((error) => {
+              console.error("Error saving cart after quantity update:", error);
+            });
+          }
+        } catch (error) {
+          console.error("Error saving cart:", error);
+        }
+
         return newCart;
       });
     },
-    [removeFromCart]
+    [removeFromCart, sessionId, clientIP, customerData]
   );
-
   // Load previous orders when cart modal is opened
   // Load previous orders when customer data changes
   useEffect(() => {
@@ -3316,143 +3488,146 @@ const addToCart = useCallback((product, selectedVariant, quantity) => {
   // REPLACE your existing submitOrder function with this fixed version:
   // REPLACE your existing submitOrder function with this fixed version:
 
-const submitOrder = async () => {
-  if (cart.length === 0) {
-    alert("Your cart is empty");
-    return;
-  }
+  const submitOrder = async () => {
+    if (cart.length === 0) {
+      alert("Your cart is empty");
+      return;
+    }
 
-  if (!customerData.email && !customerData.phone) {
-    alert("Please provide either email or phone number");
-    return;
-  }
+    if (!customerData.email && !customerData.phone) {
+      alert("Please provide either email or phone number");
+      return;
+    }
 
-  setOrderLoading(true);
+    setOrderLoading(true);
 
-  try {
-    // Validate and transform cart items
-    const transformedItems = cart.map((item, index) => {
-      // Validate required fields
-      if (!item.variantId) {
-        throw new Error(`Item ${index + 1}: Missing variant_id`);
-      }
-
-      if (!item.productName) {
-        throw new Error(`Item ${index + 1}: Missing product name`);
-      }
-
-      const quantity = parseInt(item.quantity);
-      const price = parseFloat(item.price);
-
-      if (isNaN(quantity) || quantity <= 0) {
-        throw new Error(
-          `Item ${index + 1}: Invalid quantity (${item.quantity})`
-        );
-      }
-
-      if (isNaN(price) || price < 0) {
-        throw new Error(`Item ${index + 1}: Invalid price (${item.price})`);
-      }
-
-      return {
-        variant_id: parseInt(item.variantId),
-        product_name: String(item.productName),
-        variant_name: String(item.variantName || "Default"),
-        variant_code: String(item.variantCode || "DEFAULT"),
-        quantity: quantity,
-        price: price,
-      };
-    });
-
-    console.log("=== ORDER SUBMISSION DEBUG ===");
-    console.log("Original cart:", cart);
-    console.log("Transformed items:", transformedItems);
-    console.log("Customer data:", customerData);
-
-    const totalAmount = transformedItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    const orderData = {
-      customer: {
-        name: String(customerData.name || ""),
-        email: String(customerData.email || ""),
-        phone: String(customerData.phone || ""),
-      },
-      items: transformedItems,
-      session_id: sessionId || "",
-      ip_address: clientIP || "unknown",
-      total_amount: totalAmount.toFixed(2),
-    };
-
-    console.log(
-      "Final order data being sent:",
-      JSON.stringify(orderData, null, 2)
-    );
-
-    const response = await axios.post(`${API_BASE}/orders`, orderData, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    console.log("Order response:", response.data);
-
-    if (response.data.success) {
-      // Save customer data to cookies after successful order
-      const customerJson = encodeURIComponent(JSON.stringify(customerData));
-      CookieManager.setCookie("greenland_customer", customerJson);
-
-      // If email is provided, save it separately for easier access
-      if (customerData.email) {
-        CookieManager.setCookie("greenland_customer_email", customerData.email);
-      }
-
-      // Clear cart from server first
-      if (sessionId) {
-        try {
-          await axios.delete(`${API_BASE}/cart/${sessionId}`);
-        } catch (error) {
-          console.error("Error clearing server cart:", error);
+    try {
+      // Validate and transform cart items
+      const transformedItems = cart.map((item, index) => {
+        // Validate required fields
+        if (!item.variantId) {
+          throw new Error(`Item ${index + 1}: Missing variant_id`);
         }
+
+        if (!item.productName) {
+          throw new Error(`Item ${index + 1}: Missing product name`);
+        }
+
+        const quantity = parseInt(item.quantity);
+        const price = parseFloat(item.price);
+
+        if (isNaN(quantity) || quantity <= 0) {
+          throw new Error(
+            `Item ${index + 1}: Invalid quantity (${item.quantity})`
+          );
+        }
+
+        if (isNaN(price) || price < 0) {
+          throw new Error(`Item ${index + 1}: Invalid price (${item.price})`);
+        }
+
+        return {
+          variant_id: parseInt(item.variantId),
+          product_name: String(item.productName),
+          variant_name: String(item.variantName || "Default"),
+          variant_code: String(item.variantCode || "DEFAULT"),
+          quantity: quantity,
+          price: price,
+        };
+      });
+
+      console.log("=== ORDER SUBMISSION DEBUG ===");
+      console.log("Original cart:", cart);
+      console.log("Transformed items:", transformedItems);
+      console.log("Customer data:", customerData);
+
+      const totalAmount = transformedItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+
+      const orderData = {
+        customer: {
+          name: String(customerData.name || ""),
+          email: String(customerData.email || ""),
+          phone: String(customerData.phone || ""),
+        },
+        items: transformedItems,
+        session_id: sessionId || "",
+        ip_address: clientIP || "unknown",
+        total_amount: totalAmount.toFixed(2),
+      };
+
+      console.log(
+        "Final order data being sent:",
+        JSON.stringify(orderData, null, 2)
+      );
+
+      const response = await axios.post(`${API_BASE}/orders`, orderData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Order response:", response.data);
+
+      if (response.data.success) {
+        // Save customer data to cookies after successful order
+        const customerJson = encodeURIComponent(JSON.stringify(customerData));
+        CookieManager.setCookie("greenland_customer", customerJson);
+
+        // If email is provided, save it separately for easier access
+        if (customerData.email) {
+          CookieManager.setCookie(
+            "greenland_customer_email",
+            customerData.email
+          );
+        }
+
+        // Clear cart from server first
+        if (sessionId) {
+          try {
+            await axios.delete(`${API_BASE}/cart/${sessionId}`);
+          } catch (error) {
+            console.error("Error clearing server cart:", error);
+          }
+        }
+
+        // Clear cart and close checkout modal
+        setCart([]);
+        setShowCheckout(false);
+        CookieManager.setCookie("greenland_cart", "", -1);
+
+        // Reload previous orders
+        await loadPreviousOrders(customerData.email, customerData.phone);
+
+        // Show order confirmation modal
+        setOrderNumber(response.data.order_number);
+        setShowOrderConfirmation(true);
+      } else {
+        throw new Error(response.data.message || "Order submission failed");
+      }
+    } catch (error) {
+      console.error("=== ORDER SUBMISSION ERROR ===");
+      console.error("Error:", error);
+      console.error("Error response:", error.response?.data);
+
+      let errorMessage = "Error submitting order. Please try again.";
+
+      if (error.message && !error.response) {
+        // Validation error from our code
+        errorMessage = error.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.details) {
+        errorMessage = error.response.data.details;
       }
 
-      // Clear cart and close checkout modal
-      setCart([]);
-      setShowCheckout(false);
-      CookieManager.setCookie("greenland_cart", "", -1);
-
-      // Reload previous orders
-      await loadPreviousOrders(customerData.email, customerData.phone);
-
-      // Show order confirmation modal
-      setOrderNumber(response.data.order_number);
-      setShowOrderConfirmation(true);
-    } else {
-      throw new Error(response.data.message || "Order submission failed");
+      alert(errorMessage);
+    } finally {
+      setOrderLoading(false);
     }
-  } catch (error) {
-    console.error("=== ORDER SUBMISSION ERROR ===");
-    console.error("Error:", error);
-    console.error("Error response:", error.response?.data);
-
-    let errorMessage = "Error submitting order. Please try again.";
-
-    if (error.message && !error.response) {
-      // Validation error from our code
-      errorMessage = error.message;
-    } else if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
-    } else if (error.response?.data?.details) {
-      errorMessage = error.response.data.details;
-    }
-
-    alert(errorMessage);
-  } finally {
-    setOrderLoading(false);
-  }
-};
+  };
   // 2. ADD THIS NEW COMPONENT OUTSIDE YOUR MAIN COMPONENT (alongside other modal components)
   const OrderConfirmationModal = React.memo(
     ({ isOpen, orderNumber, onClose }) => {
