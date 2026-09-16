@@ -28,6 +28,7 @@ import {
   Trash2,
 } from "lucide-react";
 import GFLLogo from "../../img/GFL_Logo.png";
+import { getOptimizedImageUrl } from "../../utils/cloudinary";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost/GreenLand/api";
 
@@ -1236,7 +1237,7 @@ const ProductCard = React.memo(({ product, onViewDetails }) => {
             product.variants &&
             product.variants.length > 0 &&
             product.variants[0].primary_image
-              ? product.variants[0].primary_image
+              ? getOptimizedImageUrl(product.variants[0].primary_image, { width: 600, height: 400, crop: "fill" })
               : `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
                   product.name
                 )}`
@@ -1586,7 +1587,7 @@ const handleAddToCart = useCallback(() => {
               {/* Main Image with Preview Button */}
               <div style={{ marginBottom: "1rem", position: "relative" }}>
                 <img
-                  src={allImages[selectedImageIndex]}
+                  src={getOptimizedImageUrl(allImages[selectedImageIndex], { width: 1400 })}
                   alt={`${product.name} - View ${selectedImageIndex + 1}`}
                   style={{
                     width: "100%",
@@ -1650,7 +1651,7 @@ const handleAddToCart = useCallback(() => {
                   {allImages.map((image, index) => (
                     <img
                       key={index}
-                      src={image}
+                      src={getOptimizedImageUrl(image, { width: 120, height: 120, crop: "fill" })}
                       alt={`${product.name} - Thumbnail ${index + 1}`}
                       style={{
                         width: "60px",
@@ -2139,7 +2140,7 @@ const CartModal = React.memo(
           }}
         >
           <img
-            src={item.image}
+            src={getOptimizedImageUrl(item.image, { width: 120, height: 120, crop: "fill" })}
             alt={item.productName}
             style={{
               width: "60px",
@@ -2548,7 +2549,7 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
 
         {/* Main Image */}
         <img
-          src={images[currentIndex]}
+          src={getOptimizedImageUrl(images[currentIndex], { width: 1600 })}
           alt={`Preview ${currentIndex + 1}`}
           style={{
             maxWidth: "100%",
@@ -2628,7 +2629,7 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
             {images.map((image, index) => (
               <img
                 key={index}
-                src={image}
+                src={getOptimizedImageUrl(image, { width: 120, height: 120, crop: "fill" })}
                 alt={`Thumbnail ${index + 1}`}
                 style={{
                   width: "60px",
@@ -3302,6 +3303,7 @@ const ClientProducts = () => {
       }
     });
   }, [products, sortBy]);
+
   const addToCart = useCallback(
     (product, selectedVariant, quantity) => {
       console.log("=== ADD TO CART DEBUG ===");
@@ -3952,7 +3954,6 @@ const ClientProducts = () => {
                     gap: "1.5rem",
                   }}
                 >
-                  {/* CHANGE THIS LINE - use products instead of sortedAndFilteredProducts */}
                   {products.map((product) => (
                     <ProductCard
                       key={product.id}

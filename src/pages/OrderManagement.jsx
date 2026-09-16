@@ -3230,7 +3230,7 @@ const OrderManagement = () => {
           {/* Header */}
           <div className="page-header">
             <div className="header-left">
-              <h1 className="page-title">Order Management</h1>
+              <h1 className="page-title">Orders Management</h1>
             </div>
             <div className="categories-controls">
               <div className="control-buttons">
