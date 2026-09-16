@@ -13,6 +13,7 @@ import {
   Star,
   Tag,
 } from "lucide-react";
+import { getOptimizedImageUrl } from "../utils/cloudinary";
 
 const AddProductVariant = () => {
   const API_BASE_URL =
@@ -1884,7 +1885,7 @@ const AddProductVariant = () => {
                     {uploadedImages.map((image, index) => (
                       <div key={index} className="image-item">
                         <img
-                          src={image.url}
+                          src={getOptimizedImageUrl(image.url, { width: 240, height: 240, crop: "fill" })}
                           alt={`Current ${index + 1}`}
                           className="image-preview"
                         />

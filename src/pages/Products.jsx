@@ -9,6 +9,7 @@ import Sidebar from "../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 import "./Products.css";
 import axios from "axios";
+import { getOptimizedImageUrl } from "../utils/cloudinary";
 import {
   Search,
   Eye,
@@ -540,7 +541,7 @@ const Products = () => {
               </button>
               <div className="gallery-main-image">
                 <img
-                  src={images[currentImageIndex]}
+                  src={getOptimizedImageUrl(images[currentImageIndex], { width: 1400 })}
                   alt={`${title} ${currentImageIndex + 1}`}
                   className="gallery-image"
                 />
@@ -563,7 +564,12 @@ const Products = () => {
                     }`}
                     onClick={() => setCurrentImageIndex(index)}
                   >
-                    <img src={image} alt={`Thumbnail ${index + 1}`} />
+                    <img
+                      src={getOptimizedImageUrl(image, { width: 120, height: 120, crop: "fill" })}
+                      alt={`Thumbnail ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </div>
                 ))}
               </div>
@@ -813,7 +819,7 @@ const Products = () => {
                       onClick={openProductImageGallery}
                     >
                       <img
-                        src={productImageList[0]}
+                        src={getOptimizedImageUrl(productImageList[0], { width: 800 })}
                         alt={product.product.name}
                         className="detail-image"
                       />
@@ -915,7 +921,7 @@ const Products = () => {
                               {variantImageList.length > 0 && (
                                 <div className="variant-image-thumbnail">
                                   <img
-                                    src={variantImageList[0]}
+                                    src={getOptimizedImageUrl(variantImageList[0], { width: 120, height: 120, crop: "fill" })}
                                     alt={variant.name}
                                     className="variant-thumb"
                                   />
@@ -1081,7 +1087,7 @@ const Products = () => {
                                       }
                                     >
                                       <img
-                                        src={image}
+                                        src={getOptimizedImageUrl(image, { width: 1400 })}
                                         alt={`${currentVariant.name} ${
                                           index + 1
                                         }`}
@@ -1613,7 +1619,7 @@ const Products = () => {
                       {productImageList.length > 0 ? (
                         <div className="product-image-wrapper">
                           <img
-                            src={productImageList[0]}
+                            src={getOptimizedImageUrl(productImageList[0], { width: 600, height: 400, crop: "fill" })}
                             alt={product.name}
                             className="product-image"
                           />
@@ -1626,7 +1632,7 @@ const Products = () => {
                         </div>
                       ) : product.primary_image ? (
                         <img
-                          src={product.primary_image}
+                          src={getOptimizedImageUrl(product.primary_image, { width: 600, height: 400, crop: "fill" })}
                           alt={product.name}
                           className="product-image"
                         />
@@ -1711,7 +1717,7 @@ const Products = () => {
                       {productImageList.length > 0 ? (
                         <div className="product-image-wrapper">
                           <img
-                            src={productImageList[0]}
+                            src={getOptimizedImageUrl(productImageList[0], { width: 600, height: 400, crop: "fill" })}
                             alt={product.name}
                             className="product-image"
                           />
@@ -1724,7 +1730,7 @@ const Products = () => {
                         </div>
                       ) : product.primary_image ? (
                         <img
-                          src={product.primary_image}
+                          src={getOptimizedImageUrl(product.primary_image, { width: 600, height: 400, crop: "fill" })}
                           alt={product.name}
                           className="product-image"
                         />
