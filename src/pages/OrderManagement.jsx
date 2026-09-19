@@ -1644,8 +1644,6 @@ const OrderManagement = () => {
     const [localActiveVersionTab, setLocalActiveVersionTab] =
       useState("current");
 
-    if (!isOpen || !order) return null;
-
     // CRITICAL: Memoize fetchLocalOrderVersions to prevent infinite re-renders
     const fetchLocalOrderVersions = useCallback(async (orderId) => {
       try {
@@ -1870,14 +1868,14 @@ const OrderManagement = () => {
         setProcessing(false);
       }
     }, [
-      order.id,
+      order?.id,
       editingItems,
       setProcessing,
       setSelectedOrder,
       activeTab,
       setOrders,
       setOrderHistory,
-      order.order_number,
+      order?.order_number,
       setModalMessage,
       setShowSuccessModal,
       setShowErrorModal,
@@ -1932,6 +1930,10 @@ const OrderManagement = () => {
       setIsEditMode(false);
       setEditingItems([]);
     }, [setIsEditMode, setEditingItems]);
+
+    // All hooks must run before this guard so opening or closing the modal does
+    // not change the component's hook order between renders.
+    if (!isOpen || !order) return null;
 
     return (
       <>
