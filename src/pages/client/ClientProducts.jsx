@@ -2135,6 +2135,15 @@ const CartModal = React.memo(
     handleCustomerDataChange,
     submitOrder,
     orderLoading,
+    locationStates,
+    locationDistricts,
+    locationBranches,
+    selectedState,
+    selectedDistrict,
+    selectedBranch,
+    onStateChange,
+    onDistrictChange,
+    onBranchChange,
   }) => {
     const cartItems = useMemo(() => {
       return cart.map((item, index) => (
@@ -2151,7 +2160,11 @@ const CartModal = React.memo(
           }}
         >
           <img
-            src={getOptimizedImageUrl(item.image, { width: 120, height: 120, crop: "fill" })}
+            src={getOptimizedImageUrl(item.image, {
+              width: 120,
+              height: 120,
+              crop: "fill",
+            })}
             alt={item.productName}
             style={{
               width: "60px",
@@ -2286,7 +2299,7 @@ const CartModal = React.memo(
                         .reduce(
                           (sum, item) =>
                             sum + parseFloat(item.price) * item.quantity,
-                          0
+                          0,
                         )
                         .toFixed(2)}
                     </span>
@@ -2407,6 +2420,170 @@ const CartModal = React.memo(
                         }}
                       />
                     </div>
+                    <h6
+                      style={{
+                        marginBottom: "0.5rem",
+                        marginTop: "1rem",
+                        color: "#2c3e50",
+                        lineHeight: "1.5",
+                      }}
+                    >
+                      Select one MSS Branch/Location nearest to your location.
+                      <br />
+                      <span
+                        style={{
+                          color: "#7a8793",
+                          fontSize: "0.8rem",
+                          fontWeight: "400",
+                        }}
+                      >
+                        This information is sourced from the official MSS
+                        Transports website.
+                      </span>
+                    </h6>
+                    {/* Location: State -> District -> Branch */}
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        State *
+                      </label>
+                      <select
+                        value={selectedState}
+                        onChange={(e) => onStateChange(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: "1px solid #e9ecef",
+                          borderRadius: "6px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                          backgroundColor: "white",
+                        }}
+                      >
+                        <option value="">Select State</option>
+                        {locationStates.map((state) => (
+                          <option key={state} value={state}>
+                            {state}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        District *
+                      </label>
+                      <select
+                        value={selectedDistrict}
+                        onChange={(e) => onDistrictChange(e.target.value)}
+                        disabled={!selectedState}
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: "1px solid #e9ecef",
+                          borderRadius: "6px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                          backgroundColor: selectedState ? "white" : "#f1f3f5",
+                        }}
+                      >
+                        <option value="">
+                          {selectedState
+                            ? "Select District"
+                            : "Select a state first"}
+                        </option>
+                        {locationDistricts.map((district) => (
+                          <option key={district} value={district}>
+                            {district}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label
+                        style={{
+                          display: "block",
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: "500",
+                        }}
+                      >
+                        Branch *
+                      </label>
+                      <select
+                        value={selectedBranch?.id || ""}
+                        onChange={(e) => onBranchChange(e.target.value)}
+                        disabled={!selectedDistrict}
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: "1px solid #e9ecef",
+                          borderRadius: "6px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                          backgroundColor: selectedDistrict
+                            ? "white"
+                            : "#f1f3f5",
+                        }}
+                      >
+                        <option value="">
+                          {selectedDistrict
+                            ? "Select Branch"
+                            : "Select a district first"}
+                        </option>
+                        {locationBranches.map((branch) => (
+                          <option key={branch.id} value={branch.id}>
+                            {branch.branch_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedBranch && (
+                      <div
+                        style={{
+                          backgroundColor: "#f0fdf4",
+                          border: "1px solid #bbf7d0",
+                          borderRadius: "6px",
+                          padding: "0.75rem 1rem",
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: "0 0 0.25rem 0",
+                            fontSize: "0.85rem",
+                            color: "#374151",
+                          }}
+                        >
+                          <strong>Address:</strong>{" "}
+                          {selectedBranch.address || "N/A"}
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.85rem",
+                            color: "#374151",
+                          }}
+                        >
+                          <strong>Phone:</strong>{" "}
+                          {selectedBranch.phone || "N/A"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2424,7 +2601,9 @@ const CartModal = React.memo(
                   }}
                   onClick={submitOrder}
                   disabled={
-                    orderLoading || (!customerData.email && !customerData.phone)
+                    orderLoading ||
+                    (!customerData.email && !customerData.phone) ||
+                    !selectedBranch
                   }
                 >
                   {orderLoading ? (
@@ -2454,7 +2633,7 @@ const CartModal = React.memo(
         </div>
       </div>
     );
-  }
+  },
 );
 // Fixed Image Preview Modal Component
 const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
@@ -2698,6 +2877,12 @@ const ClientProducts = () => {
     email: "",
     phone: "",
   });
+  const [locationStates, setLocationStates] = useState([]);
+  const [locationDistricts, setLocationDistricts] = useState([]);
+  const [locationBranches, setLocationBranches] = useState([]);
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState(null); // {id, branch_name, address, phone}
   const [previousOrders, setPreviousOrders] = useState([]);
   // const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
@@ -3178,6 +3363,67 @@ const ClientProducts = () => {
     }
   }, []);
   const didFetch = useRef(false);
+  // Location cascading dropdowns (state -> district -> branch)
+  const fetchLocationStates = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/locations/states`);
+      setLocationStates(res.data.states || []);
+    } catch (error) {
+      console.error("Error fetching states:", error);
+      setLocationStates([]);
+    }
+  }, []);
+
+  const handleStateChange = useCallback(async (state) => {
+    setSelectedState(state);
+    setSelectedDistrict("");
+    setSelectedBranch(null);
+    setLocationDistricts([]);
+    setLocationBranches([]);
+
+    if (!state) return;
+
+    try {
+      const res = await axios.get(`${API_BASE}/locations/districts`, {
+        params: { state },
+      });
+      setLocationDistricts(res.data.districts || []);
+    } catch (error) {
+      console.error("Error fetching districts:", error);
+      setLocationDistricts([]);
+    }
+  }, []);
+
+  const handleDistrictChange = useCallback(
+    async (district) => {
+      setSelectedDistrict(district);
+      setSelectedBranch(null);
+      setLocationBranches([]);
+
+      if (!district) return;
+
+      try {
+        const res = await axios.get(`${API_BASE}/locations/branches`, {
+          params: { state: selectedState, district },
+        });
+        setLocationBranches(res.data.branches || []);
+      } catch (error) {
+        console.error("Error fetching branches:", error);
+        setLocationBranches([]);
+      }
+    },
+    [selectedState],
+  );
+
+  const handleBranchChange = useCallback(
+    (branchId) => {
+      const branch = locationBranches.find(
+        (b) => String(b.id) === String(branchId),
+      );
+      setSelectedBranch(branch || null);
+    },
+    [locationBranches],
+  );
   const isInitialMount = useRef(true);
 
   // Effect 1: Initial mount only
@@ -3188,12 +3434,13 @@ const ClientProducts = () => {
     const initialize = async () => {
       await initializeSession();
       await fetchCategories();
+      await fetchLocationStates();
       await fetchProducts(1, "", "", "");
       isInitialMount.current = false;
     };
 
     initialize();
-  }, [initializeSession, fetchCategories, fetchProducts]);
+  }, [initializeSession, fetchCategories, fetchLocationStates, fetchProducts]);
 
   // Effect 2: Handle filter/search changes AND page changes
   useEffect(() => {
@@ -3518,9 +3765,14 @@ const ClientProducts = () => {
         }
       }
 
-      setCart([]);
+            setCart([]);
       setShowCheckout(false);
       CookieManager.setCookie("greenland_cart", "", -1);
+      setSelectedState("");
+      setSelectedDistrict("");
+      setSelectedBranch(null);
+      setLocationDistricts([]);
+      setLocationBranches([]);
 
       await loadPreviousOrders(customerData.email, customerData.phone);
 
@@ -3634,9 +3886,13 @@ const ClientProducts = () => {
       alert("Your cart is empty");
       return;
     }
-
     if (!customerData.email && !customerData.phone) {
       alert("Please provide either email or phone number");
+      return;
+    }
+
+    if (!selectedBranch) {
+      alert("Please select a state, district and branch");
       return;
     }
 
@@ -3679,18 +3935,18 @@ const ClientProducts = () => {
         0,
       );
 
-      const orderData = {
-        customer: {
-          name: String(customerData.name || ""),
-          email: String(customerData.email || ""),
-          phone: String(customerData.phone || ""),
-        },
-        items: transformedItems,
-        session_id: sessionId || "",
-        ip_address: clientIP || "unknown",
-        total_amount: totalAmount.toFixed(2),
-      };
-
+            const orderData = {
+              customer: {
+                name: String(customerData.name || ""),
+                email: String(customerData.email || ""),
+                phone: String(customerData.phone || ""),
+              },
+              items: transformedItems,
+              session_id: sessionId || "",
+              ip_address: clientIP || "unknown",
+              total_amount: totalAmount.toFixed(2),
+              branch_id: selectedBranch.id,
+            };
       const response = await axios.post(`${API_BASE}/orders`, orderData, {
         headers: {
           "Content-Type": "application/json",
@@ -4081,6 +4337,15 @@ const ClientProducts = () => {
           handleCustomerDataChange={handleCustomerDataChange}
           submitOrder={submitOrder}
           orderLoading={orderLoading}
+          locationStates={locationStates}
+          locationDistricts={locationDistricts}
+          locationBranches={locationBranches}
+          selectedState={selectedState}
+          selectedDistrict={selectedDistrict}
+          selectedBranch={selectedBranch}
+          onStateChange={handleStateChange}
+          onDistrictChange={handleDistrictChange}
+          onBranchChange={handleBranchChange}
         />
       )}
       <style jsx>{`
@@ -4698,6 +4963,6 @@ const ClientProducts = () => {
       `}</style>{" "}
     </div>
   );
-};
+};;
 
 export default ClientProducts;

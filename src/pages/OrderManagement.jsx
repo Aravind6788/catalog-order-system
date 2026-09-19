@@ -2090,6 +2090,67 @@ const OrderManagement = () => {
                     </div>
                   </div>
 
+                  {/* Delivery Location */}
+                  <div>
+                    <h3
+                      style={{
+                        margin: "0 0 12px 0",
+                        color: "#1e293b",
+                        fontSize: "18px",
+                      }}
+                    >
+                      Delivery Location
+                    </h3>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(200px, 1fr))",
+                        gap: "16px",
+                        padding: "16px",
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div>
+                        <label className="form-label">State</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.branch_state || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">District</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.branch_district || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">Branch</label>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#374151",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {order.branch_name || "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="form-label">Branch Phone</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.branch_phone || "N/A"}
+                        </p>
+                      </div>
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <label className="form-label">Branch Address</label>
+                        <p style={{ margin: 0, color: "#374151" }}>
+                          {order.branch_address || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Order Information */}
                   <div>
                     <h3
@@ -2142,8 +2203,93 @@ const OrderManagement = () => {
                           ₹{currentTotal}
                         </p>
                       </div>
+                      <div>
+                        <label className="form-label">Payment</label>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "4px 12px",
+                            borderRadius: "20px",
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            backgroundColor:
+                              order.payment_status === "paid"
+                                ? "#d1fae5"
+                                : "#fef3c7",
+                            color:
+                              order.payment_status === "paid"
+                                ? "#059669"
+                                : "#d97706",
+                          }}
+                        >
+                          {order.payment_status === "paid" ? "Paid" : "Unpaid"}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Payment Details */}
+                  {order.payment_status === "paid" && (
+                    <div>
+                      <h3
+                        style={{
+                          margin: "0 0 12px 0",
+                          color: "#1e293b",
+                          fontSize: "18px",
+                        }}
+                      >
+                        Payment Details
+                      </h3>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(180px, 1fr))",
+                          gap: "16px",
+                          padding: "16px",
+                          backgroundColor: "#f0fdf4",
+                          border: "1px solid #bbf7d0",
+                          borderRadius: "8px",
+                        }}
+                      >
+                        <div>
+                          <label className="form-label">Amount Paid</label>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#059669",
+                              fontWeight: "600",
+                            }}
+                          >
+                            ₹{parseFloat(order.amount_paid || 0).toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="form-label">Paid On</label>
+                          <p style={{ margin: 0, color: "#374151" }}>
+                            {order.paid_at
+                              ? new Date(order.paid_at).toLocaleString()
+                              : "N/A"}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="form-label">
+                            Razorpay Payment ID
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#374151",
+                              fontFamily: "monospace",
+                              fontSize: "13px",
+                            }}
+                          >
+                            {order.razorpay_payment_id || "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Order Items */}
                   {currentItems && currentItems.length > 0 && (
@@ -2665,19 +2811,22 @@ const OrderManagement = () => {
   };
 
   // Accept order (create customer if needed)
-  const handleAcceptOrder = async (order) => {
+  // Mark order as done (fulfilled) once it's been processed
+  const handleMarkAsDone = async (order) => {
     try {
       await axios.put(`${API_BASE}/orders/${order.id}/status`, {
-        status: "confirmed",
-        note: "Order accepted and customer created",
+        status: "fulfilled",
+        note: "Order marked as done",
       });
 
-      setModalMessage("Order accepted successfully");
+      setModalMessage("Order marked as done");
       setShowSuccessModal(true);
       fetchData();
     } catch (error) {
-      console.error("Error accepting order:", error);
-      setModalMessage("Failed to accept order");
+      console.error("Error marking order as done:", error);
+      setModalMessage(
+        error.response?.data?.error || "Failed to mark order as done",
+      );
       setShowErrorModal(true);
     }
   };
@@ -3000,12 +3149,21 @@ const OrderManagement = () => {
             background: #4b5563;
           }
 
-          .accept-btn {
+                    .accept-btn {
             background: #10b981;
             color: white;
           }
 
           .accept-btn:hover {
+            background: #059669;
+          }
+
+          .done-btn {
+            background: #10b981;
+            color: white;
+          }
+
+          .done-btn:hover:not(:disabled) {
             background: #059669;
           }
 
@@ -3333,11 +3491,11 @@ const OrderManagement = () => {
                   {/* Orders Table */}
                   {(activeTab === "orders" || activeTab === "history") && (
                     <table className="data-table">
-                      
                       <thead>
                         <tr>
                           <th>Order #</th>
                           <th>Customer</th>
+                          <th>Branch</th>
                           <th>Date</th>
                           <th>Status</th>
                           <th>Items</th>
@@ -3366,6 +3524,16 @@ const OrderManagement = () => {
                               </div>
                             </td>
                             <td>
+                              <div style={{ fontSize: "13px" }}>
+                                {order.branch_name || "N/A"}
+                              </div>
+                              <div
+                                style={{ fontSize: "11px", color: "#64748b" }}
+                              >
+                                {order.branch_district || ""}
+                              </div>
+                            </td>
+                            <td>
                               {new Date(order.created_at).toLocaleDateString()}
                             </td>
                             <td>
@@ -3390,11 +3558,25 @@ const OrderManagement = () => {
                               {activeTab === "orders" &&
                                 order.status === "pending" && (
                                   <button
-                                    className="action-btn accept-btn"
-                                    onClick={() => handleAcceptOrder(order)}
-                                    title="Accept Order"
+                                    className="action-btn done-btn"
+                                    onClick={() => handleMarkAsDone(order)}
+                                    disabled={order.payment_status !== "paid"}
+                                    title={
+                                      order.payment_status === "paid"
+                                        ? "Mark as Done"
+                                        : "Payment not received yet"
+                                    }
+                                    style={
+                                      order.payment_status !== "paid"
+                                        ? {
+                                            opacity: 0.5,
+                                            cursor: "not-allowed",
+                                          }
+                                        : undefined
+                                    }
                                   >
                                     <Check size={12} />
+                                    Done
                                   </button>
                                 )}
                             </td>
@@ -3673,6 +3855,6 @@ const OrderManagement = () => {
       </div>
     </>
   );
-};
+};;
 
 export default OrderManagement;
