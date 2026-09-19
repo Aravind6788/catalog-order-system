@@ -34,6 +34,8 @@ const API_BASE_URL =
 
 const API_BASE = API_BASE_URL;
 
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
 // Cookie utilities (unchanged)
 const CookieManager = {
   getCookie: (name) => {
@@ -65,6 +67,15 @@ const CookieManager = {
     }
   },
 };
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
 // Stable style objects outside component
 const containerStyle = {
@@ -2734,7 +2745,7 @@ const ClientProducts = () => {
                 loadVariantImages(variant.id).then((images) => ({
                   variantId: variant.id,
                   images,
-                }))
+                })),
               );
             });
           }
@@ -2758,7 +2769,7 @@ const ClientProducts = () => {
         console.error("Error loading variant images:", error);
       }
     },
-    [loadVariantImages]
+    [loadVariantImages],
   );
   const fetchProducts = useCallback(async () => {
     try {
@@ -2789,7 +2800,7 @@ const ClientProducts = () => {
         productsData.map(async (product) => {
           try {
             const variantsRes = await axios.get(
-              `${API_BASE}/products/${product.id}/variants`
+              `${API_BASE}/products/${product.id}/variants`,
             );
             const variants = variantsRes.data.variants || [];
 
@@ -2801,16 +2812,16 @@ const ClientProducts = () => {
               variants.map(async (variant) => {
                 try {
                   const attributesRes = await axios.get(
-                    `${API_BASE}/variants/${variant.id}/attributes`
+                    `${API_BASE}/variants/${variant.id}/attributes`,
                   );
 
                   const secondaryImages = Array.isArray(
-                    variant.secondary_images
+                    variant.secondary_images,
                   )
                     ? variant.secondary_images
                     : variant.secondary_images
-                    ? [variant.secondary_images]
-                    : [];
+                      ? [variant.secondary_images]
+                      : [];
 
                   return {
                     ...variant,
@@ -2820,7 +2831,7 @@ const ClientProducts = () => {
                 } catch (error) {
                   console.error(
                     `Error fetching attributes for variant ${variant.id}:`,
-                    error
+                    error,
                   );
                   return {
                     ...variant,
@@ -2828,18 +2839,18 @@ const ClientProducts = () => {
                     secondary_images: variant.secondary_images || [],
                   };
                 }
-              })
+              }),
             );
 
             return { ...product, variants: variantsWithAttributes };
           } catch (error) {
             console.error(
               `Error fetching variants for product ${product.id}:`,
-              error
+              error,
             );
             return null;
           }
-        })
+        }),
       );
 
       // Filter out null products (those without variants)
@@ -2885,7 +2896,7 @@ const ClientProducts = () => {
         setCurrentPage(1);
         fetchFn(1, searchValue, category, status);
       }, 300),
-    []
+    [],
   );
 
   // Stable debounced customer save
@@ -2893,7 +2904,7 @@ const ClientProducts = () => {
     () =>
       debounce((newCustomerData, currentCart, sessionId, clientIP) => {
         const customerJson = encodeURIComponent(
-          JSON.stringify(newCustomerData)
+          JSON.stringify(newCustomerData),
         );
         CookieManager.setCookie("greenland_customer", customerJson);
         if (sessionId) {
@@ -2901,11 +2912,11 @@ const ClientProducts = () => {
             currentCart,
             newCustomerData,
             sessionId,
-            clientIP
+            clientIP,
           );
         }
       }, 500),
-    []
+    [],
   );
 
   // Synchronous cart save helper
@@ -2913,7 +2924,7 @@ const ClientProducts = () => {
     cartData,
     customerInfo,
     sessionId,
-    clientIP
+    clientIP,
   ) => {
     try {
       const payload = {
@@ -2955,7 +2966,7 @@ const ClientProducts = () => {
       setSearchTerm(value);
       debouncedSearch(value, selectedCategory, selectedStatus, fetchProducts);
     },
-    [debouncedSearch, selectedCategory, selectedStatus, fetchProducts]
+    [debouncedSearch, selectedCategory, selectedStatus, fetchProducts],
   );
 
   const handleCategoryChange = useCallback(
@@ -2965,7 +2976,7 @@ const ClientProducts = () => {
       setCurrentPage(1);
       fetchProducts(1, searchTerm, value, selectedStatus);
     },
-    [fetchProducts, searchTerm, selectedStatus]
+    [fetchProducts, searchTerm, selectedStatus],
   );
 
   const handleCustomerDataChange = useCallback(
@@ -2976,7 +2987,7 @@ const ClientProducts = () => {
         return newCustomerData;
       });
     },
-    [debouncedCustomerSave, cart, sessionId, clientIP]
+    [debouncedCustomerSave, cart, sessionId, clientIP],
   );
 
   // Save cart to server and cookies
@@ -3007,7 +3018,7 @@ const ClientProducts = () => {
         }
       }
     },
-    [sessionId, clientIP, customerData]
+    [sessionId, clientIP, customerData],
   );
 
   // Load previous orders
@@ -3098,7 +3109,7 @@ const ClientProducts = () => {
         // Save to localStorage for next time
         localStorage.setItem(
           "greenland_cart",
-          JSON.stringify(response.data.cart)
+          JSON.stringify(response.data.cart),
         );
       }
       if (response.data.customer) {
@@ -3151,7 +3162,7 @@ const ClientProducts = () => {
           // If this category has children, recursively add them
           if (category.children && category.children.length > 0) {
             flattened = flattened.concat(
-              flattenCategories(category.children, level + 1)
+              flattenCategories(category.children, level + 1),
             );
           }
         });
@@ -3216,7 +3227,7 @@ const ClientProducts = () => {
           localStorage.setItem("greenland_cart", cartJson);
           CookieManager.setCookie(
             "greenland_cart",
-            encodeURIComponent(cartJson)
+            encodeURIComponent(cartJson),
           );
         } catch (error) {
           console.error("Error saving cart on visibility change:", error);
@@ -3240,7 +3251,7 @@ const ClientProducts = () => {
           localStorage.setItem("greenland_cart", cartJson);
           CookieManager.setCookie(
             "greenland_cart",
-            encodeURIComponent(cartJson)
+            encodeURIComponent(cartJson),
           );
         } catch (error) {
           console.error("Error saving cart on page unload:", error);
@@ -3335,7 +3346,7 @@ const ClientProducts = () => {
         image:
           selectedVariant.primary_image ||
           `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
-            product.name
+            product.name,
           )}`,
         sku: `${product.sku_prefix || "PROD"}-${
           selectedVariant.code || "DEFAULT"
@@ -3348,7 +3359,7 @@ const ClientProducts = () => {
         const existingIndex = prevCart.findIndex(
           (item) =>
             item.variantId === cartItem.variantId &&
-            item.productId === cartItem.productId
+            item.productId === cartItem.productId,
         );
 
         let newCart;
@@ -3367,7 +3378,7 @@ const ClientProducts = () => {
           localStorage.setItem("greenland_cart", cartJson);
           CookieManager.setCookie(
             "greenland_cart",
-            encodeURIComponent(cartJson)
+            encodeURIComponent(cartJson),
           );
 
           // Save to server immediately (not debounced)
@@ -3396,7 +3407,7 @@ const ClientProducts = () => {
       //   `✓ Added ${quantity} × ${product.name} (${selectedVariant.name}) to cart`
       // );
     },
-    [sessionId, clientIP, customerData]
+    [sessionId, clientIP, customerData],
   );
   const removeFromCart = useCallback(
     (index) => {
@@ -3409,7 +3420,7 @@ const ClientProducts = () => {
           localStorage.setItem("greenland_cart", cartJson);
           CookieManager.setCookie(
             "greenland_cart",
-            encodeURIComponent(cartJson)
+            encodeURIComponent(cartJson),
           );
 
           if (sessionId) {
@@ -3432,7 +3443,7 @@ const ClientProducts = () => {
         return newCart;
       });
     },
-    [sessionId, clientIP, customerData]
+    [sessionId, clientIP, customerData],
   );
   // Update cart quantity
   const updateCartQuantity = useCallback(
@@ -3452,7 +3463,7 @@ const ClientProducts = () => {
           localStorage.setItem("greenland_cart", cartJson);
           CookieManager.setCookie(
             "greenland_cart",
-            encodeURIComponent(cartJson)
+            encodeURIComponent(cartJson),
           );
 
           if (sessionId) {
@@ -3475,7 +3486,7 @@ const ClientProducts = () => {
         return newCart;
       });
     },
-    [removeFromCart, sessionId, clientIP, customerData]
+    [removeFromCart, sessionId, clientIP, customerData],
   );
   // Load previous orders when cart modal is opened
   // Load previous orders when customer data changes
@@ -3489,6 +3500,134 @@ const ClientProducts = () => {
   // 3. REPLACE YOUR EXISTING submitOrder FUNCTION WITH THIS ONE
   // REPLACE your existing submitOrder function with this fixed version:
   // REPLACE your existing submitOrder function with this fixed version:
+  // Runs only after the backend has cryptographically verified the payment.
+  const finalizeOrderAfterPayment = useCallback(
+    async (orderNum) => {
+      const customerJson = encodeURIComponent(JSON.stringify(customerData));
+      CookieManager.setCookie("greenland_customer", customerJson);
+
+      if (customerData.email) {
+        CookieManager.setCookie("greenland_customer_email", customerData.email);
+      }
+
+      if (sessionId) {
+        try {
+          await axios.delete(`${API_BASE}/cart/${sessionId}`);
+        } catch (error) {
+          console.error("Error clearing server cart:", error);
+        }
+      }
+
+      setCart([]);
+      setShowCheckout(false);
+      CookieManager.setCookie("greenland_cart", "", -1);
+
+      await loadPreviousOrders(customerData.email, customerData.phone);
+
+      setOrderNumber(orderNum);
+      setShowOrderConfirmation(true);
+      setOrderLoading(false);
+    },
+    [customerData, sessionId, loadPreviousOrders],
+  );
+
+  // Opens Razorpay Checkout for an already-created order and verifies the
+  // payment on OUR server before treating it as paid.
+  const startRazorpayPayment = useCallback(
+    async (orderId, orderNum) => {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert(
+          "Could not load the payment gateway. Please check your internet connection and try again.",
+        );
+        setOrderLoading(false);
+        return;
+      }
+
+      try {
+        // Ask OUR server to create the Razorpay order. The amount is
+        // recalculated server-side from the order we just saved, so the
+        // browser can never alter how much gets charged.
+        const { data } = await axios.post(
+          `${API_BASE}/payment/razorpay/create-order`,
+          { order_id: orderId },
+        );
+
+        if (!data.success) {
+          throw new Error(data.message || "Could not start payment");
+        }
+
+        const options = {
+          key: data.key_id || RAZORPAY_KEY_ID,
+          amount: data.amount, // in paise, from OUR server, not the browser
+          currency: data.currency || "INR",
+          name: "Green Formula Life",
+          description: `Order ${orderNum}`,
+          order_id: data.razorpay_order_id,
+          prefill: {
+            name: customerData.name || "",
+            email: customerData.email || "",
+            contact: customerData.phone || "",
+          },
+          theme: { color: "#2d8659" },
+          handler: async (rpResponse) => {
+            try {
+              const verifyRes = await axios.post(
+                `${API_BASE}/payment/razorpay/verify`,
+                {
+                  order_id: orderId,
+                  razorpay_order_id: rpResponse.razorpay_order_id,
+                  razorpay_payment_id: rpResponse.razorpay_payment_id,
+                  razorpay_signature: rpResponse.razorpay_signature,
+                },
+              );
+
+              if (verifyRes.data.success) {
+                await finalizeOrderAfterPayment(orderNum);
+              } else {
+                alert(
+                  `Payment could not be verified. If money was deducted, it will be refunded automatically. Please contact support with order ${orderNum}.`,
+                );
+                setOrderLoading(false);
+              }
+            } catch (verifyError) {
+              console.error("Payment verification error:", verifyError);
+              alert(
+                `Payment could not be verified. If money was deducted, it will be refunded automatically. Please contact support with order ${orderNum}.`,
+              );
+              setOrderLoading(false);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              alert(
+                `Payment was not completed. Your order ${orderNum} has been saved and is awaiting payment — you can retry from "Orders".`,
+              );
+              setOrderLoading(false);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", (resp) => {
+          console.error("Razorpay payment failed:", resp.error);
+          alert(
+            `Payment failed: ${resp.error?.description || "Unknown error"}. Your order ${orderNum} is saved and awaiting payment.`,
+          );
+          setOrderLoading(false);
+        });
+        rzp.open();
+      } catch (error) {
+        console.error("Error starting Razorpay payment:", error);
+        alert(
+          error.response?.data?.message ||
+            "Could not start the payment process. Please try again.",
+        );
+        setOrderLoading(false);
+      }
+    },
+    [customerData, finalizeOrderAfterPayment],
+  );
 
   const submitOrder = async () => {
     if (cart.length === 0) {
@@ -3506,11 +3645,9 @@ const ClientProducts = () => {
     try {
       // Validate and transform cart items
       const transformedItems = cart.map((item, index) => {
-        // Validate required fields
         if (!item.variantId) {
           throw new Error(`Item ${index + 1}: Missing variant_id`);
         }
-
         if (!item.productName) {
           throw new Error(`Item ${index + 1}: Missing product name`);
         }
@@ -3520,10 +3657,9 @@ const ClientProducts = () => {
 
         if (isNaN(quantity) || quantity <= 0) {
           throw new Error(
-            `Item ${index + 1}: Invalid quantity (${item.quantity})`
+            `Item ${index + 1}: Invalid quantity (${item.quantity})`,
           );
         }
-
         if (isNaN(price) || price < 0) {
           throw new Error(`Item ${index + 1}: Invalid price (${item.price})`);
         }
@@ -3538,14 +3674,9 @@ const ClientProducts = () => {
         };
       });
 
-      console.log("=== ORDER SUBMISSION DEBUG ===");
-      console.log("Original cart:", cart);
-      console.log("Transformed items:", transformedItems);
-      console.log("Customer data:", customerData);
-
       const totalAmount = transformedItems.reduce(
         (sum, item) => sum + item.price * item.quantity,
-        0
+        0,
       );
 
       const orderData = {
@@ -3560,52 +3691,20 @@ const ClientProducts = () => {
         total_amount: totalAmount.toFixed(2),
       };
 
-      console.log(
-        "Final order data being sent:",
-        JSON.stringify(orderData, null, 2)
-      );
-
       const response = await axios.post(`${API_BASE}/orders`, orderData, {
         headers: {
           "Content-Type": "application/json",
         },
       });
 
-      console.log("Order response:", response.data);
-
       if (response.data.success) {
-        // Save customer data to cookies after successful order
-        const customerJson = encodeURIComponent(JSON.stringify(customerData));
-        CookieManager.setCookie("greenland_customer", customerJson);
-
-        // If email is provided, save it separately for easier access
-        if (customerData.email) {
-          CookieManager.setCookie(
-            "greenland_customer_email",
-            customerData.email
-          );
-        }
-
-        // Clear cart from server first
-        if (sessionId) {
-          try {
-            await axios.delete(`${API_BASE}/cart/${sessionId}`);
-          } catch (error) {
-            console.error("Error clearing server cart:", error);
-          }
-        }
-
-        // Clear cart and close checkout modal
-        setCart([]);
-        setShowCheckout(false);
-        CookieManager.setCookie("greenland_cart", "", -1);
-
-        // Reload previous orders
-        await loadPreviousOrders(customerData.email, customerData.phone);
-
-        // Show order confirmation modal
-        setOrderNumber(response.data.order_number);
-        setShowOrderConfirmation(true);
+        // CHANGED: instead of finalizing immediately, collect payment first.
+        // finalizeOrderAfterPayment() (above) does everything the old code
+        // used to do right here, once the payment is verified by the server.
+        await startRazorpayPayment(
+          response.data.order_id,
+          response.data.order_number,
+        );
       } else {
         throw new Error(response.data.message || "Order submission failed");
       }
@@ -3617,7 +3716,6 @@ const ClientProducts = () => {
       let errorMessage = "Error submitting order. Please try again.";
 
       if (error.message && !error.response) {
-        // Validation error from our code
         errorMessage = error.message;
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
@@ -3626,7 +3724,6 @@ const ClientProducts = () => {
       }
 
       alert(errorMessage);
-    } finally {
       setOrderLoading(false);
     }
   };
@@ -3740,7 +3837,7 @@ const ClientProducts = () => {
           </div>
         </div>
       );
-    }
+    },
   );
 
   return (
