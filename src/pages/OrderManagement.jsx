@@ -386,6 +386,14 @@ const OrderManagement = () => {
   // Filter states for customer table
   const [dateFilter, setDateFilter] = useState({ start: "", end: "" });
   const [customerNameFilter, setCustomerNameFilter] = useState("");
+  // Filter states for the Orders / History tables
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [orderDateFilter, setOrderDateFilter] = useState({
+    start: "",
+    end: "",
+  });
+  const [orderCustomerFilter, setOrderCustomerFilter] = useState("");
+  const [allCustomersForFilter, setAllCustomersForFilter] = useState([]);
   // Add processing state to prevent multiple clicks
   const [processing, setProcessing] = useState(false);
   // Add Item Modal Component
@@ -2062,28 +2070,46 @@ const OrderManagement = () => {
                       style={{
                         display: "grid",
                         gridTemplateColumns:
-                          "repeat(auto-fit, minmax(200px, 1fr))",
+                          "repeat(auto-fit, minmax(220px, 1fr))",
                         gap: "16px",
                         padding: "16px",
                         backgroundColor: "#f8fafc",
                         borderRadius: "8px",
                       }}
                     >
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <label className="form-label">Name</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#374151",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
                           {order.customer_name || "N/A"}
                         </p>
                       </div>
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <label className="form-label">Email</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#374151",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
                           {order.customer_email || "N/A"}
                         </p>
                       </div>
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <label className="form-label">Phone</label>
-                        <p style={{ margin: 0, color: "#374151" }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#374151",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
                           {order.customer_phone || "N/A"}
                         </p>
                       </div>
@@ -2744,7 +2770,16 @@ const OrderManagement = () => {
 
       if (activeTab === "orders") {
         const res = await axios.get(`${API_BASE}/orders`, {
-          params: { status: "pending", page, limit, search: searchTerm },
+          params: {
+            status: "pending",
+            page,
+            limit,
+            search: searchTerm,
+            payment_status: paymentFilter || undefined,
+            date_from: orderDateFilter.start || undefined,
+            date_to: orderDateFilter.end || undefined,
+            customer_id: orderCustomerFilter || undefined,
+          },
         });
         setOrders(res.data.orders || []);
         setTotalPages(res.data.pagination?.total_pages || 1);
@@ -2753,7 +2788,15 @@ const OrderManagement = () => {
         setCustomers(res.data.customers || []);
       } else if (activeTab === "history") {
         const res = await axios.get(`${API_BASE}/orders`, {
-          params: { page, limit, search: searchTerm },
+          params: {
+            page,
+            limit,
+            search: searchTerm,
+            payment_status: paymentFilter || undefined,
+            date_from: orderDateFilter.start || undefined,
+            date_to: orderDateFilter.end || undefined,
+            customer_id: orderCustomerFilter || undefined,
+          },
         });
         setOrderHistory(res.data.orders || []);
         setTotalPages(res.data.pagination?.total_pages || 1);
@@ -2767,16 +2810,46 @@ const OrderManagement = () => {
     }
   };
 
-  // ✅ Refetch whenever the tab, page, or search term changes
+  // ✅ Refetch whenever the tab, page, search term, or order filters change
   useEffect(() => {
     fetchData();
-  }, [activeTab, page, searchTerm]);
+  }, [
+    activeTab,
+    page,
+    searchTerm,
+    paymentFilter,
+    orderDateFilter.start,
+    orderDateFilter.end,
+    orderCustomerFilter,
+  ]);
 
-  // ✅ Reset back to page 1 whenever the tab or search term changes,
-  // so we never get stuck on an out-of-range page.
+  // ✅ Reset back to page 1 whenever the tab, search term, or order filters
+  // change, so we never get stuck on an out-of-range page.
   useEffect(() => {
     setPage(1);
-  }, [activeTab, searchTerm]);
+  }, [
+    activeTab,
+    searchTerm,
+    paymentFilter,
+    orderDateFilter.start,
+    orderDateFilter.end,
+    orderCustomerFilter,
+  ]);
+
+  // Load the full customer list once, for the Orders/History "Customer" filter dropdown
+  useEffect(() => {
+    const fetchAllCustomersForFilter = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/customers`, {
+          params: { limit: 1000 },
+        });
+        setAllCustomersForFilter(res.data.customers || []);
+      } catch (error) {
+        console.error("Error fetching customers for filter:", error);
+      }
+    };
+    fetchAllCustomersForFilter();
+  }, []);
 
   // Update the handleViewOrder function to fetch fresh data
   const handleViewOrder = async (order) => {
@@ -2828,6 +2901,160 @@ const OrderManagement = () => {
         error.response?.data?.error || "Failed to mark order as done",
       );
       setShowErrorModal(true);
+    }
+  };
+  // Export the currently filtered orders/history list to Excel — same
+  // pattern as handleExportFilteredCustomers/generateCustomerDetailExcel above.
+  const exportFilteredOrdersToExcel = async () => {
+    try {
+      setProcessing(true);
+
+      const params = {
+        limit: 10000, // fetch everything matching the filters, not just this page
+        search: searchTerm,
+        payment_status: paymentFilter || undefined,
+        date_from: orderDateFilter.start || undefined,
+        date_to: orderDateFilter.end || undefined,
+        customer_id: orderCustomerFilter || undefined,
+      };
+      if (activeTab === "orders") {
+        params.status = "pending";
+      }
+
+      const res = await axios.get(`${API_BASE}/orders`, { params });
+      const ordersToExport = res.data.orders || [];
+
+      if (ordersToExport.length === 0) {
+        setModalMessage("No orders match the current filters");
+        setShowErrorModal(true);
+        setProcessing(false);
+        return;
+      }
+
+      const selectedCustomerName = orderCustomerFilter
+        ? allCustomersForFilter.find(
+            (c) => String(c.id) === String(orderCustomerFilter),
+          )?.name || "Selected customer"
+        : "All customers";
+
+      const sheetData = [
+        ["ORDERS EXPORT"],
+        ["Generated on:", new Date().toLocaleDateString()],
+        ["Tab:", activeTab === "orders" ? "Current Orders" : "Order History"],
+        [
+          "Payment Status:",
+          paymentFilter === "paid"
+            ? "Paid"
+            : paymentFilter === "pending"
+              ? "Unpaid"
+              : "All",
+        ],
+        [
+          "Date Range:",
+          orderDateFilter.start || orderDateFilter.end
+            ? `${orderDateFilter.start || "Any"} to ${orderDateFilter.end || "Any"}`
+            : "All",
+        ],
+        ["Customer:", selectedCustomerName],
+        ["Search Term:", searchTerm || "None"],
+        ["Total Orders:", ordersToExport.length],
+        [],
+        [
+          "Order Number",
+          "Customer",
+          "Email",
+          "Phone",
+          "Branch",
+          "District",
+          "Date",
+          "Status",
+          "Payment Status",
+          "Items",
+          "Total (₹)",
+        ],
+      ];
+
+      ordersToExport.forEach((order) => {
+        sheetData.push([
+          order.order_number,
+          order.customer_name || "N/A",
+          order.customer_email || "N/A",
+          order.customer_phone || "N/A",
+          order.branch_name || "N/A",
+          order.branch_district || "N/A",
+          new Date(order.created_at).toLocaleDateString(),
+          order.status,
+          order.payment_status === "paid" ? "Paid" : "Unpaid",
+          order.item_count || 0,
+          parseFloat(order.total_amount || 0).toFixed(2),
+        ]);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      ws["!cols"] = [
+        { width: 18 },
+        { width: 22 },
+        { width: 25 },
+        { width: 15 },
+        { width: 20 },
+        { width: 16 },
+        { width: 14 },
+        { width: 12 },
+        { width: 14 },
+        { width: 8 },
+        { width: 14 },
+      ];
+
+      if (ws["A1"]) {
+        ws["A1"].s = {
+          font: { bold: true, size: 14 },
+          fill: { fgColor: { rgb: "E3F2FD" } },
+        };
+      }
+
+      const headerRowIndex = sheetData.findIndex(
+        (row) => row[0] === "Order Number",
+      );
+      if (headerRowIndex >= 0) {
+        "ABCDEFGHIJK".split("").forEach((col) => {
+          const ref = col + (headerRowIndex + 1);
+          if (ws[ref]) {
+            ws[ref].s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: "C8E6C9" } },
+            };
+          }
+        });
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, "Orders");
+
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = `Orders-Export-${activeTab}-${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setModalMessage(`Orders exported: ${filename}`);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("Orders export error:", error);
+      setModalMessage(`Failed to export orders: ${error.message}`);
+      setShowErrorModal(true);
+    } finally {
+      setProcessing(false);
     }
   };
   // Filter customers - show only selected customer or all
@@ -3452,6 +3679,94 @@ const OrderManagement = () => {
             </div>
 
             <div className="tab-content">
+              {(activeTab === "orders" || activeTab === "history") && (
+                <div
+                  style={{
+                    padding: "16px",
+                    borderBottom: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr 1fr auto",
+                    gap: "16px",
+                    alignItems: "end",
+                  }}
+                >
+                  <div>
+                    <label className="form-label">Payment Status</label>
+                    <select
+                      value={paymentFilter}
+                      onChange={(e) => setPaymentFilter(e.target.value)}
+                      className="search-input"
+                      style={{ padding: "8px" }}
+                    >
+                      <option value="">All</option>
+                      <option value="paid">Paid</option>
+                      <option value="pending">Unpaid</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">From Date</label>
+                    <input
+                      type="date"
+                      value={orderDateFilter.start}
+                      onChange={(e) =>
+                        setOrderDateFilter({
+                          ...orderDateFilter,
+                          start: e.target.value,
+                        })
+                      }
+                      className="search-input"
+                      style={{ padding: "8px" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">To Date</label>
+                    <input
+                      type="date"
+                      value={orderDateFilter.end}
+                      onChange={(e) =>
+                        setOrderDateFilter({
+                          ...orderDateFilter,
+                          end: e.target.value,
+                        })
+                      }
+                      className="search-input"
+                      style={{ padding: "8px" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Customer</label>
+                    <select
+                      value={orderCustomerFilter}
+                      onChange={(e) => setOrderCustomerFilter(e.target.value)}
+                      className="search-input"
+                      style={{ padding: "8px" }}
+                    >
+                      <option value="">All Customers</option>
+                      {allCustomersForFilter.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name || "No Name"} -{" "}
+                          {customer.phone || customer.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    className="btn-primary"
+                    onClick={exportFilteredOrdersToExcel}
+                    style={{ height: "44px" }}
+                    disabled={processing}
+                  >
+                    <FileSpreadsheet size={16} />
+                    {processing ? "Exporting..." : "Export to Excel"}
+                  </button>
+                </div>
+              )}
+
               {loading ? (
                 <div className="loading-container">
                   <div className="loading-spinner"></div>
@@ -3855,6 +4170,6 @@ const OrderManagement = () => {
       </div>
     </>
   );
-};;
+};;;
 
 export default OrderManagement;
