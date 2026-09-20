@@ -2623,7 +2623,7 @@ const CartModal = React.memo(
                   ) : (
                     <>
                       <Check size={16} />
-                      Submit Order Request
+                      Proceed to pay
                     </>
                   )}
                 </button>
