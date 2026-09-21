@@ -735,7 +735,9 @@ const AddProductVariant = () => {
       const cloudData = await cloudRes.json();
 
       if (!cloudData.secure_url) {
-        throw new Error(`Failed to upload image: ${file.name}`);
+        console.error("Cloudinary rejected upload:", cloudData);
+        const reason = cloudData?.error?.message || "Unknown error";
+        throw new Error(`Failed to upload image ${file.name}: ${reason}`);
       }
 
       uploadedUrls.push(cloudData.secure_url);

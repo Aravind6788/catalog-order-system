@@ -394,6 +394,9 @@ const OrderManagement = () => {
   });
   const [orderCustomerFilter, setOrderCustomerFilter] = useState("");
   const [allCustomersForFilter, setAllCustomersForFilter] = useState([]);
+  // Manually-selected orders for export. Persists across pages within the
+  // same tab so you can tick orders on page 1, then page 2, etc.
+  const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
   // Add processing state to prevent multiple clicks
   const [processing, setProcessing] = useState(false);
   // Add Item Modal Component
@@ -2809,8 +2812,6 @@ const OrderManagement = () => {
       setLoading(false);
     }
   };
-
-  // ✅ Refetch whenever the tab, page, search term, or order filters change
   useEffect(() => {
     fetchData();
   }, [
@@ -2823,8 +2824,7 @@ const OrderManagement = () => {
     orderCustomerFilter,
   ]);
 
-  // ✅ Reset back to page 1 whenever the tab, search term, or order filters
-  // change, so we never get stuck on an out-of-range page.
+
   useEffect(() => {
     setPage(1);
   }, [
@@ -2835,6 +2835,12 @@ const OrderManagement = () => {
     orderDateFilter.end,
     orderCustomerFilter,
   ]);
+
+  // Clear manual selection when switching tabs, so a selection made in
+  // "Current Orders" doesn't silently apply to "Order History".
+  useEffect(() => {
+    setSelectedOrderIds(new Set());
+  }, [activeTab]);
 
   // Load the full customer list once, for the Orders/History "Customer" filter dropdown
   useEffect(() => {
@@ -2903,160 +2909,372 @@ const OrderManagement = () => {
       setShowErrorModal(true);
     }
   };
+    const toggleOrderSelected = (orderId) => {
+      setSelectedOrderIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(orderId)) {
+          next.delete(orderId);
+        } else {
+          next.add(orderId);
+        }
+        return next;
+      });
+    };
+
+    const currentPageOrderIds =
+      activeTab === "orders"
+        ? orders.map((o) => o.id)
+        : activeTab === "history"
+          ? orderHistory.map((o) => o.id)
+          : [];
+
+    const isAllCurrentPageSelected =
+      currentPageOrderIds.length > 0 &&
+      currentPageOrderIds.every((id) => selectedOrderIds.has(id));
+
+    const toggleSelectAllOnPage = () => {
+      setSelectedOrderIds((prev) => {
+        const next = new Set(prev);
+        if (isAllCurrentPageSelected) {
+          currentPageOrderIds.forEach((id) => next.delete(id));
+        } else {
+          currentPageOrderIds.forEach((id) => next.add(id));
+        }
+        return next;
+      });
+    };
   // Export the currently filtered orders/history list to Excel — same
   // pattern as handleExportFilteredCustomers/generateCustomerDetailExcel above.
-  const exportFilteredOrdersToExcel = async () => {
-    try {
-      setProcessing(true);
+  // Build the full detail rows (order info + every item) for a single order —
+  // same pattern as createCustomerSheetData, applied to one order at a time.
+  const createOrderDetailRows = (order, index) => {
+    const rows = [];
 
-      const params = {
-        limit: 10000, // fetch everything matching the filters, not just this page
-        search: searchTerm,
-        payment_status: paymentFilter || undefined,
-        date_from: orderDateFilter.start || undefined,
-        date_to: orderDateFilter.end || undefined,
-        customer_id: orderCustomerFilter || undefined,
-      };
-      if (activeTab === "orders") {
-        params.status = "pending";
-      }
+    rows.push([`ORDER ${index + 1}: ${order.order_number}`]);
+    rows.push([]);
+    rows.push(["Order Number:", order.order_number]);
+    rows.push(["Customer:", order.customer_name || "N/A"]);
+    rows.push(["Email:", order.customer_email || "N/A"]);
+    rows.push(["Phone:", order.customer_phone || "N/A"]);
+    rows.push(["Branch:", order.branch_name || "N/A"]);
+    rows.push(["District:", order.branch_district || "N/A"]);
+    rows.push(["State:", order.branch_state || "N/A"]);
+    rows.push([
+      "Date:",
+      new Date(order.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    ]);
+    rows.push(["Status:", order.status]);
+    rows.push([
+      "Payment Status:",
+      order.payment_status === "paid" ? "Paid" : "Unpaid",
+    ]);
+    if (order.payment_status === "paid") {
+      rows.push([
+        "Amount Paid:",
+        `₹${parseFloat(order.amount_paid || 0).toFixed(2)}`,
+      ]);
+      rows.push([
+        "Paid On:",
+        order.paid_at ? new Date(order.paid_at).toLocaleString() : "N/A",
+      ]);
+      rows.push(["Razorpay Payment ID:", order.razorpay_payment_id || "N/A"]);
+    }
+    rows.push(["Item Count:", order.items?.length || order.item_count || 0]);
+    rows.push([
+      "Order Total:",
+      `₹${parseFloat(order.total_amount || 0).toFixed(2)}`,
+    ]);
+    rows.push([]);
 
-      const res = await axios.get(`${API_BASE}/orders`, { params });
-      const ordersToExport = res.data.orders || [];
+    if (order.items && order.items.length > 0) {
+      rows.push(["ORDER ITEMS"]);
+      rows.push([
+        "Product",
+        "Variant",
+        "Code",
+        "Quantity",
+        "Unit Price (₹)",
+        "Line Total (₹)",
+      ]);
 
-      if (ordersToExport.length === 0) {
-        setModalMessage("No orders match the current filters");
-        setShowErrorModal(true);
-        setProcessing(false);
-        return;
-      }
-
-      const selectedCustomerName = orderCustomerFilter
-        ? allCustomersForFilter.find(
-            (c) => String(c.id) === String(orderCustomerFilter),
-          )?.name || "Selected customer"
-        : "All customers";
-
-      const sheetData = [
-        ["ORDERS EXPORT"],
-        ["Generated on:", new Date().toLocaleDateString()],
-        ["Tab:", activeTab === "orders" ? "Current Orders" : "Order History"],
-        [
-          "Payment Status:",
-          paymentFilter === "paid"
-            ? "Paid"
-            : paymentFilter === "pending"
-              ? "Unpaid"
-              : "All",
-        ],
-        [
-          "Date Range:",
-          orderDateFilter.start || orderDateFilter.end
-            ? `${orderDateFilter.start || "Any"} to ${orderDateFilter.end || "Any"}`
-            : "All",
-        ],
-        ["Customer:", selectedCustomerName],
-        ["Search Term:", searchTerm || "None"],
-        ["Total Orders:", ordersToExport.length],
-        [],
-        [
-          "Order Number",
-          "Customer",
-          "Email",
-          "Phone",
-          "Branch",
-          "District",
-          "Date",
-          "Status",
-          "Payment Status",
-          "Items",
-          "Total (₹)",
-        ],
-      ];
-
-      ordersToExport.forEach((order) => {
-        sheetData.push([
-          order.order_number,
-          order.customer_name || "N/A",
-          order.customer_email || "N/A",
-          order.customer_phone || "N/A",
-          order.branch_name || "N/A",
-          order.branch_district || "N/A",
-          new Date(order.created_at).toLocaleDateString(),
-          order.status,
-          order.payment_status === "paid" ? "Paid" : "Unpaid",
-          order.item_count || 0,
-          parseFloat(order.total_amount || 0).toFixed(2),
+      order.items.forEach((item) => {
+        rows.push([
+          item.product_name || "Unknown Product",
+          item.variant_name || "N/A",
+          item.variant_code || "N/A",
+          item.quantity || 0,
+          parseFloat(item.price || 0).toFixed(2),
+          (parseFloat(item.price || 0) * parseInt(item.quantity || 0)).toFixed(
+            2,
+          ),
         ]);
       });
-
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(sheetData);
-      ws["!cols"] = [
-        { width: 18 },
-        { width: 22 },
-        { width: 25 },
-        { width: 15 },
-        { width: 20 },
-        { width: 16 },
-        { width: 14 },
-        { width: 12 },
-        { width: 14 },
-        { width: 8 },
-        { width: 14 },
-      ];
-
-      if (ws["A1"]) {
-        ws["A1"].s = {
-          font: { bold: true, size: 14 },
-          fill: { fgColor: { rgb: "E3F2FD" } },
-        };
-      }
-
-      const headerRowIndex = sheetData.findIndex(
-        (row) => row[0] === "Order Number",
-      );
-      if (headerRowIndex >= 0) {
-        "ABCDEFGHIJK".split("").forEach((col) => {
-          const ref = col + (headerRowIndex + 1);
-          if (ws[ref]) {
-            ws[ref].s = {
-              font: { bold: true },
-              fill: { fgColor: { rgb: "C8E6C9" } },
-            };
-          }
-        });
-      }
-
-      XLSX.utils.book_append_sheet(wb, ws, "Orders");
-
-      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      const filename = `Orders-Export-${activeTab}-${
-        new Date().toISOString().split("T")[0]
-      }.xlsx`;
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      setModalMessage(`Orders exported: ${filename}`);
-      setShowSuccessModal(true);
-    } catch (error) {
-      console.error("Orders export error:", error);
-      setModalMessage(`Failed to export orders: ${error.message}`);
-      setShowErrorModal(true);
-    } finally {
-      setProcessing(false);
+    } else {
+      rows.push(["No items found for this order"]);
     }
+
+    if (order.note) {
+      rows.push([]);
+      rows.push(["Notes:"]);
+      rows.push([order.note]);
+    }
+
+    rows.push([]);
+    rows.push(["═══════════════════════════════════════════════════"]);
+    rows.push([]);
+
+    return rows;
   };
+
+  // Export the currently filtered orders/history list to Excel, with full
+  // item-level detail under each order — same pattern as
+  // handleExportFilteredCustomers/createCustomerSheetData above.
+   const exportFilteredOrdersToExcel = async () => {
+     try {
+       setProcessing(true);
+
+       let orderSummaries;
+
+       if (selectedOrderIds.size > 0) {
+         // Only the manually checked orders — ignore the filters entirely,
+         // since the checkboxes are an explicit, deliberate override.
+         orderSummaries = Array.from(selectedOrderIds).map((id) => ({ id }));
+       } else {
+         // No manual selection: fall back to everything matching the filters.
+         const params = {
+           limit: 10000, // fetch everything matching the filters, not just this page
+           search: searchTerm,
+           payment_status: paymentFilter || undefined,
+           date_from: orderDateFilter.start || undefined,
+           date_to: orderDateFilter.end || undefined,
+           customer_id: orderCustomerFilter || undefined,
+         };
+         if (activeTab === "orders") {
+           params.status = "pending";
+         }
+
+         const res = await axios.get(`${API_BASE}/orders`, { params });
+         orderSummaries = res.data.orders || [];
+       }
+
+       if (orderSummaries.length === 0) {
+         setModalMessage(
+           selectedOrderIds.size > 0
+             ? "No selected orders to export"
+             : "No orders match the current filters",
+         );
+         setShowErrorModal(true);
+         setProcessing(false);
+         return;
+       }
+
+       // The list endpoint doesn't include items — fetch full details
+       // (including the items array) for every matching order.
+       const fullOrders = [];
+       for (const summary of orderSummaries) {
+         try {
+           const orderRes = await axios.get(`${API_BASE}/orders/${summary.id}`);
+           fullOrders.push(orderRes.data.order);
+         } catch (error) {
+           console.warn(`Could not fetch details for order ${summary.id}`);
+           fullOrders.push(summary); // fall back to the summary row if this one fails
+         }
+       }
+
+       const selectedCustomerName = orderCustomerFilter
+         ? allCustomersForFilter.find(
+             (c) => String(c.id) === String(orderCustomerFilter),
+           )?.name || "Selected customer"
+         : "All customers";
+
+       // ---- Summary sheet: one row per order, for a quick overview ----
+       const summaryData = [
+         ["ORDERS EXPORT SUMMARY"],
+         ["Generated on:", new Date().toLocaleDateString()],
+         ["Tab:", activeTab === "orders" ? "Current Orders" : "Order History"],
+         [
+           "Payment Status:",
+           paymentFilter === "paid"
+             ? "Paid"
+             : paymentFilter === "pending"
+               ? "Unpaid"
+               : "All",
+         ],
+         [
+           "Date Range:",
+           orderDateFilter.start || orderDateFilter.end
+             ? `${orderDateFilter.start || "Any"} to ${orderDateFilter.end || "Any"}`
+             : "All",
+         ],
+         ["Customer:", selectedCustomerName],
+         ["Search Term:", searchTerm || "None"],
+         ["Total Orders:", fullOrders.length],
+         [],
+         [
+           "Order Number",
+           "Customer",
+           "Email",
+           "Phone",
+           "Branch",
+           "District",
+           "Date",
+           "Status",
+           "Payment Status",
+           "Items",
+           "Total (₹)",
+         ],
+       ];
+
+       let grandTotal = 0;
+       fullOrders.forEach((order) => {
+         grandTotal += parseFloat(order.total_amount || 0);
+         summaryData.push([
+           order.order_number,
+           order.customer_name || "N/A",
+           order.customer_email || "N/A",
+           order.customer_phone || "N/A",
+           order.branch_name || "N/A",
+           order.branch_district || "N/A",
+           new Date(order.created_at).toLocaleDateString(),
+           order.status,
+           order.payment_status === "paid" ? "Paid" : "Unpaid",
+           order.items?.length || order.item_count || 0,
+           parseFloat(order.total_amount || 0).toFixed(2),
+         ]);
+       });
+       summaryData.push([]);
+       summaryData.push([
+         "GRAND TOTAL",
+         "",
+         "",
+         "",
+         "",
+         "",
+         "",
+         "",
+         "",
+         "",
+         grandTotal.toFixed(2),
+       ]);
+
+       // ---- Detail sheet: every order's full breakdown, one after another ----
+       const detailData = [
+         ["ORDERS EXPORT — FULL DETAIL"],
+         ["Generated on:", new Date().toLocaleDateString()],
+         ["Total Orders:", fullOrders.length],
+         [],
+       ];
+       fullOrders.forEach((order, index) => {
+         detailData.push(...createOrderDetailRows(order, index));
+       });
+
+       const wb = XLSX.utils.book_new();
+
+       const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+       summaryWs["!cols"] = [
+         { width: 18 },
+         { width: 22 },
+         { width: 25 },
+         { width: 15 },
+         { width: 20 },
+         { width: 16 },
+         { width: 14 },
+         { width: 12 },
+         { width: 14 },
+         { width: 8 },
+         { width: 14 },
+       ];
+       const summaryHeaderRow = summaryData.findIndex(
+         (row) => row[0] === "Order Number",
+       );
+       if (summaryHeaderRow >= 0) {
+         "ABCDEFGHIJK".split("").forEach((col) => {
+           const ref = col + (summaryHeaderRow + 1);
+           if (summaryWs[ref]) {
+             summaryWs[ref].s = {
+               font: { bold: true },
+               fill: { fgColor: { rgb: "C8E6C9" } },
+             };
+           }
+         });
+       }
+       XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
+
+       const detailWs = XLSX.utils.aoa_to_sheet(detailData);
+       detailWs["!cols"] = [
+         { width: 30 },
+         { width: 22 },
+         { width: 15 },
+         { width: 12 },
+         { width: 14 },
+         { width: 14 },
+       ];
+       detailData.forEach((row, rowIndex) => {
+         if (typeof row[0] === "string" && row[0].startsWith("ORDER ")) {
+           const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+           if (detailWs[cellRef]) {
+             detailWs[cellRef].s = {
+               font: { bold: true, size: 13 },
+               fill: { fgColor: { rgb: "E3F2FD" } },
+             };
+           }
+         }
+         if (row[0] === "ORDER ITEMS") {
+           const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: 0 });
+           if (detailWs[cellRef]) {
+             detailWs[cellRef].s = {
+               font: { bold: true },
+               fill: { fgColor: { rgb: "F5F5F5" } },
+             };
+           }
+           "ABCDEF".split("").forEach((col) => {
+             const ref = col + (rowIndex + 2); // the header row right after "ORDER ITEMS"
+             if (detailWs[ref]) {
+               detailWs[ref].s = {
+                 font: { bold: true },
+                 fill: { fgColor: { rgb: "E8F5E8" } },
+               };
+             }
+           });
+         }
+       });
+       XLSX.utils.book_append_sheet(wb, detailWs, "Order Details");
+
+       const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+       const blob = new Blob([excelBuffer], {
+         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+       });
+
+       const url = window.URL.createObjectURL(blob);
+       const link = document.createElement("a");
+       const filename = `Orders-Export-${activeTab}-${
+         new Date().toISOString().split("T")[0]
+       }.xlsx`;
+       link.href = url;
+       link.setAttribute("download", filename);
+       document.body.appendChild(link);
+       link.click();
+       link.remove();
+       window.URL.revokeObjectURL(url);
+
+       setModalMessage(
+         `Orders exported (${fullOrders.length} orders): ${filename}`,
+       );
+       setShowSuccessModal(true);
+     } catch (error) {
+       console.error("Orders export error:", error);
+       setModalMessage(`Failed to export orders: ${error.message}`);
+       setShowErrorModal(true);
+     } finally {
+       setProcessing(false);
+     }
+   };
   // Filter customers - show only selected customer or all
   const getFilteredCustomers = () => {
     if (activeTab !== "customers") return [];
@@ -3755,15 +3973,34 @@ const OrderManagement = () => {
                     </select>
                   </div>
 
-                  <button
-                    className="btn-primary"
-                    onClick={exportFilteredOrdersToExcel}
-                    style={{ height: "44px" }}
-                    disabled={processing}
-                  >
-                    <FileSpreadsheet size={16} />
-                    {processing ? "Exporting..." : "Export to Excel"}
-                  </button>
+                  <div>
+                    {selectedOrderIds.size > 0 && (
+                      <p
+                        style={{
+                          margin: "0 0 6px 0",
+                          fontSize: "12px",
+                          color: "#3b82f6",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {selectedOrderIds.size} order
+                        {selectedOrderIds.size !== 1 ? "s" : ""} selected
+                      </p>
+                    )}
+                    <button
+                      className="btn-primary"
+                      onClick={exportFilteredOrdersToExcel}
+                      style={{ height: "44px" }}
+                      disabled={processing}
+                    >
+                      <FileSpreadsheet size={16} />
+                      {processing
+                        ? "Exporting..."
+                        : selectedOrderIds.size > 0
+                          ? `Export Selected (${selectedOrderIds.size})`
+                          : "Export All Filtered"}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -3808,6 +4045,14 @@ const OrderManagement = () => {
                     <table className="data-table">
                       <thead>
                         <tr>
+                          <th style={{ width: "36px" }}>
+                            <input
+                              type="checkbox"
+                              checked={isAllCurrentPageSelected}
+                              onChange={toggleSelectAllOnPage}
+                              title="Select all on this page"
+                            />
+                          </th>
                           <th>Order #</th>
                           <th>Customer</th>
                           <th>Branch</th>
@@ -3821,6 +4066,13 @@ const OrderManagement = () => {
                       <tbody>
                         {filteredData.map((order) => (
                           <tr key={order.id}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={selectedOrderIds.has(order.id)}
+                                onChange={() => toggleOrderSelected(order.id)}
+                              />
+                            </td>
                             <td style={{ fontWeight: "600" }}>
                               {order.order_number}
                             </td>
@@ -4170,6 +4422,6 @@ const OrderManagement = () => {
       </div>
     </>
   );
-};;;
+};;;;;
 
 export default OrderManagement;

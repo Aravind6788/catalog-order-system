@@ -2896,6 +2896,26 @@ const ClientProducts = () => {
 
   // Wishlist
   const [wishlist, setWishlist] = useState(new Set());
+
+  // Floating "Added to cart" toast notification
+  const [toast, setToast] = useState({ visible: false, message: "" });
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = useCallback((message) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ visible: true, message });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast({ visible: false, message: "" });
+    }, 2500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
   // Load variant images
   const loadVariantImages = useCallback(async (variantId) => {
     try {
@@ -3645,16 +3665,13 @@ const ClientProducts = () => {
         } catch (error) {
           console.error("Error saving cart:", error);
         }
-
         return newCart;
       });
 
-      // Show success feedback
-      // alert(
-      //   `✓ Added ${quantity} × ${product.name} (${selectedVariant.name}) to cart`
-      // );
+      // Show a floating toast instead of a blocking alert
+      showToast(`Added ${quantity} × ${product.name} to cart`);
     },
-    [sessionId, clientIP, customerData],
+    [sessionId, clientIP, customerData, showToast],
   );
   const removeFromCart = useCallback(
     (index) => {
@@ -3765,7 +3782,7 @@ const ClientProducts = () => {
         }
       }
 
-            setCart([]);
+      setCart([]);
       setShowCheckout(false);
       CookieManager.setCookie("greenland_cart", "", -1);
       setSelectedState("");
@@ -3935,18 +3952,18 @@ const ClientProducts = () => {
         0,
       );
 
-            const orderData = {
-              customer: {
-                name: String(customerData.name || ""),
-                email: String(customerData.email || ""),
-                phone: String(customerData.phone || ""),
-              },
-              items: transformedItems,
-              session_id: sessionId || "",
-              ip_address: clientIP || "unknown",
-              total_amount: totalAmount.toFixed(2),
-              branch_id: selectedBranch.id,
-            };
+      const orderData = {
+        customer: {
+          name: String(customerData.name || ""),
+          email: String(customerData.email || ""),
+          phone: String(customerData.phone || ""),
+        },
+        items: transformedItems,
+        session_id: sessionId || "",
+        ip_address: clientIP || "unknown",
+        total_amount: totalAmount.toFixed(2),
+        branch_id: selectedBranch.id,
+      };
       const response = await axios.post(`${API_BASE}/orders`, orderData, {
         headers: {
           "Content-Type": "application/json",
@@ -4069,7 +4086,7 @@ const ClientProducts = () => {
                   }}
                 >
                   <Phone size={20} />
-                  8940160721
+                  9344069388
                 </div>
               </div>
 
@@ -4096,90 +4113,119 @@ const ClientProducts = () => {
     },
   );
 
-  return (
-    <div style={containerStyle}>
-      {showOrderHistory && (
-        <PreviousOrdersModal
-          previousOrders={previousOrders}
-          setShowOrderHistory={setShowOrderHistory}
-        />
-      )}
-      {showOrderConfirmation && (
-        <OrderConfirmationModal
-          isOpen={showOrderConfirmation}
-          orderNumber={orderNumber}
-          onClose={() => setShowOrderConfirmation(false)}
-        />
-      )}
-      {showProductDetail && selectedProduct && (
-        <ProductDetailModal
-          product={selectedProduct}
-          isOpen={showProductDetail}
-          onClose={handleCloseProductDetail}
-          addToCart={addToCart}
-          imageData={imageData}
-        />
-      )}
-      <ModernNavbar
-        searchTerm={searchTerm}
-        handleSearchChange={handleSearchChange}
-        cart={cart}
-        previousOrders={previousOrders}
-        setShowOrderHistory={setShowOrderHistory}
-        setShowCheckout={setShowCheckout}
-      />
-      <div
-        style={{
-          backgroundImage: "linear-gradient(135deg, #2d8659 0%, #4a9b6e 100%)",
-          color: "white",
-          padding: "60px 0",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ maxWidth: "90%", margin: "0 auto", padding: "0 1rem" }}>
-          <h1
+    return (
+      <div style={containerStyle}>
+        {toast.visible && (
+          <div
             style={{
-              fontSize: "2.5rem",
-              fontWeight: "700",
-              marginBottom: "1rem",
-            }}
-          >
-            Products
-          </h1>
-          <p style={{ fontSize: "1.1rem", marginBottom: "0" }}>
-            {loading ? "Loading..." : `${totalProducts} products found`}
-          </p>
-        </div>
-      </div>
-      <div style={{ maxWidth: "90%", margin: "0 auto", padding: "2rem 1rem" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "2rem",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <button
-            style={{
-              ...buttonStyle,
-              backgroundColor: showFilters ? "#2d8659" : "transparent",
-              color: showFilters ? "white" : "#2d8659",
-              border: "1px solid #2d8659",
+              position: "fixed",
+              top: "90px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              backgroundColor: "#2d8659",
+              color: "white",
+              padding: "0.75rem 1.5rem",
+              borderRadius: "8px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              zIndex: 3000,
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
+              fontSize: "0.95rem",
+              fontWeight: "500",
+              animation: "toastSlideDown 0.3s ease-out",
+              whiteSpace: "nowrap",
             }}
-            onClick={() => setShowFilters(!showFilters)}
           >
-            <SlidersHorizontal size={16} />
-            Filters
-          </button>
+            <Check size={18} />
+            {toast.message}
+          </div>
+        )}
+        {showOrderHistory && (
+          <PreviousOrdersModal
+            previousOrders={previousOrders}
+            setShowOrderHistory={setShowOrderHistory}
+          />
+        )}
+        {showOrderConfirmation && (
+          <OrderConfirmationModal
+            isOpen={showOrderConfirmation}
+            orderNumber={orderNumber}
+            onClose={() => setShowOrderConfirmation(false)}
+          />
+        )}
+        {showProductDetail && selectedProduct && (
+          <ProductDetailModal
+            product={selectedProduct}
+            isOpen={showProductDetail}
+            onClose={handleCloseProductDetail}
+            addToCart={addToCart}
+            imageData={imageData}
+          />
+        )}
+        <ModernNavbar
+          searchTerm={searchTerm}
+          handleSearchChange={handleSearchChange}
+          cart={cart}
+          previousOrders={previousOrders}
+          setShowOrderHistory={setShowOrderHistory}
+          setShowCheckout={setShowCheckout}
+        />
+        <div
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, #2d8659 0%, #4a9b6e 100%)",
+            color: "white",
+            padding: "60px 0",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ maxWidth: "90%", margin: "0 auto", padding: "0 1rem" }}>
+            <h1
+              style={{
+                fontSize: "2.5rem",
+                fontWeight: "700",
+                marginBottom: "1rem",
+              }}
+            >
+              Products
+            </h1>
+            <p style={{ fontSize: "1.1rem", marginBottom: "0" }}>
+              {loading ? "Loading..." : `${totalProducts} products found`}
+            </p>
+          </div>
+        </div>
+        <div
+          style={{ maxWidth: "90%", margin: "0 auto", padding: "2rem 1rem" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2rem",
+              flexWrap: "wrap",
+              gap: "1rem",
+            }}
+          >
+            <button
+              style={{
+                ...buttonStyle,
+                backgroundColor: showFilters ? "#2d8659" : "transparent",
+                color: showFilters ? "white" : "#2d8659",
+                border: "1px solid #2d8659",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal size={16} />
+              Filters
+            </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            {/* <select
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              {/* <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{
@@ -4195,28 +4241,28 @@ const ClientProducts = () => {
               <option value="price-high">Price: High to Low</option>
             </select> */}
 
-            <div
-              style={{
-                display: "flex",
-                border: "1px solid #e9ecef",
-                borderRadius: "8px",
-                dispaly: "none",
-              }}
-            >
-              <button
+              <div
                 style={{
-                  padding: "0.5rem",
-                  border: "none",
-                  backgroundColor: viewMode === "grid" ? "#2d8659" : "white",
-                  color: viewMode === "grid" ? "white" : "#6c757d",
-                  borderRadius: "8px 0 0 8px",
-                  cursor: "pointer",
+                  display: "flex",
+                  border: "1px solid #e9ecef",
+                  borderRadius: "8px",
+                  dispaly: "none",
                 }}
-                onClick={() => setViewMode("grid")}
               >
-                <Grid size={16} />
-              </button>
-              {/* <button
+                <button
+                  style={{
+                    padding: "0.5rem",
+                    border: "none",
+                    backgroundColor: viewMode === "grid" ? "#2d8659" : "white",
+                    color: viewMode === "grid" ? "white" : "#6c757d",
+                    borderRadius: "8px 0 0 8px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setViewMode("grid")}
+                >
+                  <Grid size={16} />
+                </button>
+                {/* <button
                 style={{
                   padding: "0.5rem",
                   border: "none",
@@ -4229,740 +4275,751 @@ const ClientProducts = () => {
               >
                 <List size={16} />
               </button> */}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "2rem",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-          }}
-        >
-          {showFilters && (
-            <div
-              style={{
-                width: window.innerWidth <= 768 ? "100%" : "300px",
-                flexShrink: 0,
-              }}
-            >
-              <ModernFilterSidebar
-                categories={categories}
-                selectedCategory={selectedCategory}
-                handleCategoryChange={handleCategoryChange}
-                priceRange={priceRange}
-                setPriceRange={setPriceRange}
-                setSelectedCategory={setSelectedCategory}
-                showFilters={showFilters}
-                setShowFilters={setShowFilters}
-              />
-            </div>
-          )}
-
-          <div style={{ flex: 1 }}>
-            {loading ? (
-              <div style={{ textAlign: "center", padding: "3rem" }}>
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    border: "3px solid #e9ecef",
-                    borderTop: "3px solid #2d8659",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                    margin: "0 auto 1rem",
-                  }}
+          <div
+            style={{
+              display: "flex",
+              gap: "2rem",
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+            }}
+          >
+            {showFilters && (
+              <div
+                style={{
+                  width: window.innerWidth <= 768 ? "100%" : "300px",
+                  flexShrink: 0,
+                }}
+              >
+                <ModernFilterSidebar
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  handleCategoryChange={handleCategoryChange}
+                  priceRange={priceRange}
+                  setPriceRange={setPriceRange}
+                  setSelectedCategory={setSelectedCategory}
+                  showFilters={showFilters}
+                  setShowFilters={setShowFilters}
                 />
-                <p>Loading products...</p>
               </div>
-            ) : products.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "3rem" }}>
-                <Package
-                  size={64}
-                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
-                />
-                <h3>No products found</h3>
-                <p>Try adjusting your search or filters</p>
-              </div>
-            ) : sortedAndFilteredProducts.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "3rem" }}>
-                <Package
-                  size={64}
-                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
-                />
-                <h3>No products match your filters</h3>
-                <p>Try adjusting your price range or search criteria</p>
-              </div>
-            ) : (
-              <>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      viewMode === "grid"
-                        ? "repeat(auto-fill, minmax(min(280px, 100%), 1fr))"
-                        : "1fr",
-                    gap: "1.5rem",
-                  }}
-                >
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onViewDetails={handleViewDetails}
-                    />
-                  ))}
-                </div>
-                {totalPages > 1 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    setCurrentPage={setCurrentPage}
-                  />
-                )}
-              </>
             )}
+
+            <div style={{ flex: 1 }}>
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "3rem" }}>
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      border: "3px solid #e9ecef",
+                      borderTop: "3px solid #2d8659",
+                      borderRadius: "50%",
+                      animation: "spin 1s linear infinite",
+                      margin: "0 auto 1rem",
+                    }}
+                  />
+                  <p>Loading products...</p>
+                </div>
+              ) : products.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "3rem" }}>
+                  <Package
+                    size={64}
+                    style={{ color: "#cbd5e1", marginBottom: "1rem" }}
+                  />
+                  <h3>No products found</h3>
+                  <p>Try adjusting your search or filters</p>
+                </div>
+              ) : sortedAndFilteredProducts.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "3rem" }}>
+                  <Package
+                    size={64}
+                    style={{ color: "#cbd5e1", marginBottom: "1rem" }}
+                  />
+                  <h3>No products match your filters</h3>
+                  <p>Try adjusting your price range or search criteria</p>
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        viewMode === "grid"
+                          ? "repeat(auto-fill, minmax(min(280px, 100%), 1fr))"
+                          : "1fr",
+                      gap: "1.5rem",
+                    }}
+                  >
+                    {products.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onViewDetails={handleViewDetails}
+                      />
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      setCurrentPage={setCurrentPage}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
+        {showCheckout && (
+          <CartModal
+            cart={cart}
+            setShowCheckout={setShowCheckout}
+            updateCartQuantity={updateCartQuantity}
+            removeFromCart={removeFromCart}
+            customerData={customerData}
+            handleCustomerDataChange={handleCustomerDataChange}
+            submitOrder={submitOrder}
+            orderLoading={orderLoading}
+            locationStates={locationStates}
+            locationDistricts={locationDistricts}
+            locationBranches={locationBranches}
+            selectedState={selectedState}
+            selectedDistrict={selectedDistrict}
+            selectedBranch={selectedBranch}
+            onStateChange={handleStateChange}
+            onDistrictChange={handleDistrictChange}
+            onBranchChange={handleBranchChange}
+          />
+        )}
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes toastSlideDown {
+            from {
+              opacity: 0;
+              transform: translate(-50%, -20px);
+            }
+            to {
+              opacity: 1;
+              transform: translate(-50%, 0);
+            }
+          }
+
+          /* Large Desktop - 1440px and above */
+          @media (min-width: 1440px) {
+            .filter-sidebar {
+              width: 320px !important;
+            }
+          }
+
+          /* Desktop - 1200px to 1439px */
+          @media (max-width: 1439px) and (min-width: 1200px) {
+            .filter-sidebar {
+              width: 280px !important;
+            }
+          }
+
+          /* Laptop - 1024px to 1199px */
+          @media (max-width: 1199px) and (min-width: 1024px) {
+            .filter-sidebar {
+              width: 250px !important;
+              padding: 18px !important;
+            }
+
+            [style*="maxWidth: '1200px'"] {
+              max-width: 95% !important;
+            }
+          }
+
+          /* Tablet Landscape - 900px to 1023px */
+          @media (max-width: 1023px) and (min-width: 900px) {
+            .filter-sidebar {
+              width: 220px !important;
+              padding: 16px !important;
+            }
+
+            .product-detail-modal {
+              max-width: 95vw !important;
+            }
+
+            .order-history-modal {
+              max-width: 95vw !important;
+            }
+          }
+
+          /* Tablet Portrait - 768px to 899px */
+          @media (max-width: 899px) and (min-width: 768px) {
+            .RPDetails {
+              width: 100% !important;
+            }
+
+            .search-wrapper {
+              max-width: 400px !important;
+            }
+
+            .nav-btn .btn-text {
+              font-size: 0.85rem;
+            }
+
+            .filter-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              bottom: 0 !important;
+              width: 65% !important;
+              max-width: 300px !important;
+              transform: translateX(-100%);
+              transition: transform 0.3s ease;
+              z-index: 1000 !important;
+              overflow-y: auto;
+              height: 100vh;
+              margin: 0 !important;
+              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .filter-sidebar.active {
+              transform: translateX(0) !important;
+            }
+
+            .filter-close-btn {
+              display: block !important;
+            }
+
+            .product-detail-modal {
+              flex-direction: column !important;
+              max-width: 90vw !important;
+            }
+
+            .product-detail-images {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+            }
+
+            [style*="gridTemplateColumns"] {
+              grid-template-columns: repeat(
+                auto-fill,
+                minmax(240px, 1fr)
+              ) !important;
+            }
+          }
+
+          /* Mobile Landscape - 640px to 767px */
+          @media (max-width: 767px) and (min-width: 640px) {
+            .RPDetails {
+              width: 100% !important;
+            }
+
+            .search-wrapper {
+              order: 3 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              flex-basis: 100% !important;
+            }
+
+            .nav-btn .btn-text {
+              display: inline;
+              font-size: 0.8rem;
+            }
+
+            .filter-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              bottom: 0 !important;
+              width: 75% !important;
+              max-width: 320px !important;
+              transform: translateX(-100%);
+              transition: transform 0.3s ease;
+              z-index: 1000 !important;
+              overflow-y: auto;
+              height: 100vh;
+              margin: 0 !important;
+              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .filter-sidebar.active {
+              transform: translateX(0) !important;
+            }
+
+            .filter-close-btn {
+              display: block !important;
+            }
+
+            .product-detail-modal {
+              flex-direction: column !important;
+              max-width: 95vw !important;
+              margin: 0.75rem !important;
+            }
+
+            .product-detail-images {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+              padding: 1rem !important;
+            }
+
+            .product-detail-images > div:first-child img {
+              height: auto !important;
+              max-height: 375px !important;
+            }
+
+            [style*="gridTemplateColumns"] {
+              grid-template-columns: repeat(
+                auto-fill,
+                minmax(220px, 1fr)
+              ) !important;
+            }
+
+            button {
+              min-height: 42px;
+            }
+
+            input,
+            select,
+            textarea {
+              min-height: 42px;
+              font-size: 15px !important;
+            }
+          }
+
+          /* Mobile Portrait - 480px to 639px */
+          @media (max-width: 639px) and (min-width: 480px) {
+            .RPDetails {
+              width: 100% !important;
+            }
+
+            .search-wrapper {
+              order: 3 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              flex-basis: 100% !important;
+            }
+
+            .nav-btn .btn-text {
+              display: none;
+            }
+
+            .search-btn .btn-text {
+              display: inline;
+            }
+
+            .filter-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              bottom: 0 !important;
+              width: 80% !important;
+              max-width: 300px !important;
+              transform: translateX(-100%);
+              transition: transform 0.3s ease;
+              z-index: 1000 !important;
+              overflow-y: auto;
+              height: 100vh;
+              margin: 0 !important;
+              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .filter-sidebar.active {
+              transform: translateX(0) !important;
+            }
+
+            .filter-close-btn {
+              display: block !important;
+            }
+
+            .product-detail-modal {
+              flex-direction: column !important;
+              max-height: 95vh !important;
+              border-radius: 8px !important;
+              margin: 0.5rem !important;
+            }
+
+            .product-detail-images {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+              max-height: 45vh !important;
+              padding: 0.875rem !important;
+            }
+
+            .product-detail-images > div:first-child img {
+              height: auto !important;
+              max-height: 375px !important;
+            }
+
+            .order-history-modal {
+              flex-direction: column !important;
+              max-width: 95vw !important;
+              max-height: 95vh !important;
+              margin: 0.75rem !important;
+            }
+
+            .order-list-panel {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+            }
+
+            .order-list-panel > div:last-child {
+              max-height: 280px !important;
+              overflow-y: auto !important;
+            }
+
+            [style*="gridTemplateColumns"] {
+              grid-template-columns: repeat(
+                auto-fill,
+                minmax(200px, 1fr)
+              ) !important;
+            }
+
+            button {
+              min-height: 44px;
+              touch-action: manipulation;
+            }
+
+            input,
+            select,
+            textarea {
+              min-height: 44px;
+              font-size: 16px !important;
+              touch-action: manipulation;
+            }
+
+            h1 {
+              font-size: 2rem !important;
+            }
+
+            h4 {
+              font-size: 1.3rem !important;
+            }
+
+            h6 {
+              font-size: 0.95rem !important;
+            }
+          }
+
+          /* Small Mobile - 400px to 479px */
+          @media (max-width: 479px) and (min-width: 400px) {
+            .RPDetails {
+              width: 100% !important;
+            }
+
+            .search-wrapper {
+              order: 3 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              flex-basis: 100% !important;
+            }
+
+            .nav-btn .btn-text,
+            .search-btn .btn-text {
+              display: none;
+            }
+
+            .filter-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              bottom: 0 !important;
+              width: 85% !important;
+              max-width: 280px !important;
+              transform: translateX(-100%);
+              transition: transform 0.3s ease;
+              z-index: 1000 !important;
+              overflow-y: auto;
+              height: 100vh;
+              margin: 0 !important;
+              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+              padding: 16px !important;
+            }
+
+            .filter-sidebar.active {
+              transform: translateX(0) !important;
+            }
+
+            .filter-close-btn {
+              display: block !important;
+            }
+
+            .product-detail-modal {
+              flex-direction: column !important;
+              max-height: 117vh !important;
+              border-radius: 6px !important;
+              /* margin: 0.25rem !important; */
+              margin-top: 192px;
+            }
+
+            .product-detail-images {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+              max-height: 51vh !important;
+              padding: 0.75rem !important;
+              min-height: 500px !important;
+            }
+
+            .product-detail-images > div:first-child img {
+              height: auto !important;
+              max-height: 375px !important;
+            }
+
+            .order-history-modal {
+              flex-direction: column !important;
+              max-width: 96vw !important;
+              max-height: 96vh !important;
+              margin: 0.5rem !important;
+            }
+
+            .order-list-panel {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+            }
+
+            .order-list-panel > div:last-child {
+              max-height: 240px !important;
+              overflow-y: auto !important;
+            }
+
+            [style*="gridTemplateColumns"] {
+              grid-template-columns: 1fr !important;
+            }
+
+            button {
+              min-height: 44px;
+              touch-action: manipulation;
+              font-size: 0.875rem !important;
+            }
+
+            input,
+            select,
+            textarea {
+              min-height: 44px;
+              font-size: 16px !important;
+              touch-action: manipulation;
+              padding: 0.625rem 0.875rem !important;
+            }
+
+            h1 {
+              font-size: 1.75rem !important;
+            }
+
+            h4 {
+              font-size: 1.15rem !important;
+            }
+
+            h5 {
+              font-size: 1rem !important;
+            }
+
+            h6 {
+              font-size: 0.875rem !important;
+            }
+
+            p {
+              font-size: 0.875rem !important;
+            }
+
+            .brand-logo {
+              max-width: 120px !important;
+            }
+          }
+
+          /* Extra Small Mobile - 360px to 399px */
+          @media (max-width: 399px) {
+            .RPDetails {
+              width: 100% !important;
+            }
+
+            .search-wrapper {
+              order: 3 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              flex-basis: 100% !important;
+            }
+
+            .nav-btn .btn-text,
+            .search-btn .btn-text {
+              display: none;
+            }
+
+            .filter-sidebar {
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              bottom: 0 !important;
+              width: 90% !important;
+              max-width: 260px !important;
+              transform: translateX(-100%);
+              transition: transform 0.3s ease;
+              z-index: 1000 !important;
+              overflow-y: auto;
+              height: 100vh;
+              margin: 0 !important;
+              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+              padding: 14px !important;
+            }
+
+            .filter-sidebar.active {
+              transform: translateX(0) !important;
+            }
+
+            .filter-close-btn {
+              display: block !important;
+            }
+
+            .product-detail-modal {
+              flex-direction: column !important;
+              max-height: 98vh !important;
+              border-radius: 4px !important;
+              margin: 0.25rem !important;
+              max-width: calc(100vw - 0.5rem) !important;
+            }
+
+            .product-detail-images {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+              max-height: 38vh !important;
+              padding: 0.625rem !important;
+            }
+
+            .product-detail-images > div:first-child img {
+              height: auto !important;
+              max-height: 375px !important;
+            }
+
+            .order-history-modal {
+              flex-direction: column !important;
+              max-width: calc(100vw - 0.5rem) !important;
+              max-height: 97vh !important;
+              margin: 0.25rem !important;
+            }
+
+            .order-list-panel {
+              width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid #e9ecef !important;
+            }
+
+            .order-list-panel > div:last-child {
+              max-height: 220px !important;
+              overflow-y: auto !important;
+            }
+
+            [style*="gridTemplateColumns"] {
+              grid-template-columns: 1fr !important;
+            }
+
+            button {
+              min-height: 44px;
+              touch-action: manipulation;
+              font-size: 0.8125rem !important;
+              padding: 0.5rem 0.75rem !important;
+            }
+
+            input,
+            select,
+            textarea {
+              min-height: 44px;
+              font-size: 16px !important;
+              touch-action: manipulation;
+              padding: 0.5rem 0.75rem !important;
+            }
+
+            h1 {
+              font-size: 1.5rem !important;
+              padding: 0 0.5rem !important;
+            }
+
+            h4 {
+              font-size: 1.05rem !important;
+            }
+
+            h5 {
+              font-size: 0.95rem !important;
+            }
+
+            h6 {
+              font-size: 0.825rem !important;
+            }
+
+            p {
+              font-size: 0.8125rem !important;
+            }
+
+            .brand-logo {
+              max-width: 100px !important;
+            }
+
+            [style*="padding: '1.5rem'"] {
+              padding: 1rem !important;
+            }
+
+            [style*="padding: '2rem'"] {
+              padding: 1.25rem !important;
+            }
+
+            [style*="gap: '1rem'"] {
+              gap: 0.75rem !important;
+            }
+
+            [style*="gap: '1.5rem'"] {
+              gap: 1rem !important;
+            }
+
+            [style*="maxWidth: '90%'"] {
+              max-width: 95% !important;
+            }
+          }
+
+          /* Prevent zoom on input focus (iOS) */
+          @media (max-width: 768px) {
+            input[type="text"],
+            input[type="email"],
+            input[type="tel"],
+            input[type="number"],
+            select,
+            textarea {
+              font-size: 16px !important;
+            }
+          }
+
+          /* Ensure touch targets are adequate on all mobile devices */
+          @media (max-width: 767px) {
+            button,
+            a,
+            input[type="button"],
+            input[type="submit"] {
+              min-height: 44px;
+              min-width: 44px;
+            }
+          }
+
+          /* Horizontal scroll prevention */
+          @media (max-width: 767px) {
+            body {
+              overflow-x: hidden !important;
+            }
+
+            * {
+              max-width: 100%;
+            }
+          }
+        `}</style>{" "}
       </div>
-      {showCheckout && (
-        <CartModal
-          cart={cart}
-          setShowCheckout={setShowCheckout}
-          updateCartQuantity={updateCartQuantity}
-          removeFromCart={removeFromCart}
-          customerData={customerData}
-          handleCustomerDataChange={handleCustomerDataChange}
-          submitOrder={submitOrder}
-          orderLoading={orderLoading}
-          locationStates={locationStates}
-          locationDistricts={locationDistricts}
-          locationBranches={locationBranches}
-          selectedState={selectedState}
-          selectedDistrict={selectedDistrict}
-          selectedBranch={selectedBranch}
-          onStateChange={handleStateChange}
-          onDistrictChange={handleDistrictChange}
-          onBranchChange={handleBranchChange}
-        />
-      )}
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-
-        /* Large Desktop - 1440px and above */
-        @media (min-width: 1440px) {
-          .filter-sidebar {
-            width: 320px !important;
-          }
-        }
-
-        /* Desktop - 1200px to 1439px */
-        @media (max-width: 1439px) and (min-width: 1200px) {
-          .filter-sidebar {
-            width: 280px !important;
-          }
-        }
-
-        /* Laptop - 1024px to 1199px */
-        @media (max-width: 1199px) and (min-width: 1024px) {
-          .filter-sidebar {
-            width: 250px !important;
-            padding: 18px !important;
-          }
-
-          [style*="maxWidth: '1200px'"] {
-            max-width: 95% !important;
-          }
-        }
-
-        /* Tablet Landscape - 900px to 1023px */
-        @media (max-width: 1023px) and (min-width: 900px) {
-          .filter-sidebar {
-            width: 220px !important;
-            padding: 16px !important;
-          }
-
-          .product-detail-modal {
-            max-width: 95vw !important;
-          }
-
-          .order-history-modal {
-            max-width: 95vw !important;
-          }
-        }
-
-        /* Tablet Portrait - 768px to 899px */
-        @media (max-width: 899px) and (min-width: 768px) {
-          .RPDetails {
-            width: 100% !important;
-          }
-
-          .search-wrapper {
-            max-width: 400px !important;
-          }
-
-          .nav-btn .btn-text {
-            font-size: 0.85rem;
-          }
-
-          .filter-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            width: 65% !important;
-            max-width: 300px !important;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1000 !important;
-            overflow-y: auto;
-            height: 100vh;
-            margin: 0 !important;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-          }
-
-          .filter-sidebar.active {
-            transform: translateX(0) !important;
-          }
-
-          .filter-close-btn {
-            display: block !important;
-          }
-
-          .product-detail-modal {
-            flex-direction: column !important;
-            max-width: 90vw !important;
-          }
-
-          .product-detail-images {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-          }
-
-          [style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(
-              auto-fill,
-              minmax(240px, 1fr)
-            ) !important;
-          }
-        }
-
-        /* Mobile Landscape - 640px to 767px */
-        @media (max-width: 767px) and (min-width: 640px) {
-          .RPDetails {
-            width: 100% !important;
-          }
-
-          .search-wrapper {
-            order: 3 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            flex-basis: 100% !important;
-          }
-
-          .nav-btn .btn-text {
-            display: inline;
-            font-size: 0.8rem;
-          }
-
-          .filter-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            width: 75% !important;
-            max-width: 320px !important;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1000 !important;
-            overflow-y: auto;
-            height: 100vh;
-            margin: 0 !important;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-          }
-
-          .filter-sidebar.active {
-            transform: translateX(0) !important;
-          }
-
-          .filter-close-btn {
-            display: block !important;
-          }
-
-          .product-detail-modal {
-            flex-direction: column !important;
-            max-width: 95vw !important;
-            margin: 0.75rem !important;
-          }
-
-          .product-detail-images {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-            padding: 1rem !important;
-          }
-
-          .product-detail-images > div:first-child img {
-            height: auto !important;
-            max-height: 375px !important;
-          }
-
-          [style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(
-              auto-fill,
-              minmax(220px, 1fr)
-            ) !important;
-          }
-
-          button {
-            min-height: 42px;
-          }
-
-          input,
-          select,
-          textarea {
-            min-height: 42px;
-            font-size: 15px !important;
-          }
-        }
-
-        /* Mobile Portrait - 480px to 639px */
-        @media (max-width: 639px) and (min-width: 480px) {
-          .RPDetails {
-            width: 100% !important;
-          }
-
-          .search-wrapper {
-            order: 3 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            flex-basis: 100% !important;
-          }
-
-          .nav-btn .btn-text {
-            display: none;
-          }
-
-          .search-btn .btn-text {
-            display: inline;
-          }
-
-          .filter-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            width: 80% !important;
-            max-width: 300px !important;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1000 !important;
-            overflow-y: auto;
-            height: 100vh;
-            margin: 0 !important;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-          }
-
-          .filter-sidebar.active {
-            transform: translateX(0) !important;
-          }
-
-          .filter-close-btn {
-            display: block !important;
-          }
-
-          .product-detail-modal {
-            flex-direction: column !important;
-            max-height: 95vh !important;
-            border-radius: 8px !important;
-            margin: 0.5rem !important;
-          }
-
-          .product-detail-images {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-            max-height: 45vh !important;
-            padding: 0.875rem !important;
-          }
-
-          .product-detail-images > div:first-child img {
-            height: auto !important;
-            max-height: 375px !important;
-          }
-
-          .order-history-modal {
-            flex-direction: column !important;
-            max-width: 95vw !important;
-            max-height: 95vh !important;
-            margin: 0.75rem !important;
-          }
-
-          .order-list-panel {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-          }
-
-          .order-list-panel > div:last-child {
-            max-height: 280px !important;
-            overflow-y: auto !important;
-          }
-
-          [style*="gridTemplateColumns"] {
-            grid-template-columns: repeat(
-              auto-fill,
-              minmax(200px, 1fr)
-            ) !important;
-          }
-
-          button {
-            min-height: 44px;
-            touch-action: manipulation;
-          }
-
-          input,
-          select,
-          textarea {
-            min-height: 44px;
-            font-size: 16px !important;
-            touch-action: manipulation;
-          }
-
-          h1 {
-            font-size: 2rem !important;
-          }
-
-          h4 {
-            font-size: 1.3rem !important;
-          }
-
-          h6 {
-            font-size: 0.95rem !important;
-          }
-        }
-
-        /* Small Mobile - 400px to 479px */
-        @media (max-width: 479px) and (min-width: 400px) {
-          .RPDetails {
-            width: 100% !important;
-          }
-
-          .search-wrapper {
-            order: 3 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            flex-basis: 100% !important;
-          }
-
-          .nav-btn .btn-text,
-          .search-btn .btn-text {
-            display: none;
-          }
-
-          .filter-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            width: 85% !important;
-            max-width: 280px !important;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1000 !important;
-            overflow-y: auto;
-            height: 100vh;
-            margin: 0 !important;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-            padding: 16px !important;
-          }
-
-          .filter-sidebar.active {
-            transform: translateX(0) !important;
-          }
-
-          .filter-close-btn {
-            display: block !important;
-          }
-
-          .product-detail-modal {
-            flex-direction: column !important;
-            max-height: 117vh !important;
-            border-radius: 6px !important;
-            /* margin: 0.25rem !important; */
-            margin-top: 192px;
-          }
-
-          .product-detail-images {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-            max-height: 51vh !important;
-            padding: 0.75rem !important;
-            min-height: 500px !important;
-          }
-
-          .product-detail-images > div:first-child img {
-            height: auto !important;
-            max-height: 375px !important;
-          }
-
-          .order-history-modal {
-            flex-direction: column !important;
-            max-width: 96vw !important;
-            max-height: 96vh !important;
-            margin: 0.5rem !important;
-          }
-
-          .order-list-panel {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-          }
-
-          .order-list-panel > div:last-child {
-            max-height: 240px !important;
-            overflow-y: auto !important;
-          }
-
-          [style*="gridTemplateColumns"] {
-            grid-template-columns: 1fr !important;
-          }
-
-          button {
-            min-height: 44px;
-            touch-action: manipulation;
-            font-size: 0.875rem !important;
-          }
-
-          input,
-          select,
-          textarea {
-            min-height: 44px;
-            font-size: 16px !important;
-            touch-action: manipulation;
-            padding: 0.625rem 0.875rem !important;
-          }
-
-          h1 {
-            font-size: 1.75rem !important;
-          }
-
-          h4 {
-            font-size: 1.15rem !important;
-          }
-
-          h5 {
-            font-size: 1rem !important;
-          }
-
-          h6 {
-            font-size: 0.875rem !important;
-          }
-
-          p {
-            font-size: 0.875rem !important;
-          }
-
-          .brand-logo {
-            max-width: 120px !important;
-          }
-        }
-
-        /* Extra Small Mobile - 360px to 399px */
-        @media (max-width: 399px) {
-          .RPDetails {
-            width: 100% !important;
-          }
-
-          .search-wrapper {
-            order: 3 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            flex-basis: 100% !important;
-          }
-
-          .nav-btn .btn-text,
-          .search-btn .btn-text {
-            display: none;
-          }
-
-          .filter-sidebar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            width: 90% !important;
-            max-width: 260px !important;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            z-index: 1000 !important;
-            overflow-y: auto;
-            height: 100vh;
-            margin: 0 !important;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-            padding: 14px !important;
-          }
-
-          .filter-sidebar.active {
-            transform: translateX(0) !important;
-          }
-
-          .filter-close-btn {
-            display: block !important;
-          }
-
-          .product-detail-modal {
-            flex-direction: column !important;
-            max-height: 98vh !important;
-            border-radius: 4px !important;
-            margin: 0.25rem !important;
-            max-width: calc(100vw - 0.5rem) !important;
-          }
-
-          .product-detail-images {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-            max-height: 38vh !important;
-            padding: 0.625rem !important;
-          }
-
-          .product-detail-images > div:first-child img {
-            height: auto !important;
-            max-height: 375px !important;
-          }
-
-          .order-history-modal {
-            flex-direction: column !important;
-            max-width: calc(100vw - 0.5rem) !important;
-            max-height: 97vh !important;
-            margin: 0.25rem !important;
-          }
-
-          .order-list-panel {
-            width: 100% !important;
-            border-right: none !important;
-            border-bottom: 1px solid #e9ecef !important;
-          }
-
-          .order-list-panel > div:last-child {
-            max-height: 220px !important;
-            overflow-y: auto !important;
-          }
-
-          [style*="gridTemplateColumns"] {
-            grid-template-columns: 1fr !important;
-          }
-
-          button {
-            min-height: 44px;
-            touch-action: manipulation;
-            font-size: 0.8125rem !important;
-            padding: 0.5rem 0.75rem !important;
-          }
-
-          input,
-          select,
-          textarea {
-            min-height: 44px;
-            font-size: 16px !important;
-            touch-action: manipulation;
-            padding: 0.5rem 0.75rem !important;
-          }
-
-          h1 {
-            font-size: 1.5rem !important;
-            padding: 0 0.5rem !important;
-          }
-
-          h4 {
-            font-size: 1.05rem !important;
-          }
-
-          h5 {
-            font-size: 0.95rem !important;
-          }
-
-          h6 {
-            font-size: 0.825rem !important;
-          }
-
-          p {
-            font-size: 0.8125rem !important;
-          }
-
-          .brand-logo {
-            max-width: 100px !important;
-          }
-
-          [style*="padding: '1.5rem'"] {
-            padding: 1rem !important;
-          }
-
-          [style*="padding: '2rem'"] {
-            padding: 1.25rem !important;
-          }
-
-          [style*="gap: '1rem'"] {
-            gap: 0.75rem !important;
-          }
-
-          [style*="gap: '1.5rem'"] {
-            gap: 1rem !important;
-          }
-
-          [style*="maxWidth: '90%'"] {
-            max-width: 95% !important;
-          }
-        }
-
-        /* Prevent zoom on input focus (iOS) */
-        @media (max-width: 768px) {
-          input[type="text"],
-          input[type="email"],
-          input[type="tel"],
-          input[type="number"],
-          select,
-          textarea {
-            font-size: 16px !important;
-          }
-        }
-
-        /* Ensure touch targets are adequate on all mobile devices */
-        @media (max-width: 767px) {
-          button,
-          a,
-          input[type="button"],
-          input[type="submit"] {
-            min-height: 44px;
-            min-width: 44px;
-          }
-        }
-
-        /* Horizontal scroll prevention */
-        @media (max-width: 767px) {
-          body {
-            overflow-x: hidden !important;
-          }
-
-          * {
-            max-width: 100%;
-          }
-        }
-      `}</style>{" "}
-    </div>
-  );
-};;
+    );
+};;;
 
 export default ClientProducts;
