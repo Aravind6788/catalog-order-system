@@ -14,6 +14,7 @@ import {
   Tag,
 } from "lucide-react";
 import { getOptimizedImageUrl } from "../utils/cloudinary";
+import ImageCropperModal from "./ImageCropperModal";
 
 const AddProductVariant = () => {
   const API_BASE_URL =
@@ -63,6 +64,22 @@ const AddProductVariant = () => {
   const [showAttributeSelector, setShowAttributeSelector] = useState(false);
   const [originalAttributes, setOriginalAttributes] = useState([]); // Track original attributes for comparison
 
+  // ---- Image editor state ----
+  // Multiple files picked at once are edited one at a time via this queue.
+  const [pendingImageQueue, setPendingImageQueue] = useState([]);
+  const [cropper, setCropper] = useState({
+    isOpen: false,
+    imageSrc: "",
+    mode: null, // "new" | "edit-new" | "edit-existing"
+    targetIndex: null,
+    fileName: "image.jpg",
+    mimeType: "image/jpeg",
+  });
+  const [savingImageEdit, setSavingImageEdit] = useState(false);
+  // Live preview image (derived from uploadedImages / imageFiles, kept in
+  // state so we can safely revoke object URLs when they're no longer used)
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
+
   // Searchable dropdown component
   const SearchableSelect = ({
     options,
@@ -75,7 +92,7 @@ const AddProductVariant = () => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredOptions = options.filter((option) =>
-      option[filterKey].toLowerCase().includes(searchTerm.toLowerCase())
+      option[filterKey].toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
     const selectedOption = options.find((option) => option.id == value);
@@ -96,8 +113,8 @@ const AddProductVariant = () => {
               isOpen
                 ? searchTerm
                 : selectedOption
-                ? selectedOption[filterKey]
-                : ""
+                  ? selectedOption[filterKey]
+                  : ""
             }
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => setIsOpen(true)}
@@ -238,7 +255,7 @@ const AddProductVariant = () => {
                 id: img.id,
                 url: img.image_url,
                 is_primary: img.is_primary,
-              }))
+              })),
             );
           }
         }
@@ -265,7 +282,7 @@ const AddProductVariant = () => {
                 id: img.id,
                 url: img.image_url,
                 is_primary: img.is_primary,
-              }))
+              })),
             );
           }
 
@@ -274,7 +291,7 @@ const AddProductVariant = () => {
             `${API_BASE}/variants/${editData.id}/attributes`,
             {
               headers: { Authorization: `Bearer ${token}` },
-            }
+            },
           );
           const attrData = await attrResponse.json();
 
@@ -313,7 +330,7 @@ const AddProductVariant = () => {
 
     return selectedAttributes.some((attr) => {
       const original = originalAttributes.find(
-        (orig) => orig.attributeId === attr.attributeId
+        (orig) => orig.attributeId === attr.attributeId,
       );
       return !original || original.valueId !== attr.valueId;
     });
@@ -334,7 +351,7 @@ const AddProductVariant = () => {
         `${API_BASE}/variants/${variantId}/attributes`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const existingAttrData = await existingAttrResponse.json();
 
@@ -349,7 +366,7 @@ const AddProductVariant = () => {
             {
               method: "DELETE",
               headers: { Authorization: `Bearer ${token}` },
-            }
+            },
           );
         }
       }
@@ -368,12 +385,12 @@ const AddProductVariant = () => {
               body: JSON.stringify({
                 attribute_value_id: attribute.valueId,
               }),
-            }
+            },
           );
 
           if (!response.ok) {
             console.error(
-              `Failed to assign attribute ${attribute.attributeName}`
+              `Failed to assign attribute ${attribute.attributeName}`,
             );
           }
         }
@@ -431,7 +448,7 @@ const AddProductVariant = () => {
         `${API_BASE}/attributes/${attributeId}/values`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const data = await response.json();
 
@@ -472,15 +489,15 @@ const AddProductVariant = () => {
       prev.map((attr) =>
         attr.attributeId === attributeId
           ? { ...attr, valueId: parseInt(valueId), valueName }
-          : attr
-      )
+          : attr,
+      ),
     );
   };
 
   // Remove attribute from selection
   const removeAttribute = (attributeId) => {
     setSelectedAttributes((prev) =>
-      prev.filter((attr) => attr.attributeId !== attributeId)
+      prev.filter((attr) => attr.attributeId !== attributeId),
     );
   };
 
@@ -618,7 +635,88 @@ const AddProductVariant = () => {
     }
   }, [categoryId, formType, editMode]);
 
-  // Handle multiple image selection
+  // ---- Live preview image ----
+  // Recomputed only when the image lists actually change (not on every
+  // keystroke elsewhere in the form), and cleans up any object URL it creates.
+  useEffect(() => {
+    const primaryUploaded = uploadedImages.find((img) => img.is_primary);
+    let url = null;
+    let objectUrlToRevoke = null;
+
+    if (primaryUploaded) {
+      url = getOptimizedImageUrl(primaryUploaded.url, {
+        width: 500,
+        height: 500,
+        crop: "fill",
+      });
+    } else if (uploadedImages.length > 0) {
+      url = getOptimizedImageUrl(uploadedImages[0].url, {
+        width: 500,
+        height: 500,
+        crop: "fill",
+      });
+    } else if (imageFiles.length > 0) {
+      url = URL.createObjectURL(imageFiles[0]);
+      objectUrlToRevoke = url;
+    }
+
+    setPreviewImageUrl(url);
+
+    return () => {
+      if (objectUrlToRevoke) URL.revokeObjectURL(objectUrlToRevoke);
+    };
+  }, [uploadedImages, imageFiles]);
+
+  // Look up a (possibly nested) category's display name for the preview panel
+  const getCategoryName = (id) => {
+    if (!id) return "";
+    const findName = (cats) => {
+      for (const cat of cats || []) {
+        if (String(cat.id) === String(id)) return cat.name;
+        if (cat.children) {
+          const found = findName(cat.children);
+          if (found) return found;
+        }
+      }
+      return "";
+    };
+    return findName(categories);
+  };
+
+  // ---- Image selection & editing ----
+
+  const openCropperFor = (
+    imageSrc,
+    mode,
+    targetIndex,
+    fileNameArg,
+    mimeTypeArg,
+  ) => {
+    setCropper({
+      isOpen: true,
+      imageSrc,
+      mode,
+      targetIndex,
+      fileName: fileNameArg || "image.jpg",
+      mimeType: mimeTypeArg || "image/jpeg",
+    });
+  };
+
+  const closeCropper = () => {
+    setCropper((prev) => ({ ...prev, isOpen: false }));
+    // If several files were selected at once, move on to editing the next one
+    setPendingImageQueue((prevQueue) => {
+      if (prevQueue.length > 0) {
+        const [next, ...rest] = prevQueue;
+        openCropperFor(next.url, "new", null, next.file.name, next.file.type);
+        return rest;
+      }
+      return prevQueue;
+    });
+  };
+
+  // Handle multiple image selection — each valid file is queued and opened
+  // in the editor one at a time instead of being added straight away.
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     const validFiles = [];
@@ -638,10 +736,147 @@ const AddProductVariant = () => {
 
     if (errorMessages.length > 0) {
       showMessage(errorMessages.join(", "), "error");
+    }
+
+    if (validFiles.length === 0) {
+      e.target.value = "";
       return;
     }
 
-    setImageFiles([...imageFiles, ...validFiles]);
+    const queue = validFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+
+    setPendingImageQueue(queue.slice(1));
+    openCropperFor(
+      queue[0].url,
+      "new",
+      null,
+      queue[0].file.name,
+      queue[0].file.type,
+    );
+
+    // Reset the input so selecting the same file again still fires onChange
+    e.target.value = "";
+  };
+
+  const handleCropApply = async (blob) => {
+    const { mode, targetIndex, fileName, mimeType } = cropper;
+
+    if (mode === "new") {
+      const croppedFile = new File([blob], fileName, {
+        type: mimeType || blob.type,
+      });
+      setImageFiles((prev) => [...prev, croppedFile]);
+      closeCropper();
+      return;
+    }
+
+    if (mode === "edit-new") {
+      const croppedFile = new File([blob], fileName, {
+        type: mimeType || blob.type,
+      });
+      setImageFiles((prev) =>
+        prev.map((f, i) => (i === targetIndex ? croppedFile : f)),
+      );
+      closeCropper();
+      return;
+    }
+
+    if (mode === "edit-existing") {
+      await replaceExistingImage(targetIndex, blob, fileName, mimeType);
+      closeCropper();
+    }
+  };
+
+  // Re-edit an image that's already saved on the server (edit mode only):
+  // upload the newly cropped version first, then remove the old one so the
+  // image is never left missing if the upload fails partway through.
+  const replaceExistingImage = async (index, blob, fileName, mimeType) => {
+    const oldImage = uploadedImages[index];
+    if (!oldImage) return;
+
+    setSavingImageEdit(true);
+    try {
+      const token = localStorage && localStorage.getItem("token");
+
+      const data = new FormData();
+      data.append("file", new File([blob], fileName, { type: mimeType }));
+      data.append("upload_preset", "newtest");
+      data.append("cloud_name", "dxrdpvn3u");
+
+      const cloudRes = await fetch(
+        "https://api.cloudinary.com/v1_1/dxrdpvn3u/image/upload",
+        { method: "POST", body: data },
+      );
+      const cloudData = await cloudRes.json();
+
+      if (!cloudData.secure_url) {
+        const reason = cloudData?.error?.message || "Unknown error";
+        throw new Error(`Failed to upload edited image: ${reason}`);
+      }
+
+      const addEndpoint =
+        formType === "variant"
+          ? `${API_BASE}/variants/${editingId}/images`
+          : `${API_BASE}/products/${editingId}/images`;
+
+      const addResponse = await fetch(addEndpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: cloudData.secure_url,
+          is_primary: !!oldImage.is_primary,
+        }),
+      });
+
+      if (!addResponse.ok) {
+        throw new Error("Failed to save the edited image");
+      }
+
+      // NOTE: adjust `newImageId` to whatever field your API actually
+      // returns for the newly created image row (id / image_id / etc).
+      const addResult = await addResponse.json().catch(() => ({}));
+      const newImageId = addResult.id || addResult.image_id || null;
+
+      // Only remove the old image once the new one is confirmed saved
+      if (oldImage.id) {
+        const deleteEndpoint =
+          formType === "variant"
+            ? `${API_BASE}/variant-images/${oldImage.id}`
+            : `${API_BASE}/product-images/${oldImage.id}`;
+
+        await fetch(deleteEndpoint, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch((err) =>
+          console.error("Old image could not be removed:", err),
+        );
+      }
+
+      setUploadedImages((prev) =>
+        prev.map((img, i) =>
+          i === index
+            ? {
+                id: newImageId,
+                url: cloudData.secure_url,
+                is_primary: img.is_primary,
+              }
+            : img,
+        ),
+      );
+
+      showMessage("Image updated successfully!", "success");
+    } catch (error) {
+      console.error("Failed to update image:", error);
+      showMessage("Failed to update image. Please try again.", "error");
+    } finally {
+      setSavingImageEdit(false);
+    }
   };
 
   // Remove image from selection
@@ -709,7 +944,7 @@ const AddProductVariant = () => {
         uploadedImages.map((img) => ({
           ...img,
           is_primary: img.id === imageId ? 1 : 0,
-        }))
+        })),
       );
       showMessage("Primary image updated", "success");
     } catch (err) {
@@ -730,7 +965,7 @@ const AddProductVariant = () => {
 
       const cloudRes = await fetch(
         "https://api.cloudinary.com/v1_1/dxrdpvn3u/image/upload",
-        { method: "POST", body: data }
+        { method: "POST", body: data },
       );
       const cloudData = await cloudRes.json();
 
@@ -802,7 +1037,7 @@ const AddProductVariant = () => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify(productData),
-            }
+            },
           );
 
           if (!productResponse.ok) {
@@ -829,7 +1064,7 @@ const AddProductVariant = () => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify(variantData),
-            }
+            },
           );
 
           if (!variantResponse.ok) {
@@ -888,7 +1123,7 @@ const AddProductVariant = () => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify(variantData),
-            }
+            },
           );
 
           if (!variantResponse.ok) {
@@ -916,7 +1151,7 @@ const AddProductVariant = () => {
                 } catch (err) {
                   console.error(
                     `Failed to assign attribute ${attribute.attributeName}`,
-                    err
+                    err,
                   );
                 }
               }
@@ -970,7 +1205,7 @@ const AddProductVariant = () => {
         `Failed to ${editMode ? "update" : "create"} ${formType}: ${
           err.message
         }`,
-        "error"
+        "error",
       );
     } finally {
       setUploading(false);
@@ -1028,13 +1263,20 @@ const AddProductVariant = () => {
             margin: 0;
           }
 
+          .form-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            align-items: start;
+          }
+
           .form-container {
             background: white;
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            max-width: 800px;
-            margin: 0 auto;
           }
 
           .form-header {
@@ -1223,6 +1465,11 @@ const AddProductVariant = () => {
             color: white;
           }
 
+          .edit-btn {
+            background: #8b5cf6;
+            color: white;
+          }
+
           .primary-btn {
             background: #10b981;
             color: white;
@@ -1390,6 +1637,147 @@ const AddProductVariant = () => {
             z-index: 5;
           }
 
+          /* Live preview panel */
+          .preview-panel-sticky {
+            position: sticky;
+            top: 20px;
+          }
+
+          .preview-label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #94a3b8;
+            margin: 0 0 10px 4px;
+          }
+
+          .preview-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+          }
+
+          .preview-image-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #f1f5f9;
+          }
+
+          .preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+          }
+
+          .preview-image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #cbd5e1;
+            font-size: 13px;
+          }
+
+          .preview-status-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: capitalize;
+            background: #10b981;
+            color: white;
+          }
+
+          .preview-status-badge.inactive {
+            background: #94a3b8;
+          }
+
+          .preview-body {
+            padding: 16px;
+          }
+
+          .preview-name {
+            margin: 0 0 4px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            word-break: break-word;
+          }
+
+          .preview-category {
+            margin: 0 0 8px;
+            font-size: 12px;
+            color: #6b7280;
+          }
+
+          .preview-code {
+            margin: 0 0 6px;
+            font-size: 12px;
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+            color: #64748b;
+          }
+
+          .preview-price {
+            margin: 0 0 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d8659;
+          }
+
+          .preview-description {
+            margin: 0 0 10px;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.5;
+          }
+
+          .preview-attributes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+
+          .preview-attr-tag {
+            background: #e8f5e8;
+            color: #2d8659;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid #c3e6cb;
+          }
+
+          .preview-hint {
+            margin: 10px 4px 0;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+          }
+
+          .image-saving-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #92400e;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-top: 10px;
+          }
+
           /* Modal Styles */
           .modal-overlay {
             position: fixed;
@@ -1507,6 +1895,16 @@ const AddProductVariant = () => {
             }
           }
 
+          @media (max-width: 1024px) {
+            .form-layout {
+              grid-template-columns: 1fr;
+            }
+
+            .preview-panel-sticky {
+              position: static;
+            }
+          }
+
           @media (max-width: 768px) {
             .categories-page { padding: 16px; }
             .form-toggle { flex-direction: column; }
@@ -1531,339 +1929,343 @@ const AddProductVariant = () => {
           </button>
         </div>
 
-        <div className="form-container">
-          <div className="form-header">
-            {/* Form Type Toggle - Disable in edit mode */}
-            <div className="form-toggle">
-              <button
-                type="button"
-                onClick={() => handleFormTypeChange("product")}
-                disabled={editMode}
-                className={`toggle-btn ${
-                  formType === "product" ? "active" : ""
-                }`}
-              >
-                {editMode ? "Edit Product" : "Add Product"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFormTypeChange("variant")}
-                disabled={editMode}
-                className={`toggle-btn ${
-                  formType === "variant" ? "active" : ""
-                }`}
-              >
-                {editMode ? "Edit Variant" : "Add Variant"}
-              </button>
+        <div className="form-layout">
+          <div className="form-container">
+            <div className="form-header">
+              {/* Form Type Toggle - Disable in edit mode */}
+              <div className="form-toggle">
+                <button
+                  type="button"
+                  onClick={() => handleFormTypeChange("product")}
+                  disabled={editMode}
+                  className={`toggle-btn ${
+                    formType === "product" ? "active" : ""
+                  }`}
+                >
+                  {editMode ? "Edit Product" : "Add Product"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFormTypeChange("variant")}
+                  disabled={editMode}
+                  className={`toggle-btn ${
+                    formType === "variant" ? "active" : ""
+                  }`}
+                >
+                  {editMode ? "Edit Variant" : "Add Variant"}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="form-body">
-            {uploading && (
-              <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <p>{`${editMode ? "Updating" : "Creating"} ${formType}...`}</p>
-              </div>
-            )}
+            <div className="form-body">
+              {uploading && (
+                <div className="loading-container">
+                  <div className="loading-spinner"></div>
+                  <p>{`${editMode ? "Updating" : "Creating"} ${formType}...`}</p>
+                </div>
+              )}
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">
-                  {formType === "product" ? "Product" : "Variant"} Name
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder={`Enter ${
-                    formType === "product" ? "product" : "variant"
-                  } name`}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* SKU/Code Field */}
-              <div className="form-group">
-                <label className="form-label">
-                  {formType === "product" ? "SKU" : "Variant Code"}
-                </label>
-                <input
-                  type="text"
-                  className={`form-input ${!editMode ? "code-input" : ""}`}
-                  placeholder={
-                    formType === "product"
-                      ? "Auto-generated SKU"
-                      : "Auto-generated code"
-                  }
-                  value={formType === "product" ? sku : code}
-                  onChange={(e) =>
-                    formType === "product"
-                      ? setSku(e.target.value)
-                      : setCode(e.target.value)
-                  }
-                  readOnly
-                />
-              </div>
-
-              {/* Price Field (Variant only) */}
-              {formType === "variant" && (
+              <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label className="form-label">Price</label>
+                  <label className="form-label">
+                    {formType === "product" ? "Product" : "Variant"} Name
+                  </label>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
                     className="form-input"
-                    placeholder="0.00"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder={`Enter ${
+                      formType === "product" ? "product" : "variant"
+                    } name`}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
-              )}
 
-              {/* Quantity Field (Variant only) */}
-              {formType === "variant" && !editMode && (
+                {/* SKU/Code Field */}
                 <div className="form-group">
-                  <label className="form-label">Initial Quantity</label>
+                  <label className="form-label">
+                    {formType === "product" ? "SKU" : "Variant Code"}
+                  </label>
                   <input
-                    type="number"
-                    className="form-input"
-                    placeholder="0"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    type="text"
+                    className={`form-input ${!editMode ? "code-input" : ""}`}
+                    placeholder={
+                      formType === "product"
+                        ? "Auto-generated SKU"
+                        : "Auto-generated code"
+                    }
+                    value={formType === "product" ? sku : code}
+                    onChange={(e) =>
+                      formType === "product"
+                        ? setSku(e.target.value)
+                        : setCode(e.target.value)
+                    }
+                    readOnly
                   />
                 </div>
-              )}
 
-              {/* Description */}
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-input"
-                  placeholder="Enter description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows="4"
-                />
-              </div>
+                {/* Price Field (Variant only) */}
+                {formType === "variant" && (
+                  <div className="form-group">
+                    <label className="form-label">Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="0.00"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
-              {/* Category Dropdown */}
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select
-                  className="form-input"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  required
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <React.Fragment key={cat.id}>
-                      <option value={cat.id}>{cat.name}</option>
-                      {cat.children &&
-                        cat.children.map((child) => (
-                          <option key={child.id} value={child.id}>
-                            └ {child.name}
-                          </option>
-                        ))}
-                    </React.Fragment>
-                  ))}
-                </select>
-              </div>
+                {/* Quantity Field (Variant only) */}
+                {formType === "variant" && !editMode && (
+                  <div className="form-group">
+                    <label className="form-label">Initial Quantity</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder="0"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                    />
+                  </div>
+                )}
 
-              {/* Product Dropdown (Variant only) */}
-              {formType === "variant" && (
+                {/* Description */}
                 <div className="form-group">
-                  <label className="form-label">Product</label>
+                  <label className="form-label">Description</label>
+                  <textarea
+                    className="form-input"
+                    placeholder="Enter description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows="4"
+                  />
+                </div>
+
+                {/* Category Dropdown */}
+                <div className="form-group">
+                  <label className="form-label">Category</label>
                   <select
                     className="form-input"
-                    value={productId}
-                    onChange={(e) => setProductId(e.target.value)}
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
                     required
-                    disabled={editMode}
-                    style={{ backgroundColor: editMode ? "#f8f9fa" : "#fff" }}
                   >
-                    <option value="">Select Product</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} (SKU: {product.sku_prefix})
-                      </option>
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <React.Fragment key={cat.id}>
+                        <option value={cat.id}>{cat.name}</option>
+                        {cat.children &&
+                          cat.children.map((child) => (
+                            <option key={child.id} value={child.id}>
+                              └ {child.name}
+                            </option>
+                          ))}
+                      </React.Fragment>
                     ))}
                   </select>
                 </div>
-              )}
 
-              {/* Attributes Section (Variant only) */}
-              {formType === "variant" && (
-                <div className="attributes-section">
-                  <div className="attributes-header">
-                    <label className="form-label" style={{ margin: 0 }}>
-                      <Tag
-                        size={16}
-                        style={{ marginRight: "8px", display: "inline" }}
-                      />
-                      Variant Attributes
-                    </label>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={() => setShowAttributeSelector(true)}
-                      style={{ padding: "8px 16px", fontSize: "14px" }}
+                {/* Product Dropdown (Variant only) */}
+                {formType === "variant" && (
+                  <div className="form-group">
+                    <label className="form-label">Product</label>
+                    <select
+                      className="form-input"
+                      value={productId}
+                      onChange={(e) => setProductId(e.target.value)}
+                      required
+                      disabled={editMode}
+                      style={{ backgroundColor: editMode ? "#f8f9fa" : "#fff" }}
                     >
-                      <Plus size={14} />
-                      Add Attribute
-                    </button>
+                      <option value="">Select Product</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} (SKU: {product.sku_prefix})
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                )}
 
-                  {/* Show indicator if attributes have changed in edit mode */}
-                  {editMode && attributesChanged() && (
-                    <div className="attributes-changed-indicator">
-                      <AlertCircle
-                        size={16}
-                        style={{ display: "inline", marginRight: "8px" }}
-                      />
-                      Attributes have been modified and will be updated
+                {/* Attributes Section (Variant only) */}
+                {formType === "variant" && (
+                  <div className="attributes-section">
+                    <div className="attributes-header">
+                      <label className="form-label" style={{ margin: 0 }}>
+                        <Tag
+                          size={16}
+                          style={{ marginRight: "8px", display: "inline" }}
+                        />
+                        Variant Attributes
+                      </label>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => setShowAttributeSelector(true)}
+                        style={{ padding: "8px 16px", fontSize: "14px" }}
+                      >
+                        <Plus size={14} />
+                        Add Attribute
+                      </button>
                     </div>
-                  )}
 
-                  {selectedAttributes.length > 0 ? (
-                    selectedAttributes.map((attr) => (
-                      <div key={attr.attributeId} className="attribute-item">
-                        <div className="attribute-label">
-                          {attr.attributeName}:
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <SearchableSelect
-                            options={attributeValues[attr.attributeId] || []}
-                            value={attr.valueId}
-                            onChange={(valueId, valueName) =>
-                              updateAttributeValue(
-                                attr.attributeId,
-                                valueId,
-                                valueName
-                              )
-                            }
-                            placeholder="Select value..."
-                            filterKey="value"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="attribute-remove"
-                          onClick={() => removeAttribute(attr.attributeId)}
-                          title="Remove attribute"
-                        >
-                          <X size={12} />
-                        </button>
+                    {/* Show indicator if attributes have changed in edit mode */}
+                    {editMode && attributesChanged() && (
+                      <div className="attributes-changed-indicator">
+                        <AlertCircle
+                          size={16}
+                          style={{ display: "inline", marginRight: "8px" }}
+                        />
+                        Attributes have been modified and will be updated
                       </div>
-                    ))
-                  ) : (
-                    <p
-                      style={{
-                        color: "#6b7280",
-                        fontStyle: "italic",
-                        margin: "16px 0",
-                      }}
-                    >
-                      No attributes added. Click "Add Attribute" to assign
-                      attributes to this variant.
-                    </p>
-                  )}
+                    )}
 
-                  {/* Attribute Selector Modal */}
-                  {showAttributeSelector && (
-                    <div className="modal-overlay">
-                      <div className="modal-content modal-small">
-                        <div className="modal-header">
-                          <h2>Select Attribute</h2>
-                          <button
-                            className="modal-close"
-                            onClick={() => setShowAttributeSelector(false)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="modal-body">
-                          <div className="form-group">
-                            <label className="form-label">
-                              Available Attributes
-                            </label>
+                    {selectedAttributes.length > 0 ? (
+                      selectedAttributes.map((attr) => (
+                        <div key={attr.attributeId} className="attribute-item">
+                          <div className="attribute-label">
+                            {attr.attributeName}:
+                          </div>
+                          <div style={{ flex: 1 }}>
                             <SearchableSelect
-                              options={attributes.filter(
-                                (attr) =>
-                                  !selectedAttributes.find(
-                                    (selected) =>
-                                      selected.attributeId === attr.id
-                                  )
-                              )}
-                              value=""
-                              onChange={(attributeId, attributeName) => {
-                                addAttribute(attributeId, attributeName);
-                              }}
-                              placeholder="Search and select attribute..."
-                              filterKey="name"
+                              options={attributeValues[attr.attributeId] || []}
+                              value={attr.valueId}
+                              onChange={(valueId, valueName) =>
+                                updateAttributeValue(
+                                  attr.attributeId,
+                                  valueId,
+                                  valueName,
+                                )
+                              }
+                              placeholder="Select value..."
+                              filterKey="value"
                             />
                           </div>
-                        </div>
-                        <div className="modal-actions">
                           <button
                             type="button"
-                            className="btn-secondary"
-                            onClick={() => setShowAttributeSelector(false)}
+                            className="attribute-remove"
+                            onClick={() => removeAttribute(attr.attributeId)}
+                            title="Remove attribute"
                           >
-                            Cancel
+                            <X size={12} />
                           </button>
                         </div>
+                      ))
+                    ) : (
+                      <p
+                        style={{
+                          color: "#6b7280",
+                          fontStyle: "italic",
+                          margin: "16px 0",
+                        }}
+                      >
+                        No attributes added. Click "Add Attribute" to assign
+                        attributes to this variant.
+                      </p>
+                    )}
+
+                    {/* Attribute Selector Modal */}
+                    {showAttributeSelector && (
+                      <div className="modal-overlay">
+                        <div className="modal-content modal-small">
+                          <div className="modal-header">
+                            <h2>Select Attribute</h2>
+                            <button
+                              className="modal-close"
+                              onClick={() => setShowAttributeSelector(false)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="modal-body">
+                            <div className="form-group">
+                              <label className="form-label">
+                                Available Attributes
+                              </label>
+                              <SearchableSelect
+                                options={attributes.filter(
+                                  (attr) =>
+                                    !selectedAttributes.find(
+                                      (selected) =>
+                                        selected.attributeId === attr.id,
+                                    ),
+                                )}
+                                value=""
+                                onChange={(attributeId, attributeName) => {
+                                  addAttribute(attributeId, attributeName);
+                                }}
+                                placeholder="Search and select attribute..."
+                                filterKey="name"
+                              />
+                            </div>
+                          </div>
+                          <div className="modal-actions">
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              onClick={() => setShowAttributeSelector(false)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )}
+
+                {/* Status */}
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select
+                    className="form-input"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
-              )}
 
-              {/* Status */}
-              <div className="form-group">
-                <label className="form-label">Status</label>
-                <select
-                  className="form-input"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              {/* Image Upload */}
-              <div className="form-group">
-                <label className="form-label">Images</label>
-                <div className="file-upload-area">
-                  <Upload
-                    size={32}
-                    style={{ color: "#9ca3af", marginBottom: "8px" }}
-                  />
-                  <p
-                    style={{ margin: 0, color: "#6b7280", marginBottom: "8px" }}
-                  >
-                    Click to select images
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageChange}
-                    style={{ display: "none" }}
-                    id="file-input"
-                  />
-                  <label
-                    htmlFor="file-input"
-                    className="btn-primary"
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Plus size={16} />
-                    Select Images
-                  </label>
-                  {editMode && (
+                {/* Image Upload */}
+                <div className="form-group">
+                  <label className="form-label">Images</label>
+                  <div className="file-upload-area">
+                    <Upload
+                      size={32}
+                      style={{ color: "#9ca3af", marginBottom: "8px" }}
+                    />
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "#6b7280",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Click to select images
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageChange}
+                      style={{ display: "none" }}
+                      id="file-input"
+                    />
+                    <label
+                      htmlFor="file-input"
+                      className="btn-primary"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Plus size={16} />
+                      Select Images
+                    </label>
                     <p
                       style={{
                         fontSize: "12px",
@@ -1871,143 +2273,263 @@ const AddProductVariant = () => {
                         margin: "8px 0 0 0",
                       }}
                     >
-                      Add new images or manage existing ones below
+                      Each image opens in the editor first — zoom, pan, or
+                      rotate it before it's added
+                      {editMode ? ", and you can re-edit any image below" : ""}.
                     </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Current Images (Edit mode) */}
-              {uploadedImages.length > 0 && (
-                <div className="form-group">
-                  <label className="form-label">
-                    {editMode ? "Current Images" : "Existing Images"}
-                  </label>
-                  <div className="image-grid">
-                    {uploadedImages.map((image, index) => (
-                      <div key={index} className="image-item">
-                        <img
-                          src={getOptimizedImageUrl(image.url, { width: 240, height: 240, crop: "fill" })}
-                          alt={`Current ${index + 1}`}
-                          className="image-preview"
-                        />
-                        <div className="image-actions">
-                          <button
-                            type="button"
-                            onClick={() => removeUploadedImage(index, image.id)}
-                            className="image-btn remove-btn"
-                            title="Remove image"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                        {image.is_primary ? (
-                          <div className="primary-badge">
-                            <Star size={10} />
-                            Primary
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setPrimaryImage(image.id)}
-                            className="image-btn set-primary-btn"
-                            style={{
-                              position: "absolute",
-                              bottom: "4px",
-                              left: "4px",
-                              fontSize: "9px",
-                              padding: "2px 6px",
-                            }}
-                            title="Set as primary"
-                          >
-                            Set Primary
-                          </button>
-                        )}
-                      </div>
-                    ))}
                   </div>
                 </div>
-              )}
 
-              {/* New Images Preview */}
-              {imageFiles.length > 0 && (
-                <div className="form-group">
-                  <label className="form-label">New Images to Upload</label>
-                  <div className="image-grid">
-                    {imageFiles.map((file, index) => (
-                      <div key={index} className="image-item">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={file.name}
-                          className="image-preview"
-                        />
-                        <div className="image-actions">
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="image-btn remove-btn"
-                            title="Remove image"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                        <div className="image-info">
-                          {file.name} ({(file.size / 1024 / 1024).toFixed(2)}{" "}
-                          MB)
-                          {uploadedImages.length === 0 && index === 0 && (
-                            <div
-                              style={{
-                                color: "#10b981",
-                                fontWeight: "bold",
-                                marginTop: "4px",
-                              }}
+                {savingImageEdit && (
+                  <div className="image-saving-note">
+                    <div
+                      className="loading-spinner"
+                      style={{ width: 16, height: 16, margin: 0 }}
+                    />
+                    Saving your edited image...
+                  </div>
+                )}
+
+                {/* Current Images (Edit mode) */}
+                {uploadedImages.length > 0 && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      {editMode ? "Current Images" : "Existing Images"}
+                    </label>
+                    <div className="image-grid">
+                      {uploadedImages.map((image, index) => (
+                        <div key={index} className="image-item">
+                          <img
+                            src={getOptimizedImageUrl(image.url, {
+                              width: 240,
+                              height: 240,
+                              crop: "fill",
+                            })}
+                            alt={`Current ${index + 1}`}
+                            className="image-preview"
+                          />
+                          <div className="image-actions">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openCropperFor(
+                                  image.url,
+                                  "edit-existing",
+                                  index,
+                                  `image-${image.id || index}.jpg`,
+                                  "image/jpeg",
+                                )
+                              }
+                              className="image-btn edit-btn"
+                              title="Edit image"
+                              disabled={savingImageEdit}
                             >
-                              Will be Primary
+                              <Edit size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeUploadedImage(index, image.id)
+                              }
+                              className="image-btn remove-btn"
+                              title="Remove image"
+                              disabled={savingImageEdit}
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                          {image.is_primary ? (
+                            <div className="primary-badge">
+                              <Star size={10} />
+                              Primary
                             </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setPrimaryImage(image.id)}
+                              className="image-btn set-primary-btn"
+                              style={{
+                                position: "absolute",
+                                bottom: "4px",
+                                left: "4px",
+                                fontSize: "9px",
+                                padding: "2px 6px",
+                              }}
+                              title="Set as primary"
+                            >
+                              Set Primary
+                            </button>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+                )}
+
+                {/* New Images Preview */}
+                {imageFiles.length > 0 && (
+                  <div className="form-group">
+                    <label className="form-label">New Images to Upload</label>
+                    <div className="image-grid">
+                      {imageFiles.map((file, index) => (
+                        <div key={index} className="image-item">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            className="image-preview"
+                          />
+                          <div className="image-actions">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openCropperFor(
+                                  URL.createObjectURL(file),
+                                  "edit-new",
+                                  index,
+                                  file.name,
+                                  file.type,
+                                )
+                              }
+                              className="image-btn edit-btn"
+                              title="Edit image"
+                            >
+                              <Edit size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="image-btn remove-btn"
+                              title="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                          <div className="image-info">
+                            {file.name} ({(file.size / 1024 / 1024).toFixed(2)}{" "}
+                            MB)
+                            {uploadedImages.length === 0 && index === 0 && (
+                              <div
+                                style={{
+                                  color: "#10b981",
+                                  fontWeight: "bold",
+                                  marginTop: "4px",
+                                }}
+                              >
+                                Will be Primary
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit Buttons */}
+                <div
+                  style={{ display: "flex", gap: "12px", marginTop: "32px" }}
+                >
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <>
+                        <div
+                          className="loading-spinner"
+                          style={{
+                            height: "16px",
+                            margin: 0,
+                            marginRight: "8px",
+                            width: "16px",
+                          }}
+                        ></div>
+                        {editMode ? "Updating" : "Creating"}...
+                      </>
+                    ) : (
+                      <>
+                        {editMode ? "Update" : "Submit"} {formType}
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/products")}
+                    className="btn-secondary"
+                  >
+                    Cancel
+                  </button>
                 </div>
-              )}
+              </form>
+            </div>
+          </div>
 
-              {/* Submit Buttons */}
-              <div style={{ display: "flex", gap: "12px", marginTop: "32px" }}>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <>
-                      <div
-                        className="loading-spinner"
-                        style={{
-                          height: "16px",
-                          margin: 0,
-                          marginRight: "8px",
-                          width: "16px",
-                        }}
-                      ></div>
-                      {editMode ? "Updating" : "Creating"}...
-                    </>
-                  ) : (
-                    <>
-                      {editMode ? "Update" : "Submit"} {formType}
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigate("/products")}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
+          {/* Live Preview Panel */}
+          <div className="preview-panel-sticky">
+            <p className="preview-label">Live Preview</p>
+            <div className="preview-card">
+              <div className="preview-image-wrap">
+                {previewImageUrl ? (
+                  <img
+                    src={previewImageUrl}
+                    alt="Preview"
+                    className="preview-image"
+                  />
+                ) : (
+                  <div className="preview-image-placeholder">
+                    <Upload size={28} />
+                    <span>No image yet</span>
+                  </div>
+                )}
+                <span className={`preview-status-badge ${status}`}>
+                  {status}
+                </span>
               </div>
-            </form>
+              <div className="preview-body">
+                <h4 className="preview-name">
+                  {name || `Untitled ${formType}`}
+                </h4>
+                {categoryId && (
+                  <p className="preview-category">
+                    {getCategoryName(categoryId) || "—"}
+                  </p>
+                )}
+                <p className="preview-code">
+                  {formType === "product"
+                    ? sku || "Auto-generated SKU"
+                    : code || "Auto-generated code"}
+                </p>
+                {formType === "variant" && (
+                  <p className="preview-price">
+                    ₹{price ? parseFloat(price).toFixed(2) : "0.00"}
+                  </p>
+                )}
+                {description && (
+                  <p className="preview-description">{description}</p>
+                )}
+                {formType === "variant" && selectedAttributes.length > 0 && (
+                  <div className="preview-attributes">
+                    {selectedAttributes.map(
+                      (attr) =>
+                        attr.valueName && (
+                          <span
+                            key={attr.attributeId}
+                            className="preview-attr-tag"
+                          >
+                            {attr.attributeName}: {attr.valueName}
+                          </span>
+                        ),
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className="preview-hint">
+              Updates as you type — nothing here is saved until you submit the
+              form.
+            </p>
           </div>
         </div>
 
@@ -2027,6 +2549,16 @@ const AddProductVariant = () => {
           title="Error"
           message={modalMessage}
           type="error"
+        />
+
+        {/* Image Editor */}
+        <ImageCropperModal
+          isOpen={cropper.isOpen}
+          imageSrc={cropper.imageSrc}
+          fileName={cropper.fileName}
+          mimeType={cropper.mimeType}
+          onClose={closeCropper}
+          onApply={handleCropApply}
         />
       </div>
     </>

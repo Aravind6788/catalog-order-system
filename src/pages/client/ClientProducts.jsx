@@ -279,11 +279,12 @@ const ModernNavbar = React.memo(
                 backgroundColor: "transparent",
                 color: "#2d8659",
                 border: "1px solid #2d8659",
+                borderRadius: "999px",
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",
-                padding: "0.5rem",
-                justifyContent:"center"
+                padding: "0.5rem 1rem",
+                justifyContent: "center",
               }}
               onClick={() => setShowOrderHistory(true)}
               className="nav-btn"
@@ -299,11 +300,13 @@ const ModernNavbar = React.memo(
               backgroundColor: "transparent",
               color: "#2d8659",
               border: "1px solid #2d8659",
+              borderRadius: "999px",
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
-              padding: "0.5rem",
-              justifyContent:"center"
+              padding: "0.5rem 1rem",
+              justifyContent: "center",
+              position: "relative",
             }}
             onClick={() => setShowCheckout(true)}
             className="nav-btn"
@@ -312,11 +315,16 @@ const ModernNavbar = React.memo(
             <span className="btn-text">
               Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
             </span>
+            {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
+              <span className="cart-badge">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
           </button>
         </div>
       </div>
     </nav>
-  )
+  ),
 );
 // Enhanced Previous Orders Modal Component - Add this outside your main component
 const PreviousOrdersModal = React.memo(
@@ -1231,6 +1239,9 @@ const ProductCard = React.memo(({ product, onViewDetails }) => {
   };
 
   const allAttributes = getAllAttributes();
+  const coverImage = product.variants?.find(
+    (v) => v.primary_image,
+  )?.primary_image;
 
   return (
     <div
@@ -1242,27 +1253,41 @@ const ProductCard = React.memo(({ product, onViewDetails }) => {
       }}
     >
       {/* Product Image */}
-      <div style={{ position: "relative" }}>
+      {/* Product Image */}
+      {/* Product Image (same square + cover approach as the admin preview card) */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "1 / 1",
+          background: "#f1f5f9",
+          borderRadius: "12px 12px 0 0",
+          overflow: "hidden",
+        }}
+      >
         <img
           src={
-            product.variants &&
-            product.variants.length > 0 &&
-            product.variants[0].primary_image
-              ? getOptimizedImageUrl(product.variants[0].primary_image, { width: 600, height: 400, crop: "fill" })
-              : `https://via.placeholder.com/300x200/2d8659/ffffff?text=${encodeURIComponent(
-                  product.name
-                )}`
+            coverImage
+              ? getOptimizedImageUrl(coverImage, {
+                  width: 500,
+                  height: 500,
+                  crop: "fill",
+                })
+              : `https://via.placeholder.com/500x500/2d8659/ffffff?text=${encodeURIComponent(product.name)}`
           }
           alt={product.name}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = `https://via.placeholder.com/500x500/2d8659/ffffff?text=${encodeURIComponent(product.name)}`;
+          }}
           style={{
-            height: "288px",
-            objectFit: "cover",
-            borderRadius: "12px 12px 0 0",
             width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
           }}
         />
       </div>
-
       {/* Product Info */}
       <div
         style={{
@@ -1598,7 +1623,9 @@ const handleAddToCart = useCallback(() => {
               {/* Main Image with Preview Button */}
               <div style={{ marginBottom: "1rem", position: "relative" }}>
                 <img
-                  src={getOptimizedImageUrl(allImages[selectedImageIndex], { width: 1400 })}
+                  src={getOptimizedImageUrl(allImages[selectedImageIndex], {
+                    width: 1400,
+                  })}
                   alt={`${product.name} - View ${selectedImageIndex + 1}`}
                   style={{
                     width: "100%",
@@ -1662,7 +1689,11 @@ const handleAddToCart = useCallback(() => {
                   {allImages.map((image, index) => (
                     <img
                       key={index}
-                      src={getOptimizedImageUrl(image, { width: 120, height: 120, crop: "fill" })}
+                      src={getOptimizedImageUrl(image, {
+                        width: 120,
+                        height: 120,
+                        crop: "fill",
+                      })}
                       alt={`${product.name} - Thumbnail ${index + 1}`}
                       style={{
                         width: "60px",
@@ -1766,7 +1797,7 @@ const handleAddToCart = useCallback(() => {
                       value={selectedVariant?.id || ""}
                       onChange={(e) => {
                         const variant = product.variants.find(
-                          (v) => v.id === parseInt(e.target.value)
+                          (v) => v.id === parseInt(e.target.value),
                         );
                         setSelectedVariant(variant);
                       }}
@@ -1920,43 +1951,81 @@ const handleAddToCart = useCallback(() => {
                         >
                           Quantity:
                         </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max={parseInt(selectedVariant.quantity)}
-                          value={quantity}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            // Allow empty string while typing
-                            if (value === "") {
-                              setQuantity(1); // Set to 1 immediately instead of empty string
-                            } else {
-                              const numValue = parseInt(value);
-                              // Only set if it's a valid number >= 1
-                              if (!isNaN(numValue) && numValue >= 1) {
-                                setQuantity(numValue);
-                              }
-                            }
-                          }}
-                          onBlur={(e) => {
-                            // When user leaves the field, ensure it has a valid value
-                            const value = e.target.value;
-                            const parsed = parseInt(value);
-                            if (value === "" || isNaN(parsed) || parsed < 1) {
-                              setQuantity(1);
-                            } else {
-                              setQuantity(parsed); // Ensure it's stored as a number
-                            }
-                          }}
+                        <div
                           style={{
-                            width: "80px",
-                            padding: "0.5rem",
+                            display: "flex",
+                            alignItems: "center",
                             border: "1px solid #2d8659",
                             borderRadius: "6px",
-                            fontSize: "0.9rem",
-                            outline: "none",
+                            overflow: "hidden",
+                            width: "fit-content",
                           }}
-                        />
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQuantity((q) => Math.max(1, q - 1))
+                            }
+                            disabled={quantity <= 1}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              border: "none",
+                              background: "#f8f9fa",
+                              color: "#2d8659",
+                              fontSize: "1.1rem",
+                              fontWeight: "600",
+                              cursor: quantity <= 1 ? "not-allowed" : "pointer",
+                              opacity: quantity <= 1 ? 0.4 : 1,
+                            }}
+                          >
+                            −
+                          </button>
+                          <span
+                            style={{
+                              width: "48px",
+                              textAlign: "center",
+                              fontSize: "0.95rem",
+                              fontWeight: "600",
+                              userSelect: "none",
+                            }}
+                          >
+                            {quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQuantity((q) =>
+                                Math.min(
+                                  parseInt(selectedVariant.quantity) || q,
+                                  q + 1,
+                                ),
+                              )
+                            }
+                            disabled={
+                              quantity >= parseInt(selectedVariant.quantity)
+                            }
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              border: "none",
+                              background: "#f8f9fa",
+                              color: "#2d8659",
+                              fontSize: "1.1rem",
+                              fontWeight: "600",
+                              cursor:
+                                quantity >= parseInt(selectedVariant.quantity)
+                                  ? "not-allowed"
+                                  : "pointer",
+                              opacity:
+                                quantity >= parseInt(selectedVariant.quantity)
+                                  ? 0.4
+                                  : 1,
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
                       <div style={{ flex: 1 }}>
                         <label
@@ -2185,30 +2254,61 @@ const CartModal = React.memo(
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <input
-              type="number"
-              min="1"
-              value={item.quantity}
-              onChange={(e) => {
-                const value = parseInt(e.target.value);
-                if (!isNaN(value) && value > 0) {
-                  updateCartQuantity(index, value);
-                }
-              }}
-              onBlur={(e) => {
-                const value = parseInt(e.target.value);
-                if (isNaN(value) || value < 1) {
-                  updateCartQuantity(index, 1);
-                }
-              }}
+            <div
               style={{
-                width: "60px",
-                padding: "0.25rem",
+                display: "flex",
+                alignItems: "center",
                 border: "1px solid #e9ecef",
-                borderRadius: "4px",
-                textAlign: "center",
+                borderRadius: "6px",
+                overflow: "hidden",
               }}
-            />
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  updateCartQuantity(index, Math.max(1, item.quantity - 1))
+                }
+                style={{
+                  width: "30px",
+                  height: "30px",
+                  border: "none",
+                  background: "#f8f9fa",
+                  color: "#2d8659",
+                  fontSize: "1rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                −
+              </button>
+              <span
+                style={{
+                  width: "36px",
+                  textAlign: "center",
+                  fontSize: "0.9rem",
+                  fontWeight: "600",
+                  userSelect: "none",
+                }}
+              >
+                {item.quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => updateCartQuantity(index, item.quantity + 1)}
+                style={{
+                  width: "30px",
+                  height: "30px",
+                  border: "none",
+                  background: "#f8f9fa",
+                  color: "#2d8659",
+                  fontSize: "1rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                +
+              </button>
+            </div>
             <button
               onClick={() => removeFromCart(index)}
               style={{
@@ -4413,6 +4513,40 @@ const ClientProducts = () => {
               opacity: 1;
               transform: translate(-50%, 0);
             }
+          }
+          .product-image-container {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            overflow: hidden;
+          }
+
+          .product-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+          }
+
+          .cart-badge {
+            position: absolute;
+            top: -9px;
+            right: -9px;
+            background: #dc3545;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            line-height: 1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
           }
 
           /* Large Desktop - 1440px and above */

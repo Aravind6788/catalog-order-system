@@ -819,9 +819,19 @@ const Products = () => {
                       onClick={openProductImageGallery}
                     >
                       <img
-                        src={getOptimizedImageUrl(productImageList[0], { width: 800 })}
+                        src={getOptimizedImageUrl(productImageList[0], {
+                          width: 800,
+                          height: 800,
+                          crop: "fill",
+                        })}
                         alt={product.product.name}
                         className="detail-image"
+                        style={{
+                          width: "100%",
+                          aspectRatio: "1 / 1",
+                          height: "auto",
+                          objectFit: "cover",
+                        }}
                       />
                       {productImageList.length > 1 && (
                         <div className="image-count-badge">
@@ -921,7 +931,10 @@ const Products = () => {
                               {variantImageList.length > 0 && (
                                 <div className="variant-image-thumbnail">
                                   <img
-                                    src={getOptimizedImageUrl(variantImageList[0], { width: 120, height: 120, crop: "fill" })}
+                                    src={getOptimizedImageUrl(
+                                      variantImageList[0],
+                                      { width: 120, height: 120, crop: "fill" },
+                                    )}
                                     alt={variant.name}
                                     className="variant-thumb"
                                   />
@@ -1087,7 +1100,9 @@ const Products = () => {
                                       }
                                     >
                                       <img
-                                        src={getOptimizedImageUrl(image, { width: 1400 })}
+                                        src={getOptimizedImageUrl(image, {
+                                          width: 1400,
+                                        })}
                                         alt={`${currentVariant.name} ${
                                           index + 1
                                         }`}
@@ -1615,13 +1630,36 @@ const Products = () => {
 
                 return viewMode === "grid" ? (
                   <div key={product.id} className="product-card">
-                    <div className="product-image-container">
+                    <div
+                      className="product-image-container"
+                      style={{
+                        position: "relative",
+                        width: "100%",
+                        aspectRatio: "1 / 1",
+                        height: "auto",
+                        background: "#f1f5f9",
+                        overflow: "hidden",
+                      }}
+                    >
                       {productImageList.length > 0 ? (
-                        <div className="product-image-wrapper">
+                        <div
+                          className="product-image-wrapper"
+                          style={{ width: "100%", height: "100%" }}
+                        >
                           <img
-                            src={getOptimizedImageUrl(productImageList[0], { width: 600, height: 400, crop: "fill" })}
+                            src={getOptimizedImageUrl(productImageList[0], {
+                              width: 500,
+                              height: 500,
+                              crop: "fill",
+                            })}
                             alt={product.name}
                             className="product-image"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              display: "block",
+                            }}
                           />
                           {productImageList.length > 1 && (
                             <div className="product-image-count">
@@ -1632,12 +1670,31 @@ const Products = () => {
                         </div>
                       ) : product.primary_image ? (
                         <img
-                          src={getOptimizedImageUrl(product.primary_image, { width: 600, height: 400, crop: "fill" })}
+                          src={getOptimizedImageUrl(product.primary_image, {
+                            width: 500,
+                            height: 500,
+                            crop: "fill",
+                          })}
                           alt={product.name}
                           className="product-image"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            display: "block",
+                          }}
                         />
                       ) : (
-                        <div className="product-icon">
+                        <div
+                          className="product-icon"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
                           <Package size={32} style={{ color: "#94a3b8" }} />
                         </div>
                       )}
@@ -1717,7 +1774,11 @@ const Products = () => {
                       {productImageList.length > 0 ? (
                         <div className="product-image-wrapper">
                           <img
-                            src={getOptimizedImageUrl(productImageList[0], { width: 600, height: 400, crop: "fill" })}
+                            src={getOptimizedImageUrl(productImageList[0], {
+                              width: 600,
+                              height: 400,
+                              crop: "fill",
+                            })}
                             alt={product.name}
                             className="product-image"
                           />
@@ -1730,7 +1791,11 @@ const Products = () => {
                         </div>
                       ) : product.primary_image ? (
                         <img
-                          src={getOptimizedImageUrl(product.primary_image, { width: 600, height: 400, crop: "fill" })}
+                          src={getOptimizedImageUrl(product.primary_image, {
+                            width: 600,
+                            height: 400,
+                            crop: "fill",
+                          })}
                           alt={product.name}
                           className="product-image"
                         />
