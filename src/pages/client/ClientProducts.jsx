@@ -99,8 +99,6 @@ const containerStyle = {
 //   overflowY: "auto",
 // };
 
-
-
 const navbarStyle = {
   backgroundColor: "white",
   borderBottom: "2px solid #f0f8f3",
@@ -610,7 +608,11 @@ const PreviousOrdersModal = React.memo(
           {/* Right Panel - Order Details */}
           {selectedOrder && (
             <div
-              style={{ width: "100%", display: "flex", flexDirection: "column" }}
+              style={{
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+              }}
               className="selectedOrderDetail"
             >
               <div
@@ -703,7 +705,7 @@ const PreviousOrdersModal = React.memo(
                             <span
                               style={{
                                 backgroundColor: getStatusColor(
-                                  orderDetails.status
+                                  orderDetails.status,
                                 ),
                                 color: "white",
                                 padding: "0.2rem 0.6rem",
@@ -736,7 +738,7 @@ const PreviousOrdersModal = React.memo(
                             <strong>
                               Total: ₹
                               {parseFloat(
-                                orderDetails.total_amount || 0
+                                orderDetails.total_amount || 0,
                               ).toFixed(2)}
                             </strong>
                           </p>
@@ -937,7 +939,7 @@ const PreviousOrdersModal = React.memo(
                             <h4 style={{ margin: 0, color: "#2d8659" }}>
                               ₹
                               {parseFloat(
-                                orderDetails.total_amount || 0
+                                orderDetails.total_amount || 0,
                               ).toFixed(2)}
                             </h4>
                           </div>
@@ -991,7 +993,7 @@ const PreviousOrdersModal = React.memo(
         </div>
       </div>
     );
-  }
+  },
 );
 const ModernFilterSidebar = React.memo(
   ({
@@ -1213,7 +1215,7 @@ const ModernFilterSidebar = React.memo(
         </div>
       </>
     );
-  }
+  },
 );
 // REPLACE the existing ProductCard component with this simplified version
 const ProductCard = React.memo(({ product, onViewDetails }) => {
@@ -1464,7 +1466,7 @@ const ProductDetailModal = React.memo(
     const [selectedVariant, setSelectedVariant] = useState(
       product?.variants && product.variants.length > 0
         ? product.variants[0]
-        : null
+        : null,
     );
     const [quantity, setQuantity] = useState(1);
     const [isAdding, setIsAdding] = useState(false);
@@ -1503,95 +1505,95 @@ const ProductDetailModal = React.memo(
         setSelectedImageIndex(0);
       }
     }, [selectedVariant]);
-  const updateAllImages = (variant) => {
-    console.log("=== IMAGE DEBUG ===");
-    console.log("Selected Product:", product);
-    console.log("Selected Variant:", variant);
-    console.log("Primary Image:", variant?.primary_image);
-    console.log("Secondary Images:", variant?.secondary_images);
-    console.log("ImageData State:", imageData);
+    const updateAllImages = (variant) => {
+      console.log("=== IMAGE DEBUG ===");
+      console.log("Selected Product:", product);
+      console.log("Selected Variant:", variant);
+      console.log("Primary Image:", variant?.primary_image);
+      console.log("Secondary Images:", variant?.secondary_images);
+      console.log("ImageData State:", imageData);
 
-    const images = [];
+      const images = [];
 
-    if (variant?.primary_image) {
-      images.push(variant.primary_image);
-    }
+      if (variant?.primary_image) {
+        images.push(variant.primary_image);
+      }
 
-    // FIRST: Try to get from imageData state (loaded from API)
-    const storedImages = imageData?.variantImages?.[variant?.id];
-    if (storedImages && storedImages.length > 0) {
-      // Filter out primary image to avoid duplicates
-      const secondaryOnly = storedImages.filter(
-        (img) => img !== variant?.primary_image
-      );
-      images.push(...secondaryOnly);
-      console.log("Using stored images from imageData:", storedImages);
-    }
-    // SECOND: Fall back to variant.secondary_images
-    else if (
-      Array.isArray(variant?.secondary_images) &&
-      variant.secondary_images.length > 0
-    ) {
-      images.push(...variant.secondary_images);
-      console.log(
-        "Using secondary_images from variant:",
-        variant.secondary_images
-      );
-    } else if (variant?.secondary_image) {
-      images.push(variant.secondary_image);
-      console.log("Using single secondary_image:", variant.secondary_image);
-    }
+      // FIRST: Try to get from imageData state (loaded from API)
+      const storedImages = imageData?.variantImages?.[variant?.id];
+      if (storedImages && storedImages.length > 0) {
+        // Filter out primary image to avoid duplicates
+        const secondaryOnly = storedImages.filter(
+          (img) => img !== variant?.primary_image,
+        );
+        images.push(...secondaryOnly);
+        console.log("Using stored images from imageData:", storedImages);
+      }
+      // SECOND: Fall back to variant.secondary_images
+      else if (
+        Array.isArray(variant?.secondary_images) &&
+        variant.secondary_images.length > 0
+      ) {
+        images.push(...variant.secondary_images);
+        console.log(
+          "Using secondary_images from variant:",
+          variant.secondary_images,
+        );
+      } else if (variant?.secondary_image) {
+        images.push(variant.secondary_image);
+        console.log("Using single secondary_image:", variant.secondary_image);
+      }
 
-    if (images.length === 0) {
-      images.push(
-        `https://via.placeholder.com/500x400/2d8659/ffffff?text=${encodeURIComponent(
-          product.name
-        )}`
-      );
-    }
+      if (images.length === 0) {
+        images.push(
+          `https://via.placeholder.com/500x400/2d8659/ffffff?text=${encodeURIComponent(
+            product.name,
+          )}`,
+        );
+      }
 
-    console.log("Final All Images Array:", images);
-    setAllImages(images);
-  };
+      console.log("Final All Images Array:", images);
+      setAllImages(images);
+    };
 
-const handleAddToCart = useCallback(() => {
-  if (isAdding) return;
+    const handleAddToCart = useCallback(() => {
+      if (isAdding) return;
 
-  if (!product || !product.variants || product.variants.length === 0) {
-    alert(
-      "This product requires a custom quote. Please contact us for pricing."
-    );
-    return;
-  }
+      if (!product || !product.variants || product.variants.length === 0) {
+        alert(
+          "This product requires a custom quote. Please contact us for pricing.",
+        );
+        return;
+      }
 
-  if (!selectedVariant) {
-    alert("Please select a variant");
-    return;
-  }
+      if (!selectedVariant) {
+        alert("Please select a variant");
+        return;
+      }
 
-  // Validate quantity
-  const validQuantity = parseInt(quantity);
-  if (!validQuantity || validQuantity <= 0 || isNaN(validQuantity)) {
-    alert("Please enter a valid quantity");
-    return;
-  }
+      // Validate quantity
+      const validQuantity = parseInt(quantity);
+      if (!validQuantity || validQuantity <= 0 || isNaN(validQuantity)) {
+        alert("Please enter a valid quantity");
+        return;
+      }
 
-  setIsAdding(true);
+      setIsAdding(true);
 
-  try {
-    // Call addToCart DIRECTLY - not debounced
-    addToCart(product, selectedVariant, validQuantity);
+      try {
+        // Call addToCart DIRECTLY - not debounced
+        addToCart(product, selectedVariant, validQuantity);
 
-    // Show success feedback
-    setTimeout(() => {
-      setIsAdding(false);
-    }, 2000);
-  } catch (error) {
-    console.error("Error adding to cart:", error);
-    setIsAdding(false);
-    alert("Failed to add item to cart. Please try again.");
-  }
-}, [product, selectedVariant, quantity, isAdding, addToCart]);
+        // Show success feedback
+        setTimeout(() => {
+          setIsAdding(false);
+        }, 2000);
+      } catch (error) {
+        console.error("Error adding to cart:", error);
+        setIsAdding(false);
+        alert("Failed to add item to cart. Please try again.");
+      }
+    }, [product, selectedVariant, quantity, isAdding, addToCart]);
 
     if (!isOpen || !product) return null;
 
@@ -2098,7 +2100,7 @@ const handleAddToCart = useCallback(() => {
         />
       </>
     );
-  }
+  },
 );
 // Pagination component - MOVED OUTSIDE
 const Pagination = React.memo(({ currentPage, totalPages, setCurrentPage }) => {
@@ -2746,7 +2748,7 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen) return;
-      
+
       if (e.key === "ArrowLeft") {
         setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
       }
@@ -2775,12 +2777,12 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
   };
 
   return (
-    <div 
+    <div
       style={{
         ...modalStyle,
         backgroundColor: "rgba(0,0,0,0.9)",
         zIndex: 2000,
-      }} 
+      }}
       onClick={onClose}
     >
       <div
@@ -2813,8 +2815,12 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
             transition: "background 0.2s",
           }}
           onClick={onClose}
-          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.2)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.2)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "rgba(255,255,255,0.1)")
+          }
         >
           <X size={24} />
         </button>
@@ -2871,8 +2877,12 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
                 transition: "all 0.2s",
               }}
               onClick={handlePrevious}
-              onMouseEnter={(e) => e.currentTarget.style.background = "#2d8659"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(45,134,89,0.9)"}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#2d8659")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(45,134,89,0.9)")
+              }
             >
               <ChevronLeft size={24} />
             </button>
@@ -2895,8 +2905,12 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
                 transition: "all 0.2s",
               }}
               onClick={handleNext}
-              onMouseEnter={(e) => e.currentTarget.style.background = "#2d8659"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(45,134,89,0.9)"}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#2d8659")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(45,134,89,0.9)")
+              }
             >
               <ChevronRight size={24} />
             </button>
@@ -2919,22 +2933,32 @@ const ImagePreviewModal = ({ images, isOpen, onClose, initialIndex = 0 }) => {
             {images.map((image, index) => (
               <img
                 key={index}
-                src={getOptimizedImageUrl(image, { width: 120, height: 120, crop: "fill" })}
+                src={getOptimizedImageUrl(image, {
+                  width: 120,
+                  height: 120,
+                  crop: "fill",
+                })}
                 alt={`Thumbnail ${index + 1}`}
                 style={{
                   width: "60px",
                   height: "60px",
                   objectFit: "cover",
                   borderRadius: "4px",
-                  border: currentIndex === index ? "3px solid #2d8659" : "2px solid transparent",
+                  border:
+                    currentIndex === index
+                      ? "3px solid #2d8659"
+                      : "2px solid transparent",
                   cursor: "pointer",
                   flexShrink: 0,
                   opacity: currentIndex === index ? 1 : 0.6,
                   transition: "all 0.2s",
                 }}
                 onClick={() => setCurrentIndex(index)}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = currentIndex === index ? 1 : 0.6}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.opacity =
+                    currentIndex === index ? 1 : 0.6)
+                }
               />
             ))}
           </div>
@@ -3084,6 +3108,9 @@ const ClientProducts = () => {
       const params = new URLSearchParams({
         page: currentPage,
         limit: productsPerPage,
+        has_variants: "1",
+        min_price: priceRange.min,
+        max_price: priceRange.max,
       });
 
       // Add filters if they exist
@@ -4213,119 +4240,116 @@ const ClientProducts = () => {
     },
   );
 
-    return (
-      <div style={containerStyle}>
-        {toast.visible && (
-          <div
+  return (
+    <div style={containerStyle}>
+      {toast.visible && (
+        <div
+          style={{
+            position: "fixed",
+            top: "90px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#2d8659",
+            color: "white",
+            padding: "0.75rem 1.5rem",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+            zIndex: 3000,
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontSize: "0.95rem",
+            fontWeight: "500",
+            animation: "toastSlideDown 0.3s ease-out",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Check size={18} />
+          {toast.message}
+        </div>
+      )}
+      {showOrderHistory && (
+        <PreviousOrdersModal
+          previousOrders={previousOrders}
+          setShowOrderHistory={setShowOrderHistory}
+        />
+      )}
+      {showOrderConfirmation && (
+        <OrderConfirmationModal
+          isOpen={showOrderConfirmation}
+          orderNumber={orderNumber}
+          onClose={() => setShowOrderConfirmation(false)}
+        />
+      )}
+      {showProductDetail && selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          isOpen={showProductDetail}
+          onClose={handleCloseProductDetail}
+          addToCart={addToCart}
+          imageData={imageData}
+        />
+      )}
+      <ModernNavbar
+        searchTerm={searchTerm}
+        handleSearchChange={handleSearchChange}
+        cart={cart}
+        previousOrders={previousOrders}
+        setShowOrderHistory={setShowOrderHistory}
+        setShowCheckout={setShowCheckout}
+      />
+      <div
+        style={{
+          backgroundImage: "linear-gradient(135deg, #2d8659 0%, #4a9b6e 100%)",
+          color: "white",
+          padding: "60px 0",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ maxWidth: "90%", margin: "0 auto", padding: "0 1rem" }}>
+          <h1
             style={{
-              position: "fixed",
-              top: "90px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: "#2d8659",
-              color: "white",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "8px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-              zIndex: 3000,
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              marginBottom: "1rem",
+            }}
+          >
+            Products
+          </h1>
+          <p style={{ fontSize: "1.1rem", marginBottom: "0" }}>
+            {loading ? "Loading..." : `${totalProducts} products found`}
+          </p>
+        </div>
+      </div>
+      <div style={{ maxWidth: "90%", margin: "0 auto", padding: "2rem 1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "2rem",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          <button
+            style={{
+              ...buttonStyle,
+              backgroundColor: showFilters ? "#2d8659" : "transparent",
+              color: showFilters ? "white" : "#2d8659",
+              border: "1px solid #2d8659",
               display: "flex",
               alignItems: "center",
               gap: "0.5rem",
-              fontSize: "0.95rem",
-              fontWeight: "500",
-              animation: "toastSlideDown 0.3s ease-out",
-              whiteSpace: "nowrap",
             }}
+            onClick={() => setShowFilters(!showFilters)}
           >
-            <Check size={18} />
-            {toast.message}
-          </div>
-        )}
-        {showOrderHistory && (
-          <PreviousOrdersModal
-            previousOrders={previousOrders}
-            setShowOrderHistory={setShowOrderHistory}
-          />
-        )}
-        {showOrderConfirmation && (
-          <OrderConfirmationModal
-            isOpen={showOrderConfirmation}
-            orderNumber={orderNumber}
-            onClose={() => setShowOrderConfirmation(false)}
-          />
-        )}
-        {showProductDetail && selectedProduct && (
-          <ProductDetailModal
-            product={selectedProduct}
-            isOpen={showProductDetail}
-            onClose={handleCloseProductDetail}
-            addToCart={addToCart}
-            imageData={imageData}
-          />
-        )}
-        <ModernNavbar
-          searchTerm={searchTerm}
-          handleSearchChange={handleSearchChange}
-          cart={cart}
-          previousOrders={previousOrders}
-          setShowOrderHistory={setShowOrderHistory}
-          setShowCheckout={setShowCheckout}
-        />
-        <div
-          style={{
-            backgroundImage:
-              "linear-gradient(135deg, #2d8659 0%, #4a9b6e 100%)",
-            color: "white",
-            padding: "60px 0",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ maxWidth: "90%", margin: "0 auto", padding: "0 1rem" }}>
-            <h1
-              style={{
-                fontSize: "2.5rem",
-                fontWeight: "700",
-                marginBottom: "1rem",
-              }}
-            >
-              Products
-            </h1>
-            <p style={{ fontSize: "1.1rem", marginBottom: "0" }}>
-              {loading ? "Loading..." : `${totalProducts} products found`}
-            </p>
-          </div>
-        </div>
-        <div
-          style={{ maxWidth: "90%", margin: "0 auto", padding: "2rem 1rem" }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "2rem",
-              flexWrap: "wrap",
-              gap: "1rem",
-            }}
-          >
-            <button
-              style={{
-                ...buttonStyle,
-                backgroundColor: showFilters ? "#2d8659" : "transparent",
-                color: showFilters ? "white" : "#2d8659",
-                border: "1px solid #2d8659",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <SlidersHorizontal size={16} />
-              Filters
-            </button>
+            <SlidersHorizontal size={16} />
+            Filters
+          </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              {/* <select
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {/* <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{
@@ -4341,28 +4365,28 @@ const ClientProducts = () => {
               <option value="price-high">Price: High to Low</option>
             </select> */}
 
-              <div
+            <div
+              style={{
+                display: "flex",
+                border: "1px solid #e9ecef",
+                borderRadius: "8px",
+                dispaly: "none",
+              }}
+            >
+              <button
                 style={{
-                  display: "flex",
-                  border: "1px solid #e9ecef",
-                  borderRadius: "8px",
-                  dispaly: "none",
+                  padding: "0.5rem",
+                  border: "none",
+                  backgroundColor: viewMode === "grid" ? "#2d8659" : "white",
+                  color: viewMode === "grid" ? "white" : "#6c757d",
+                  borderRadius: "8px 0 0 8px",
+                  cursor: "pointer",
                 }}
+                onClick={() => setViewMode("grid")}
               >
-                <button
-                  style={{
-                    padding: "0.5rem",
-                    border: "none",
-                    backgroundColor: viewMode === "grid" ? "#2d8659" : "white",
-                    color: viewMode === "grid" ? "white" : "#6c757d",
-                    borderRadius: "8px 0 0 8px",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setViewMode("grid")}
-                >
-                  <Grid size={16} />
-                </button>
-                {/* <button
+                <Grid size={16} />
+              </button>
+              {/* <button
                 style={{
                   padding: "0.5rem",
                   border: "none",
@@ -4375,785 +4399,785 @@ const ClientProducts = () => {
               >
                 <List size={16} />
               </button> */}
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "2rem",
-              alignItems: "flex-start",
-              flexWrap: "wrap",
-            }}
-          >
-            {showFilters && (
-              <div
-                style={{
-                  width: window.innerWidth <= 768 ? "100%" : "300px",
-                  flexShrink: 0,
-                }}
-              >
-                <ModernFilterSidebar
-                  categories={categories}
-                  selectedCategory={selectedCategory}
-                  handleCategoryChange={handleCategoryChange}
-                  priceRange={priceRange}
-                  setPriceRange={setPriceRange}
-                  setSelectedCategory={setSelectedCategory}
-                  showFilters={showFilters}
-                  setShowFilters={setShowFilters}
-                />
-              </div>
-            )}
-
-            <div style={{ flex: 1 }}>
-              {loading ? (
-                <div style={{ textAlign: "center", padding: "3rem" }}>
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      border: "3px solid #e9ecef",
-                      borderTop: "3px solid #2d8659",
-                      borderRadius: "50%",
-                      animation: "spin 1s linear infinite",
-                      margin: "0 auto 1rem",
-                    }}
-                  />
-                  <p>Loading products...</p>
-                </div>
-              ) : products.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "3rem" }}>
-                  <Package
-                    size={64}
-                    style={{ color: "#cbd5e1", marginBottom: "1rem" }}
-                  />
-                  <h3>No products found</h3>
-                  <p>Try adjusting your search or filters</p>
-                </div>
-              ) : sortedAndFilteredProducts.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "3rem" }}>
-                  <Package
-                    size={64}
-                    style={{ color: "#cbd5e1", marginBottom: "1rem" }}
-                  />
-                  <h3>No products match your filters</h3>
-                  <p>Try adjusting your price range or search criteria</p>
-                </div>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        viewMode === "grid"
-                          ? "repeat(auto-fill, minmax(min(280px, 100%), 1fr))"
-                          : "1fr",
-                      gap: "1.5rem",
-                    }}
-                  >
-                    {products.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onViewDetails={handleViewDetails}
-                      />
-                    ))}
-                  </div>
-                  {totalPages > 1 && (
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      setCurrentPage={setCurrentPage}
-                    />
-                  )}
-                </>
-              )}
             </div>
           </div>
         </div>
-        {showCheckout && (
-          <CartModal
-            cart={cart}
-            setShowCheckout={setShowCheckout}
-            updateCartQuantity={updateCartQuantity}
-            removeFromCart={removeFromCart}
-            customerData={customerData}
-            handleCustomerDataChange={handleCustomerDataChange}
-            submitOrder={submitOrder}
-            orderLoading={orderLoading}
-            locationStates={locationStates}
-            locationDistricts={locationDistricts}
-            locationBranches={locationBranches}
-            selectedState={selectedState}
-            selectedDistrict={selectedDistrict}
-            selectedBranch={selectedBranch}
-            onStateChange={handleStateChange}
-            onDistrictChange={handleDistrictChange}
-            onBranchChange={handleBranchChange}
-          />
-        )}
-        <style jsx>{`
-          @keyframes spin {
-            0% {
-              transform: rotate(0deg);
-            }
-            100% {
-              transform: rotate(360deg);
-            }
-          }
 
-          @keyframes toastSlideDown {
-            from {
-              opacity: 0;
-              transform: translate(-50%, -20px);
-            }
-            to {
-              opacity: 1;
-              transform: translate(-50%, 0);
-            }
-          }
-          .product-image-container {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
-            overflow: hidden;
-          }
-
-          .product-image-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-          }
-
-          .cart-badge {
-            position: absolute;
-            top: -9px;
-            right: -9px;
-            background: #dc3545;
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 700;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 5px;
-            line-height: 1;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-          }
-
-          /* Large Desktop - 1440px and above */
-          @media (min-width: 1440px) {
-            .filter-sidebar {
-              width: 320px !important;
-            }
-          }
-
-          /* Desktop - 1200px to 1439px */
-          @media (max-width: 1439px) and (min-width: 1200px) {
-            .filter-sidebar {
-              width: 280px !important;
-            }
-          }
-
-          /* Laptop - 1024px to 1199px */
-          @media (max-width: 1199px) and (min-width: 1024px) {
-            .filter-sidebar {
-              width: 250px !important;
-              padding: 18px !important;
-            }
-
-            [style*="maxWidth: '1200px'"] {
-              max-width: 95% !important;
-            }
-          }
-
-          /* Tablet Landscape - 900px to 1023px */
-          @media (max-width: 1023px) and (min-width: 900px) {
-            .filter-sidebar {
-              width: 220px !important;
-              padding: 16px !important;
-            }
-
-            .product-detail-modal {
-              max-width: 95vw !important;
-            }
-
-            .order-history-modal {
-              max-width: 95vw !important;
-            }
-          }
-
-          /* Tablet Portrait - 768px to 899px */
-          @media (max-width: 899px) and (min-width: 768px) {
-            .RPDetails {
-              width: 100% !important;
-            }
-
-            .search-wrapper {
-              max-width: 400px !important;
-            }
-
-            .nav-btn .btn-text {
-              font-size: 0.85rem;
-            }
-
-            .filter-sidebar {
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              bottom: 0 !important;
-              width: 65% !important;
-              max-width: 300px !important;
-              transform: translateX(-100%);
-              transition: transform 0.3s ease;
-              z-index: 1000 !important;
-              overflow-y: auto;
-              height: 100vh;
-              margin: 0 !important;
-              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-            }
-
-            .filter-sidebar.active {
-              transform: translateX(0) !important;
-            }
-
-            .filter-close-btn {
-              display: block !important;
-            }
-
-            .product-detail-modal {
-              flex-direction: column !important;
-              max-width: 90vw !important;
-            }
-
-            .product-detail-images {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-            }
-
-            [style*="gridTemplateColumns"] {
-              grid-template-columns: repeat(
-                auto-fill,
-                minmax(240px, 1fr)
-              ) !important;
-            }
-          }
-
-          /* Mobile Landscape - 640px to 767px */
-          @media (max-width: 767px) and (min-width: 640px) {
-            .RPDetails {
-              width: 100% !important;
-            }
-
-            .search-wrapper {
-              order: 3 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              flex-basis: 100% !important;
-            }
-
-            .nav-btn .btn-text {
-              display: inline;
-              font-size: 0.8rem;
-            }
-
-            .filter-sidebar {
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              bottom: 0 !important;
-              width: 75% !important;
-              max-width: 320px !important;
-              transform: translateX(-100%);
-              transition: transform 0.3s ease;
-              z-index: 1000 !important;
-              overflow-y: auto;
-              height: 100vh;
-              margin: 0 !important;
-              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-            }
-
-            .filter-sidebar.active {
-              transform: translateX(0) !important;
-            }
-
-            .filter-close-btn {
-              display: block !important;
-            }
-
-            .product-detail-modal {
-              flex-direction: column !important;
-              max-width: 95vw !important;
-              margin: 0.75rem !important;
-            }
-
-            .product-detail-images {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-              padding: 1rem !important;
-            }
-
-            .product-detail-images > div:first-child img {
-              height: auto !important;
-              max-height: 375px !important;
-            }
-
-            [style*="gridTemplateColumns"] {
-              grid-template-columns: repeat(
-                auto-fill,
-                minmax(220px, 1fr)
-              ) !important;
-            }
-
-            button {
-              min-height: 42px;
-            }
-
-            input,
-            select,
-            textarea {
-              min-height: 42px;
-              font-size: 15px !important;
-            }
-          }
-
-          /* Mobile Portrait - 480px to 639px */
-          @media (max-width: 639px) and (min-width: 480px) {
-            .RPDetails {
-              width: 100% !important;
-            }
-
-            .search-wrapper {
-              order: 3 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              flex-basis: 100% !important;
-            }
-
-            .nav-btn .btn-text {
-              display: none;
-            }
-
-            .search-btn .btn-text {
-              display: inline;
-            }
-
-            .filter-sidebar {
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              bottom: 0 !important;
-              width: 80% !important;
-              max-width: 300px !important;
-              transform: translateX(-100%);
-              transition: transform 0.3s ease;
-              z-index: 1000 !important;
-              overflow-y: auto;
-              height: 100vh;
-              margin: 0 !important;
-              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-            }
-
-            .filter-sidebar.active {
-              transform: translateX(0) !important;
-            }
-
-            .filter-close-btn {
-              display: block !important;
-            }
-
-            .product-detail-modal {
-              flex-direction: column !important;
-              max-height: 95vh !important;
-              border-radius: 8px !important;
-              margin: 0.5rem !important;
-            }
-
-            .product-detail-images {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-              max-height: 45vh !important;
-              padding: 0.875rem !important;
-            }
-
-            .product-detail-images > div:first-child img {
-              height: auto !important;
-              max-height: 375px !important;
-            }
-
-            .order-history-modal {
-              flex-direction: column !important;
-              max-width: 95vw !important;
-              max-height: 95vh !important;
-              margin: 0.75rem !important;
-            }
-
-            .order-list-panel {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-            }
-
-            .order-list-panel > div:last-child {
-              max-height: 280px !important;
-              overflow-y: auto !important;
-            }
-
-            [style*="gridTemplateColumns"] {
-              grid-template-columns: repeat(
-                auto-fill,
-                minmax(200px, 1fr)
-              ) !important;
-            }
-
-            button {
-              min-height: 44px;
-              touch-action: manipulation;
-            }
-
-            input,
-            select,
-            textarea {
-              min-height: 44px;
-              font-size: 16px !important;
-              touch-action: manipulation;
-            }
-
-            h1 {
-              font-size: 2rem !important;
-            }
-
-            h4 {
-              font-size: 1.3rem !important;
-            }
-
-            h6 {
-              font-size: 0.95rem !important;
-            }
-          }
-
-          /* Small Mobile - 400px to 479px */
-          @media (max-width: 479px) and (min-width: 400px) {
-            .RPDetails {
-              width: 100% !important;
-            }
-
-            .search-wrapper {
-              order: 3 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              flex-basis: 100% !important;
-            }
-
-            .nav-btn .btn-text,
-            .search-btn .btn-text {
-              display: none;
-            }
-
-            .filter-sidebar {
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              bottom: 0 !important;
-              width: 85% !important;
-              max-width: 280px !important;
-              transform: translateX(-100%);
-              transition: transform 0.3s ease;
-              z-index: 1000 !important;
-              overflow-y: auto;
-              height: 100vh;
-              margin: 0 !important;
-              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-              padding: 16px !important;
-            }
-
-            .filter-sidebar.active {
-              transform: translateX(0) !important;
-            }
-
-            .filter-close-btn {
-              display: block !important;
-            }
-
-            .product-detail-modal {
-              flex-direction: column !important;
-              max-height: 117vh !important;
-              border-radius: 6px !important;
-              /* margin: 0.25rem !important; */
-              margin-top: 192px;
-            }
-
-            .product-detail-images {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-              max-height: 51vh !important;
-              padding: 0.75rem !important;
-              min-height: 500px !important;
-            }
-
-            .product-detail-images > div:first-child img {
-              height: auto !important;
-              max-height: 375px !important;
-            }
-
-            .order-history-modal {
-              flex-direction: column !important;
-              max-width: 96vw !important;
-              max-height: 96vh !important;
-              margin: 0.5rem !important;
-            }
-
-            .order-list-panel {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-            }
-
-            .order-list-panel > div:last-child {
-              max-height: 240px !important;
-              overflow-y: auto !important;
-            }
-
-            [style*="gridTemplateColumns"] {
-              grid-template-columns: 1fr !important;
-            }
-
-            button {
-              min-height: 44px;
-              touch-action: manipulation;
-              font-size: 0.875rem !important;
-            }
-
-            input,
-            select,
-            textarea {
-              min-height: 44px;
-              font-size: 16px !important;
-              touch-action: manipulation;
-              padding: 0.625rem 0.875rem !important;
-            }
-
-            h1 {
-              font-size: 1.75rem !important;
-            }
-
-            h4 {
-              font-size: 1.15rem !important;
-            }
-
-            h5 {
-              font-size: 1rem !important;
-            }
-
-            h6 {
-              font-size: 0.875rem !important;
-            }
-
-            p {
-              font-size: 0.875rem !important;
-            }
-
-            .brand-logo {
-              max-width: 120px !important;
-            }
-          }
-
-          /* Extra Small Mobile - 360px to 399px */
-          @media (max-width: 399px) {
-            .RPDetails {
-              width: 100% !important;
-            }
-
-            .search-wrapper {
-              order: 3 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-              flex-basis: 100% !important;
-            }
-
-            .nav-btn .btn-text,
-            .search-btn .btn-text {
-              display: none;
-            }
-
-            .filter-sidebar {
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              bottom: 0 !important;
-              width: 90% !important;
-              max-width: 260px !important;
-              transform: translateX(-100%);
-              transition: transform 0.3s ease;
-              z-index: 1000 !important;
-              overflow-y: auto;
-              height: 100vh;
-              margin: 0 !important;
-              box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
-              padding: 14px !important;
-            }
-
-            .filter-sidebar.active {
-              transform: translateX(0) !important;
-            }
-
-            .filter-close-btn {
-              display: block !important;
-            }
-
-            .product-detail-modal {
-              flex-direction: column !important;
-              max-height: 98vh !important;
-              border-radius: 4px !important;
-              margin: 0.25rem !important;
-              max-width: calc(100vw - 0.5rem) !important;
-            }
-
-            .product-detail-images {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-              max-height: 38vh !important;
-              padding: 0.625rem !important;
-            }
-
-            .product-detail-images > div:first-child img {
-              height: auto !important;
-              max-height: 375px !important;
-            }
-
-            .order-history-modal {
-              flex-direction: column !important;
-              max-width: calc(100vw - 0.5rem) !important;
-              max-height: 97vh !important;
-              margin: 0.25rem !important;
-            }
-
-            .order-list-panel {
-              width: 100% !important;
-              border-right: none !important;
-              border-bottom: 1px solid #e9ecef !important;
-            }
-
-            .order-list-panel > div:last-child {
-              max-height: 220px !important;
-              overflow-y: auto !important;
-            }
-
-            [style*="gridTemplateColumns"] {
-              grid-template-columns: 1fr !important;
-            }
-
-            button {
-              min-height: 44px;
-              touch-action: manipulation;
-              font-size: 0.8125rem !important;
-              padding: 0.5rem 0.75rem !important;
-            }
-
-            input,
-            select,
-            textarea {
-              min-height: 44px;
-              font-size: 16px !important;
-              touch-action: manipulation;
-              padding: 0.5rem 0.75rem !important;
-            }
-
-            h1 {
-              font-size: 1.5rem !important;
-              padding: 0 0.5rem !important;
-            }
-
-            h4 {
-              font-size: 1.05rem !important;
-            }
-
-            h5 {
-              font-size: 0.95rem !important;
-            }
-
-            h6 {
-              font-size: 0.825rem !important;
-            }
-
-            p {
-              font-size: 0.8125rem !important;
-            }
-
-            .brand-logo {
-              max-width: 100px !important;
-            }
-
-            [style*="padding: '1.5rem'"] {
-              padding: 1rem !important;
-            }
-
-            [style*="padding: '2rem'"] {
-              padding: 1.25rem !important;
-            }
-
-            [style*="gap: '1rem'"] {
-              gap: 0.75rem !important;
-            }
-
-            [style*="gap: '1.5rem'"] {
-              gap: 1rem !important;
-            }
-
-            [style*="maxWidth: '90%'"] {
-              max-width: 95% !important;
-            }
-          }
-
-          /* Prevent zoom on input focus (iOS) */
-          @media (max-width: 768px) {
-            input[type="text"],
-            input[type="email"],
-            input[type="tel"],
-            input[type="number"],
-            select,
-            textarea {
-              font-size: 16px !important;
-            }
-          }
-
-          /* Ensure touch targets are adequate on all mobile devices */
-          @media (max-width: 767px) {
-            button,
-            a,
-            input[type="button"],
-            input[type="submit"] {
-              min-height: 44px;
-              min-width: 44px;
-            }
-          }
-
-          /* Horizontal scroll prevention */
-          @media (max-width: 767px) {
-            body {
-              overflow-x: hidden !important;
-            }
-
-            * {
-              max-width: 100%;
-            }
-          }
-        `}</style>{" "}
+        <div
+          style={{
+            display: "flex",
+            gap: "2rem",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+          }}
+        >
+          {showFilters && (
+            <div
+              style={{
+                width: window.innerWidth <= 768 ? "100%" : "300px",
+                flexShrink: 0,
+              }}
+            >
+              <ModernFilterSidebar
+                categories={categories}
+                selectedCategory={selectedCategory}
+                handleCategoryChange={handleCategoryChange}
+                priceRange={priceRange}
+                setPriceRange={setPriceRange}
+                setSelectedCategory={setSelectedCategory}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+              />
+            </div>
+          )}
+
+          <div style={{ flex: 1 }}>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "3rem" }}>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    border: "3px solid #e9ecef",
+                    borderTop: "3px solid #2d8659",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
+                    margin: "0 auto 1rem",
+                  }}
+                />
+                <p>Loading products...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem" }}>
+                <Package
+                  size={64}
+                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
+                />
+                <h3>No products found</h3>
+                <p>Try adjusting your search or filters</p>
+              </div>
+            ) : sortedAndFilteredProducts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3rem" }}>
+                <Package
+                  size={64}
+                  style={{ color: "#cbd5e1", marginBottom: "1rem" }}
+                />
+                <h3>No products match your filters</h3>
+                <p>Try adjusting your price range or search criteria</p>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      viewMode === "grid"
+                        ? "repeat(auto-fill, minmax(min(280px, 100%), 1fr))"
+                        : "1fr",
+                    gap: "1.5rem",
+                  }}
+                >
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onViewDetails={handleViewDetails}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    setCurrentPage={setCurrentPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
-    );
-};;;
+      {showCheckout && (
+        <CartModal
+          cart={cart}
+          setShowCheckout={setShowCheckout}
+          updateCartQuantity={updateCartQuantity}
+          removeFromCart={removeFromCart}
+          customerData={customerData}
+          handleCustomerDataChange={handleCustomerDataChange}
+          submitOrder={submitOrder}
+          orderLoading={orderLoading}
+          locationStates={locationStates}
+          locationDistricts={locationDistricts}
+          locationBranches={locationBranches}
+          selectedState={selectedState}
+          selectedDistrict={selectedDistrict}
+          selectedBranch={selectedBranch}
+          onStateChange={handleStateChange}
+          onDistrictChange={handleDistrictChange}
+          onBranchChange={handleBranchChange}
+        />
+      )}
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes toastSlideDown {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -20px);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
+        }
+        .product-image-container {
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #fff;
+          overflow: hidden;
+        }
+
+        .product-image-container img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+
+        .cart-badge {
+          position: absolute;
+          top: -9px;
+          right: -9px;
+          background: #dc3545;
+          color: white;
+          font-size: 0.7rem;
+          font-weight: 700;
+          min-width: 20px;
+          height: 20px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 5px;
+          line-height: 1;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Large Desktop - 1440px and above */
+        @media (min-width: 1440px) {
+          .filter-sidebar {
+            width: 320px !important;
+          }
+        }
+
+        /* Desktop - 1200px to 1439px */
+        @media (max-width: 1439px) and (min-width: 1200px) {
+          .filter-sidebar {
+            width: 280px !important;
+          }
+        }
+
+        /* Laptop - 1024px to 1199px */
+        @media (max-width: 1199px) and (min-width: 1024px) {
+          .filter-sidebar {
+            width: 250px !important;
+            padding: 18px !important;
+          }
+
+          [style*="maxWidth: '1200px'"] {
+            max-width: 95% !important;
+          }
+        }
+
+        /* Tablet Landscape - 900px to 1023px */
+        @media (max-width: 1023px) and (min-width: 900px) {
+          .filter-sidebar {
+            width: 220px !important;
+            padding: 16px !important;
+          }
+
+          .product-detail-modal {
+            max-width: 95vw !important;
+          }
+
+          .order-history-modal {
+            max-width: 95vw !important;
+          }
+        }
+
+        /* Tablet Portrait - 768px to 899px */
+        @media (max-width: 899px) and (min-width: 768px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            max-width: 400px !important;
+          }
+
+          .nav-btn .btn-text {
+            font-size: 0.85rem;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 65% !important;
+            max-width: 300px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-width: 90vw !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(240px, 1fr)
+            ) !important;
+          }
+        }
+
+        /* Mobile Landscape - 640px to 767px */
+        @media (max-width: 767px) and (min-width: 640px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text {
+            display: inline;
+            font-size: 0.8rem;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 75% !important;
+            max-width: 320px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-width: 95vw !important;
+            margin: 0.75rem !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            padding: 1rem !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(220px, 1fr)
+            ) !important;
+          }
+
+          button {
+            min-height: 42px;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 42px;
+            font-size: 15px !important;
+          }
+        }
+
+        /* Mobile Portrait - 480px to 639px */
+        @media (max-width: 639px) and (min-width: 480px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text {
+            display: none;
+          }
+
+          .search-btn .btn-text {
+            display: inline;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 80% !important;
+            max-width: 300px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 95vh !important;
+            border-radius: 8px !important;
+            margin: 0.5rem !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: 45vh !important;
+            padding: 0.875rem !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
+          .order-history-modal {
+            flex-direction: column !important;
+            max-width: 95vw !important;
+            max-height: 95vh !important;
+            margin: 0.75rem !important;
+          }
+
+          .order-list-panel {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+          }
+
+          .order-list-panel > div:last-child {
+            max-height: 280px !important;
+            overflow-y: auto !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(
+              auto-fill,
+              minmax(200px, 1fr)
+            ) !important;
+          }
+
+          button {
+            min-height: 44px;
+            touch-action: manipulation;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 44px;
+            font-size: 16px !important;
+            touch-action: manipulation;
+          }
+
+          h1 {
+            font-size: 2rem !important;
+          }
+
+          h4 {
+            font-size: 1.3rem !important;
+          }
+
+          h6 {
+            font-size: 0.95rem !important;
+          }
+        }
+
+        /* Small Mobile - 400px to 479px */
+        @media (max-width: 479px) and (min-width: 400px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text,
+          .search-btn .btn-text {
+            display: none;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 85% !important;
+            max-width: 280px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            padding: 16px !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 117vh !important;
+            border-radius: 6px !important;
+            /* margin: 0.25rem !important; */
+            margin-top: 192px;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: 51vh !important;
+            padding: 0.75rem !important;
+            min-height: 500px !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
+          .order-history-modal {
+            flex-direction: column !important;
+            max-width: 96vw !important;
+            max-height: 96vh !important;
+            margin: 0.5rem !important;
+          }
+
+          .order-list-panel {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+          }
+
+          .order-list-panel > div:last-child {
+            max-height: 240px !important;
+            overflow-y: auto !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          button {
+            min-height: 44px;
+            touch-action: manipulation;
+            font-size: 0.875rem !important;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 44px;
+            font-size: 16px !important;
+            touch-action: manipulation;
+            padding: 0.625rem 0.875rem !important;
+          }
+
+          h1 {
+            font-size: 1.75rem !important;
+          }
+
+          h4 {
+            font-size: 1.15rem !important;
+          }
+
+          h5 {
+            font-size: 1rem !important;
+          }
+
+          h6 {
+            font-size: 0.875rem !important;
+          }
+
+          p {
+            font-size: 0.875rem !important;
+          }
+
+          .brand-logo {
+            max-width: 120px !important;
+          }
+        }
+
+        /* Extra Small Mobile - 360px to 399px */
+        @media (max-width: 399px) {
+          .RPDetails {
+            width: 100% !important;
+          }
+
+          .search-wrapper {
+            order: 3 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+          }
+
+          .nav-btn .btn-text,
+          .search-btn .btn-text {
+            display: none;
+          }
+
+          .filter-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            width: 90% !important;
+            max-width: 260px !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000 !important;
+            overflow-y: auto;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+            padding: 14px !important;
+          }
+
+          .filter-sidebar.active {
+            transform: translateX(0) !important;
+          }
+
+          .filter-close-btn {
+            display: block !important;
+          }
+
+          .product-detail-modal {
+            flex-direction: column !important;
+            max-height: 98vh !important;
+            border-radius: 4px !important;
+            margin: 0.25rem !important;
+            max-width: calc(100vw - 0.5rem) !important;
+          }
+
+          .product-detail-images {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+            max-height: 38vh !important;
+            padding: 0.625rem !important;
+          }
+
+          .product-detail-images > div:first-child img {
+            height: auto !important;
+            max-height: 375px !important;
+          }
+
+          .order-history-modal {
+            flex-direction: column !important;
+            max-width: calc(100vw - 0.5rem) !important;
+            max-height: 97vh !important;
+            margin: 0.25rem !important;
+          }
+
+          .order-list-panel {
+            width: 100% !important;
+            border-right: none !important;
+            border-bottom: 1px solid #e9ecef !important;
+          }
+
+          .order-list-panel > div:last-child {
+            max-height: 220px !important;
+            overflow-y: auto !important;
+          }
+
+          [style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          button {
+            min-height: 44px;
+            touch-action: manipulation;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+          }
+
+          input,
+          select,
+          textarea {
+            min-height: 44px;
+            font-size: 16px !important;
+            touch-action: manipulation;
+            padding: 0.5rem 0.75rem !important;
+          }
+
+          h1 {
+            font-size: 1.5rem !important;
+            padding: 0 0.5rem !important;
+          }
+
+          h4 {
+            font-size: 1.05rem !important;
+          }
+
+          h5 {
+            font-size: 0.95rem !important;
+          }
+
+          h6 {
+            font-size: 0.825rem !important;
+          }
+
+          p {
+            font-size: 0.8125rem !important;
+          }
+
+          .brand-logo {
+            max-width: 100px !important;
+          }
+
+          [style*="padding: '1.5rem'"] {
+            padding: 1rem !important;
+          }
+
+          [style*="padding: '2rem'"] {
+            padding: 1.25rem !important;
+          }
+
+          [style*="gap: '1rem'"] {
+            gap: 0.75rem !important;
+          }
+
+          [style*="gap: '1.5rem'"] {
+            gap: 1rem !important;
+          }
+
+          [style*="maxWidth: '90%'"] {
+            max-width: 95% !important;
+          }
+        }
+
+        /* Prevent zoom on input focus (iOS) */
+        @media (max-width: 768px) {
+          input[type="text"],
+          input[type="email"],
+          input[type="tel"],
+          input[type="number"],
+          select,
+          textarea {
+            font-size: 16px !important;
+          }
+        }
+
+        /* Ensure touch targets are adequate on all mobile devices */
+        @media (max-width: 767px) {
+          button,
+          a,
+          input[type="button"],
+          input[type="submit"] {
+            min-height: 44px;
+            min-width: 44px;
+          }
+        }
+
+        /* Horizontal scroll prevention */
+        @media (max-width: 767px) {
+          body {
+            overflow-x: hidden !important;
+          }
+
+          * {
+            max-width: 100%;
+          }
+        }
+      `}</style>{" "}
+    </div>
+  );
+};
 
 export default ClientProducts;
