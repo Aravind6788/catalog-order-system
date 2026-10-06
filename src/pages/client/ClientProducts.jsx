@@ -2206,6 +2206,8 @@ const CartModal = React.memo(
     handleCustomerDataChange,
     submitOrder,
     orderLoading,
+    cartTotal,
+    minOrderAmount,
     locationStates,
     locationDistricts,
     locationBranches,
@@ -2688,7 +2690,20 @@ const CartModal = React.memo(
                     )}
                   </div>
                 </div>
-
+                {cartTotal <= minOrderAmount && (
+                  <p
+                    style={{
+                      color: "#dc3545",
+                      fontSize: "0.85rem",
+                      marginBottom: "0.75rem",
+                      textAlign: "center",
+                    }}
+                  >
+                    Add items worth ₹
+                    {(minOrderAmount - cartTotal + 1).toFixed(2)} more to place
+                    your order (minimum order is above ₹{minOrderAmount}).
+                  </p>
+                )}
                 <button
                   style={{
                     ...buttonStyle,
@@ -2699,13 +2714,22 @@ const CartModal = React.memo(
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "0.5rem",
-                    opacity: orderLoading ? 0.6 : 1,
+                    opacity: orderLoading
+                      ? 0.6
+                      : cartTotal <= minOrderAmount
+                        ? 0.4
+                        : 1,
+                    cursor:
+                      orderLoading || cartTotal <= minOrderAmount
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                   onClick={submitOrder}
                   disabled={
                     orderLoading ||
                     (!customerData.email && !customerData.phone) ||
-                    !selectedBranch
+                    !selectedBranch ||
+                    cartTotal <= minOrderAmount
                   }
                 >
                   {orderLoading ? (
@@ -3011,7 +3035,9 @@ const ClientProducts = () => {
   // const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
-  const [orderLoading, setOrderLoading] = useState(false);
+const [orderLoading, setOrderLoading] = useState(false);
+
+  const MIN_ORDER_AMOUNT = 559;
   // Image data state for variants
   const [imageData, setImageData] = useState({
     productImages: {},
@@ -3879,19 +3905,16 @@ const ClientProducts = () => {
     },
     [removeFromCart, sessionId, clientIP, customerData],
   );
-  // Load previous orders when cart modal is opened
-  // Load previous orders when customer data changes
+  // cart total
+  const cartTotal = cart.reduce(
+    (sum, item) => sum + parseFloat(item.price) * item.quantity,
+    0,
+  );
   useEffect(() => {
     if (customerData.email || customerData.phone) {
       loadPreviousOrders(customerData.email, customerData.phone);
     }
   }, [customerData.email, customerData.phone, loadPreviousOrders]);
-  // Submit order
-
-  // 3. REPLACE YOUR EXISTING submitOrder FUNCTION WITH THIS ONE
-  // REPLACE your existing submitOrder function with this fixed version:
-  // REPLACE your existing submitOrder function with this fixed version:
-  // Runs only after the backend has cryptographically verified the payment.
   const finalizeOrderAfterPayment = useCallback(
     async (orderNum) => {
       const customerJson = encodeURIComponent(JSON.stringify(customerData));
@@ -4039,7 +4062,10 @@ const ClientProducts = () => {
       alert("Please select a state, district and branch");
       return;
     }
-
+if (cartTotal <= MIN_ORDER_AMOUNT) {
+  alert(`Order total must be above ₹${MIN_ORDER_AMOUNT} to place an order`);
+  return;
+}
     setOrderLoading(true);
 
     try {
@@ -4507,6 +4533,8 @@ const ClientProducts = () => {
           handleCustomerDataChange={handleCustomerDataChange}
           submitOrder={submitOrder}
           orderLoading={orderLoading}
+          cartTotal={cartTotal}
+          minOrderAmount={MIN_ORDER_AMOUNT}
           locationStates={locationStates}
           locationDistricts={locationDistricts}
           locationBranches={locationBranches}
@@ -5178,6 +5206,6 @@ const ClientProducts = () => {
       `}</style>{" "}
     </div>
   );
-};
+};;
 
 export default ClientProducts;
