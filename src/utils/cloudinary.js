@@ -10,7 +10,7 @@ export const getOptimizedImageUrl = (url, { width, height, crop = "limit" } = {}
     return url;
   }
 
-  const transformation = ["f_auto", "q_auto"];
+  const transformation = ["f_auto", "q_auto", "fl_lossy"];
 
   if (width) transformation.push(`w_${width}`);
   if (height) transformation.push(`h_${height}`);
